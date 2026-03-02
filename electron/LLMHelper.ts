@@ -20,6 +20,53 @@ import axios from 'axios';
 import { createProviderRateLimiters, RateLimiter } from './services/RateLimiter';
 const execAsync = promisify(exec);
 
+/**
+ * OpenAI token param compatibility:
+ * - Newer OpenAI behavior may require `max_completion_tokens`
+ * - Older models / some providers expect `max_tokens`
+ *
+ * Strategy: try `max_completion_tokens` first, retry once with `max_tokens`
+ * only if the error looks like an unknown/invalid parameter error.
+ */
+private async openaiChatCompletionsCreateWithTokenFallback(params: {
+  model: string;
+  messages: any[];
+  temperature?: number;
+  stream?: boolean;
+  maxTokens?: number;
+}) {
+  if (!this.openaiClient) throw new Error("OpenAI client not initialized");
+
+  const { maxTokens, ...rest } = params;
+
+  const call = (tokenParam: "max_completion_tokens" | "max_tokens") => {
+    const tokenObj =
+      typeof maxTokens === "number" ? { [tokenParam]: maxTokens } : {};
+    return this.openaiClient!.chat.completions.create({
+      ...rest,
+      ...tokenObj,
+    } as any);
+  };
+
+  try {
+    return await call("max_completion_tokens");
+  } catch (err: any) {
+    const msg = String(err?.message ?? "");
+
+    // Only retry when it plausibly failed due to the parameter name.
+    const looksLikeParamError =
+      msg.includes("max_completion_tokens") ||
+      msg.includes("Unknown parameter") ||
+      msg.includes("Unrecognized request argument") ||
+      msg.includes("Additional properties are not allowed") ||
+      msg.includes("Invalid request");
+
+    if (!looksLikeParamError) throw err;
+
+    return await call("max_tokens");
+  }
+}
+
 interface OllamaResponse {
   response: string
   done: boolean
@@ -904,12 +951,13 @@ ANSWER DIRECTLY:`;
       messages.push({ role: "user", content: userMessage });
     }
 
-    const response = await this.openaiClient.chat.completions.create({
-      model: OPENAI_MODEL,
-      messages,
-      temperature: 0.4,
-      max_tokens: 8192,
-    });
+    //Call OpenAI with fallback method for tokenization.
+    const response = await this.openaiChatCompletionsCreateWithTokenFallback({
+  model: OPENAI_MODEL,
+  messages,
+  temperature: 0.4,
+  maxTokens: 8192,
+});
 
     return response.choices[0]?.message?.content || "";
   }
@@ -1414,13 +1462,15 @@ ANSWER DIRECTLY:`;
     }
     messages.push({ role: "user", content: userMessage });
 
-    const stream = await this.openaiClient.chat.completions.create({
-      model: OPENAI_MODEL,
-      messages,
-      stream: true,
-      temperature: 0.4,
-      max_tokens: 8192,
-    });
+    
+  //Streaming OpenAI call with fallback method.
+    const stream = await this.openaiChatCompletionsCreateWithTokenFallback({
+  model: OPENAI_MODEL,
+  messages,
+  stream: true,
+  temperature: 0.4,
+  maxTokens: 8192,
+});
 
     for await (const chunk of stream) {
       const content = chunk.choices[0]?.delta?.content;
