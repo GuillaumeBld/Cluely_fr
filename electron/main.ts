@@ -1217,7 +1217,7 @@ export class AppState {
     trayIcon.setTemplateImage(iconToUse.endsWith('Template.png'));
 
     this.tray = new Tray(trayIcon)
-    this.tray.setToolTip('Natively - Press Cmd+Shift+Space to show') // This tooltip might also need update if we change global shortcut, but global shortcut is removed.
+    this.tray.setToolTip('Cluely.fr - Appuyez sur Cmd+Shift+Space pour afficher') // This tooltip might also need update if we change global shortcut, but global shortcut is removed.
     this.updateTrayMenu();
 
     // Double-click to show window
@@ -1255,7 +1255,7 @@ export class AppState {
 
     const contextMenu = Menu.buildFromTemplate([
       {
-        label: 'Show Natively',
+        label: 'Afficher Cluely.fr',
         click: () => {
           this.centerAndShowWindow()
         }
@@ -1367,7 +1367,7 @@ export class AppState {
   }
 
   private _applyDisguise(mode: 'terminal' | 'settings' | 'activity' | 'none'): void {
-    let appName = "Natively";
+    let appName = "Cluely.fr";
     let iconPath = "";
 
     switch (mode) {
@@ -1390,7 +1390,7 @@ export class AppState {
           : path.resolve(__dirname, "../assets/fakeicon/activity.png");
         break;
       case 'none':
-        appName = "Natively";
+        appName = "Cluely.fr";
         iconPath = app.isPackaged
           ? path.join(process.resourcesPath, "natively.icns")
           : path.resolve(__dirname, "../assets/natively.icns");
@@ -1547,7 +1547,7 @@ async function initializeApp() {
       case 'terminal': return 'Terminal ';
       case 'settings': return 'System Settings ';
       case 'activity': return 'Activity Monitor ';
-      default: return 'Natively';
+      default: return 'Cluely.fr';
     }
   })();
   app.setName(initialAppName);

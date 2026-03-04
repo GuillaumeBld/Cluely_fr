@@ -1,8 +1,8 @@
 {
-  "name": "natively",
-  "version": "1.1.7",
+  "name": "cluely-fr",
+  "version": "1.0.0",
   "main": "./dist-electron/main.js",
-  "description": "Natively is a meeting notes app that uses AI to generate notes from your meetings.",
+  "description": "Cluely.fr est un assistant IA de réunions et d'entretiens, entièrement en français.",
   "scripts": {
     "clean": "rimraf dist dist-electron",
     "dev": "vite",
@@ -19,9 +19,9 @@
     "build:native": "napi build --platform --release native-module"
   },
   "build": {
-    "appId": "com.electron.meeting-notes",
+    "appId": "fr.qualiaai.cluely-fr",
     "afterPack": "./scripts/ad-hoc-sign.js",
-    "productName": "Natively",
+    "productName": "Cluely.fr",
     "files": [
       "dist/**/*",
       "dist-electron/**/*",
@@ -105,8 +105,8 @@
     "publish": [
       {
         "provider": "github",
-        "owner": "evinjohnn",
-        "repo": "natively-cluely-ai-assistant",
+        "owner": "GuillaumeBld",
+        "repo": "Cluely_fr",
         "releaseType": "release"
       }
     ]

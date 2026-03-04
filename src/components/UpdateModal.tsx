@@ -56,7 +56,7 @@ const UpdateModal: React.FC<UpdateModalProps> = ({
     };
 
     const handleCopyCommand = () => {
-        navigator.clipboard.writeText('xattr -cr /Applications/Natively.app');
+        navigator.clipboard.writeText('xattr -cr /Applications/Cluely.fr.app');
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
     };
@@ -134,7 +134,7 @@ const UpdateModal: React.FC<UpdateModalProps> = ({
                                 {/* 1. Header Text */}
                                 <div className="space-y-1.5 mb-8">
                                     <h2 className="text-[17px] font-semibold text-white tracking-tight">
-                                        Downloading Update...
+                                        Téléchargement de la mise à jour...
                                     </h2>
                                     <p className="text-[13px] text-white/40 font-medium">
                                         {downloadProgress < 100 ? 'Please wait while we prepare the update.' : 'Finalizing package...'}
@@ -163,7 +163,7 @@ const UpdateModal: React.FC<UpdateModalProps> = ({
                                     {/* Code Block with Copy */}
                                     <div className="flex items-center justify-between bg-black/20 rounded-lg pl-3 pr-1.5 py-1.5 border border-white/[0.03] group hover:border-white/10 transition-colors">
                                         <code className="text-[10px] font-mono text-blue-400 truncate mr-2 select-all">
-                                            xattr -cr /Applications/Natively.app
+                                            xattr -cr /Applications/Cluely.fr.app
                                         </code>
                                         <button
                                             onClick={handleCopyCommand}
@@ -206,7 +206,7 @@ const UpdateModal: React.FC<UpdateModalProps> = ({
                                 {/* Header Group */}
                                 <div className="flex flex-col gap-0.5 text-center relative flex-shrink-0 pt-1">
                                     <h2 className="text-[19px] font-semibold text-white tracking-tight">
-                                        Update Available
+                                        Mise à jour disponible
                                     </h2>
                                     <p className="text-[13px] text-white/50 font-medium tracking-wide">
                                         Version {displayVersion} is ready to install.
@@ -270,14 +270,14 @@ const UpdateModal: React.FC<UpdateModalProps> = ({
                                             onClick={() => window.electronAPI.restartAndInstall()}
                                             className="px-5 py-[6px] bg-[#007AFF] hover:bg-[#0062CC] text-white text-[13px] font-medium rounded-lg shadow-sm transition-colors"
                                         >
-                                            Restart & Install
+                                            Redémarrer & Installer
                                         </button>
                                     ) : (
                                         <button
                                             onClick={handleUpdateClick}
                                             className="px-5 py-[6px] bg-[#007AFF] hover:bg-[#0062CC] text-white text-[13px] font-medium rounded-lg shadow-sm transition-colors"
                                         >
-                                            Update Now
+                                            Mettre à jour
                                         </button>
                                     )}
                                 </div>

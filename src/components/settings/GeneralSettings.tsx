@@ -109,7 +109,7 @@ export const GeneralSettings: React.FC<GeneralSettingsProps> = () => {
         <div className="space-y-8 animated fadeIn">
             <div>
                 <h3 className="text-lg font-bold text-text-primary mb-2">General Configuration</h3>
-                <p className="text-xs text-text-secondary mb-4">Core settings for Natively.</p>
+                <p className="text-xs text-text-secondary mb-4">Paramètres principaux de Cluely.fr.</p>
 
                 <div className="space-y-4">
                     {/* Google Cloud Service Account */}

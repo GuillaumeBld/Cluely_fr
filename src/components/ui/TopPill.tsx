@@ -42,7 +42,7 @@ export default function TopPill({
                 >
                     <img
                         src={icon}
-                        alt="Natively"
+                        alt="Cluely.fr"
                         className="w-[24px] h-[24px] object-contain opacity-90 scale-105"
                         draggable="false"
                         onDragStart={(e) => e.preventDefault()}

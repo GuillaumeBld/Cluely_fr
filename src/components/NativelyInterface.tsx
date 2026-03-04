@@ -97,7 +97,7 @@ const NativelyInterface: React.FC<NativelyInterfaceProps> = ({ onEndMeeting }) =
     const scrollContainerRef = useRef<HTMLDivElement>(null);
     // const settingsButtonRef = useRef<HTMLButtonElement>(null);
 
-    // Latent Context State (Screenshot attached but not sent)
+    // Latent Context State (Capture d'écran jointe but not sent)
     const [attachedContext, setAttachedContext] = useState<{ path: string, preview: string } | null>(null);
 
     // Settings State with Persistence
@@ -622,7 +622,7 @@ const NativelyInterface: React.FC<NativelyInterfaceProps> = ({ onEndMeeting }) =
             setMessages(prev => [...prev, {
                 id: Date.now().toString(),
                 role: 'user',
-                text: 'What should I say about this?',
+                text: 'Que devrais-je dire à ce sujet ?',
                 hasScreenshot: true,
                 screenshotPreview: currentAttachment.preview
             }]);
@@ -1051,7 +1051,7 @@ Provide only the answer, nothing else.`;
                 <div className="bg-white/5 border border-white/10 rounded-lg p-3 my-1">
                     <div className="flex items-center gap-2 mb-2 text-cyan-300 font-semibold text-xs uppercase tracking-wide">
                         <MessageSquare className="w-3.5 h-3.5" />
-                        <span>Shortened</span>
+                        <span>Raccourci</span>
                     </div>
                     <div className="text-slate-200 text-[13px] leading-relaxed markdown-content">
                         <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]} components={{
@@ -1072,7 +1072,7 @@ Provide only the answer, nothing else.`;
                 <div className="bg-white/5 border border-white/10 rounded-lg p-3 my-1">
                     <div className="flex items-center gap-2 mb-2 text-indigo-300 font-semibold text-xs uppercase tracking-wide">
                         <RefreshCw className="w-3.5 h-3.5" />
-                        <span>Recap</span>
+                        <span>Récapitulatif</span>
                     </div>
                     <div className="text-slate-200 text-[13px] leading-relaxed markdown-content">
                         <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]} components={{
@@ -1093,7 +1093,7 @@ Provide only the answer, nothing else.`;
                 <div className="bg-white/5 border border-white/10 rounded-lg p-3 my-1">
                     <div className="flex items-center gap-2 mb-2 text-[#FFD60A] font-semibold text-xs uppercase tracking-wide">
                         <HelpCircle className="w-3.5 h-3.5" />
-                        <span>Follow-Up Questions</span>
+                        <span>Questions de suivi</span>
                     </div>
                     <div className="text-slate-200 text-[13px] leading-relaxed markdown-content">
                         <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]} components={{
@@ -1460,14 +1460,14 @@ Provide only the answer, nothing else.`;
                                                 {msg.role === 'user' && msg.hasScreenshot && (
                                                     <div className="flex items-center gap-1 text-[10px] opacity-70 mb-1 border-b border-white/10 pb-1">
                                                         <Image className="w-2.5 h-2.5" />
-                                                        <span>Screenshot attached</span>
+                                                        <span>Capture d'écran jointe</span>
                                                     </div>
                                                 )}
                                                 {msg.role === 'system' && !msg.isStreaming && (
                                                     <button
                                                         onClick={() => handleCopy(msg.text)}
                                                         className="absolute top-2 right-2 p-1.5 bg-black/40 hover:bg-black/60 text-slate-400 hover:text-white rounded-md opacity-0 group-hover:opacity-100 transition-opacity"
-                                                        title="Copy to clipboard"
+                                                        title="Copier dans le presse-papiers"
                                                     >
                                                         <Copy className="w-3.5 h-3.5" />
                                                     </button>
@@ -1516,10 +1516,10 @@ Provide only the answer, nothing else.`;
                                     <Pencil className="w-3 h-3 opacity-70" /> What to answer?
                                 </button>
                                 <button onClick={() => handleFollowUp('shorten')} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-medium text-slate-400 bg-white/5 border border-white/0 hover:text-slate-200 hover:bg-white/10 hover:border-white/5 transition-all active:scale-95 duration-200 interaction-base interaction-press whitespace-nowrap shrink-0">
-                                    <MessageSquare className="w-3 h-3 opacity-70" /> Shorten
+                                    <MessageSquare className="w-3 h-3 opacity-70" /> Raccourcir
                                 </button>
                                 <button onClick={handleRecap} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-medium text-slate-400 bg-white/5 border border-white/0 hover:text-slate-200 hover:bg-white/10 hover:border-white/5 transition-all active:scale-95 duration-200 interaction-base interaction-press whitespace-nowrap shrink-0">
-                                    <RefreshCw className="w-3 h-3 opacity-70" /> Recap
+                                    <RefreshCw className="w-3 h-3 opacity-70" /> Récapitulatif
                                 </button>
                                 <button onClick={handleFollowUpQuestions} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-medium text-slate-400 bg-white/5 border border-white/0 hover:text-slate-200 hover:bg-white/10 hover:border-white/5 transition-all active:scale-95 duration-200 interaction-base interaction-press whitespace-nowrap shrink-0">
                                     <HelpCircle className="w-3 h-3 opacity-70" /> Follow Up Question
@@ -1557,7 +1557,7 @@ Provide only the answer, nothing else.`;
                                                 <div className="absolute inset-0 bg-black/20 group-hover:bg-transparent transition-colors rounded" />
                                             </div>
                                             <div className="flex flex-col">
-                                                <span className="text-[11px] font-medium text-white">Screenshot attached</span>
+                                                <span className="text-[11px] font-medium text-white">Capture d'écran jointe</span>
                                                 <span className="text-[10px] text-slate-400">Ask a question or click Answer</span>
                                             </div>
                                         </div>
@@ -1599,7 +1599,7 @@ Provide only the answer, nothing else.`;
                                     {/* Custom Rich Placeholder */}
                                     {!inputValue && (
                                         <div className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5 pointer-events-none text-[13px] text-slate-400">
-                                            <span>Ask anything on screen or conversation, or</span>
+                                            <span>Posez une question sur l'écran ou la conversation, ou</span>
                                             <div className="flex items-center gap-1 opacity-80">
                                                 {(shortcuts.selectiveScreenshot || ['⌘', 'Shift', 'H']).map((key, i) => (
                                                     <React.Fragment key={i}>
@@ -1691,7 +1691,7 @@ Provide only the answer, nothing else.`;
                                             interaction-base interaction-press
                                             ${isSettingsOpen ? 'text-white bg-white/10' : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'}
                                         `}
-                                                title="Settings"
+                                                title="Paramètres"
                                             >
                                                 <SlidersHorizontal className="w-3.5 h-3.5" />
                                             </button>
