@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import {
-    Github, Twitter, Shield, Cpu, Database,
-    Heart, Linkedin, Instagram, Mail, MicOff, Star, Bug, Globe
+    Github, Shield, Cpu, Database,
+    Heart, Mail, MicOff, Star, Bug
 } from 'lucide-react';
 import evinProfile from '../assets/evin.png';
 
@@ -56,7 +56,7 @@ export const AboutSection: React.FC<AboutSectionProps> = () => {
             {/* Header */}
             <div>
                 <h3 className="text-lg font-bold text-text-primary mb-1">À propos de Cluely.fr</h3>
-                <p className="text-sm text-text-secondary">Designed to be invisible, intelligent, and trusted.</p>
+                <p className="text-sm text-text-secondary">Conçu pour être invisible, intelligent et fiable.</p>
             </div>
 
             {/* Architecture Section */}
@@ -71,7 +71,7 @@ export const AboutSection: React.FC<AboutSectionProps> = () => {
                             <div>
                                 <h5 className="text-sm font-bold text-text-primary mb-1">Intelligence hybride</h5>
                                 <p className="text-xs text-text-secondary leading-relaxed">
-                                    Seamlessly routes queries between ultra-fast models for instant speed and reasoning models (Gemini, OpenAI, Claude) for complex tasks. Powered by enterprise-grade speech recognition from 7+ providers.
+                                    Achemine intelligemment les requêtes entre des modèles ultra-rapides pour les tâches simples et des modèles de raisonnement (Gemini, OpenAI, Claude) pour les tâches complexes. Alimenté par une reconnaissance vocale professionnelle de 7+ fournisseurs.
                                 </p>
                             </div>
                         </div>
@@ -85,7 +85,7 @@ export const AboutSection: React.FC<AboutSectionProps> = () => {
                             <div>
                                 <h5 className="text-sm font-bold text-text-primary mb-1">RAG locale & Mémoire</h5>
                                 <p className="text-xs text-text-secondary leading-relaxed">
-                                    A purely local vector memory system allows Natively to recall details from past meetings. Embeddings and retrieval happen on-device via SQLite for maximum privacy.
+                                    Un système de mémoire vectorielle entièrement local permet à Cluely.fr de se souvenir des détails des réunions passées. Les embeddings et la recherche s'effectuent sur l'appareil via SQLite pour une confidentialité maximale.
                                 </p>
                             </div>
                         </div>
@@ -100,9 +100,9 @@ export const AboutSection: React.FC<AboutSectionProps> = () => {
                     <div className="flex items-start gap-3">
                         <Shield size={16} className="text-green-400 mt-0.5" />
                         <div>
-                            <h5 className="text-sm font-medium text-text-primary">Stealth & Control</h5>
+                            <h5 className="text-sm font-medium text-text-primary">Discrétion & Contrôle</h5>
                             <p className="text-xs text-text-secondary mt-1 leading-relaxed">
-                                Features "Undetectable Mode" to hide from the dock and "Masquerading" to disguise as system apps. You control exactly what data leaves your device.
+                                Le "Mode indétectable" permet de masquer l'app du dock, et le "Masquage" de la déguiser en application système. Vous contrôlez exactement quelles données quittent votre appareil.
                             </p>
                         </div>
                     </div>
@@ -111,7 +111,7 @@ export const AboutSection: React.FC<AboutSectionProps> = () => {
                         <div>
                             <h5 className="text-sm font-medium text-text-primary">Pas d'enregistrement</h5>
                             <p className="text-xs text-text-secondary mt-1 leading-relaxed">
-                                Natively listens only when active. It does not record video, take arbitrary screenshots without command, or perform background surveillance.
+                                Cluely.fr écoute uniquement lorsqu'il est actif. Il n'enregistre pas de vidéo, ne prend pas de captures d'écran sans commande explicite, et n'effectue aucune surveillance en arrière-plan.
                             </p>
                         </div>
                     </div>
@@ -126,24 +126,24 @@ export const AboutSection: React.FC<AboutSectionProps> = () => {
             <div>
                 <h4 className="text-xs font-bold text-text-tertiary uppercase tracking-wider mb-2 px-1">Communauté</h4>
                 <div className="space-y-4">
-                    {/* 0. Site officiel (original) */}
+                    {/* 0. Dépôt GitHub */}
                     <div className="bg-bg-item-surface rounded-xl border border-border-subtle p-5 flex flex-col md:flex-row items-center justify-between gap-4">
                         <div className="flex items-center gap-4">
                             <div className="w-10 h-10 rounded-full bg-indigo-500/10 flex items-center justify-center text-indigo-500 shadow-sm shadow-indigo-500/5">
-                                <Globe size={18} className="opacity-80" />
+                                <Github size={18} className="opacity-80" />
                             </div>
                             <div>
-                                <h5 className="text-sm font-bold text-text-primary">Site officiel (original)</h5>
-                                <p className="text-xs text-text-secondary mt-0.5">nativelyai.vercel.app</p>
+                                <h5 className="text-sm font-bold text-text-primary">Dépôt GitHub</h5>
+                                <p className="text-xs text-text-secondary mt-0.5">github.com/GuillaumeBld/Cluely_fr</p>
                             </div>
                         </div>
                         <a
-                            href="https://nativelyai.vercel.app"
-                            onClick={(e) => handleOpenLink(e, "https://nativelyai.vercel.app")}
+                            href="https://github.com/GuillaumeBld/Cluely_fr"
+                            onClick={(e) => handleOpenLink(e, "https://github.com/GuillaumeBld/Cluely_fr")}
                             className="whitespace-nowrap px-4 py-2 bg-text-primary hover:bg-white/90 text-bg-main text-xs font-bold rounded-lg transition-all shadow hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 flex items-center gap-2"
                         >
-                            <Globe size={14} />
-                            Visiter le site
+                            <Github size={14} />
+                            Voir le projet
                         </a>
                     </div>
 
@@ -168,36 +168,20 @@ export const AboutSection: React.FC<AboutSectionProps> = () => {
                             </div>
                             <div className="flex items-center gap-4 pl-[60px]">
                                 <a
-                                    href="https://github.com/GuillaumeBld/Cluely_fr"
-                                    onClick={(e) => handleOpenLink(e, "https://github.com/evinjohnn/natively-cluely-ai-assistant")}
+                                    href="https://github.com/GuillaumeBld"
+                                    onClick={(e) => handleOpenLink(e, "https://github.com/GuillaumeBld")}
                                     className="text-text-tertiary hover:text-text-primary transition-colors"
                                     title="GitHub"
                                 >
                                     <Github size={18} />
                                 </a>
                                 <a
-                                    href="https://github.com/GuillaumeBld"
-                                    onClick={(e) => handleOpenLink(e, "https://x.com/evinjohnn")}
+                                    href="https://github.com/GuillaumeBld/Cluely_fr"
+                                    onClick={(e) => handleOpenLink(e, "https://github.com/GuillaumeBld/Cluely_fr")}
                                     className="text-text-tertiary hover:text-text-primary transition-colors"
-                                    title="Twitter"
+                                    title="Cluely.fr"
                                 >
-                                    <Twitter size={18} />
-                                </a>
-                                <a
-                                    href="https://github.com/GuillaumeBld"
-                                    onClick={(e) => handleOpenLink(e, "https://www.linkedin.com/in/evinjohn")}
-                                    className="text-text-tertiary hover:text-text-primary transition-colors"
-                                    title="LinkedIn"
-                                >
-                                    <Linkedin size={18} />
-                                </a>
-                                <a
-                                    href="https://www.instagram.com/evinjohnn/"
-                                    onClick={(e) => handleOpenLink(e, "https://www.instagram.com/evinjohnn/")}
-                                    className="text-text-tertiary hover:text-text-primary transition-colors"
-                                    title="Instagram"
-                                >
-                                    <Instagram size={18} />
+                                    <Star size={18} />
                                 </a>
                             </div>
                         </div>
@@ -207,7 +191,7 @@ export const AboutSection: React.FC<AboutSectionProps> = () => {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <a
                             href="https://github.com/GuillaumeBld/Cluely_fr"
-                            onClick={(e) => handleOpenLink(e, "https://github.com/evinjohnn/natively-cluely-ai-assistant")}
+                            onClick={(e) => handleOpenLink(e, "https://github.com/GuillaumeBld/Cluely_fr")}
                             className="bg-bg-item-surface border border-border-subtle rounded-xl p-5 transition-all group flex items-center gap-4 cursor-pointer h-full hover:bg-white/10"
                         >
                             <div className="w-10 h-10 rounded-lg bg-yellow-500/10 flex items-center justify-center text-yellow-500 shrink-0 group-hover:scale-110 transition-transform">
@@ -220,8 +204,8 @@ export const AboutSection: React.FC<AboutSectionProps> = () => {
                         </a>
 
                         <a
-                            href="https://github.com/evinjohnn/natively-cluely-ai-assistant/issues"
-                            onClick={(e) => handleOpenLink(e, "https://github.com/evinjohnn/natively-cluely-ai-assistant/issues")}
+                            href="https://github.com/GuillaumeBld/Cluely_fr/issues"
+                            onClick={(e) => handleOpenLink(e, "https://github.com/GuillaumeBld/Cluely_fr/issues")}
                             className="bg-bg-item-surface border border-border-subtle rounded-xl p-5 transition-all group flex items-center gap-4 cursor-pointer h-full hover:bg-white/10"
                         >
                             <div className="w-10 h-10 rounded-lg bg-red-500/10 flex items-center justify-center text-red-500 shrink-0 group-hover:scale-110 transition-transform">
@@ -246,12 +230,12 @@ export const AboutSection: React.FC<AboutSectionProps> = () => {
                             </div>
                         </div>
                         <a
-                            href="https://github.com/GuillaumeBld"
-                            onClick={(e) => handleOpenLink(e, "mailto:evinjohnignatious@gmail.com")}
+                            href="mailto:guillaume@autoflux.fr"
+                            onClick={(e) => handleOpenLink(e, "mailto:guillaume@autoflux.fr")}
                             className="whitespace-nowrap px-4 py-2 bg-text-primary hover:bg-white/90 text-bg-main text-xs font-bold rounded-lg transition-all shadow hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 flex items-center gap-2"
                         >
                             <Mail size={14} />
-                            Contact Me
+                            Me contacter
                         </a>
                     </div>
 
@@ -267,8 +251,8 @@ export const AboutSection: React.FC<AboutSectionProps> = () => {
                             </div>
                         </div>
                         <a
-                            href="https://buymeacoffee.com/evinjohnn"
-                            onClick={(e) => handleOpenLink(e, "https://buymeacoffee.com/evinjohnn")}
+                            href="https://github.com/GuillaumeBld/Cluely_fr"
+                            onClick={(e) => handleOpenLink(e, "https://github.com/GuillaumeBld/Cluely_fr")}
                             className="whitespace-nowrap px-4 py-2 bg-text-primary hover:bg-white/90 text-bg-main text-xs font-bold rounded-lg transition-all shadow hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0"
                         >
                             Soutenir le projet
@@ -280,7 +264,7 @@ export const AboutSection: React.FC<AboutSectionProps> = () => {
             {/* Credits */}
             <div className="pt-4 border-t border-border-subtle">
                 <div>
-                    <h4 className="text-xs font-bold text-text-tertiary uppercase tracking-wider mb-3">Core Technology</h4>
+                    <h4 className="text-xs font-bold text-text-tertiary uppercase tracking-wider mb-3">Technologies utilisées</h4>
                     <div className="flex flex-wrap gap-2">
                         {['Groq', 'Gemini', 'OpenAI', 'Deepgram', 'ElevenLabs', 'Electron', 'React', 'Rust', 'Sharp', 'TypeScript', 'Tailwind CSS', 'Vite', 'Google Cloud', 'SQLite'].map(tech => (
                             <span key={tech} className="px-2.5 py-1 rounded-md bg-bg-input border border-border-subtle text-[11px] font-medium text-text-secondary">

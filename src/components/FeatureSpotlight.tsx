@@ -23,25 +23,24 @@ interface FeatureSlide {
 const FEATURES: FeatureSlide[] = [
     {
         id: 'tailored_answers',
-        headline: 'Upcoming features',
-        subtitle: 'Answers, tailored to you',
-        bullets: ['Repo aware explanations', 'Resume grounded responses'],
-        footer: 'Designed to work silently during live interviews.',
+        headline: 'Fonctionnalités à venir',
+        subtitle: 'Des réponses adaptées à vous',
+        bullets: ['Explications contextuelles du dépôt', 'Réponses ancrées dans votre CV'],
+        footer: 'Conçu pour fonctionner discrètement lors d\'entretiens en direct.',
         type: 'premium',
     },
 
     {
         id: 'support_natively',
-        headline: 'Support development',
-        subtitle: 'Built openly and sustained by users',
+        headline: 'Soutenir le développement',
+        subtitle: 'Construit ouvertement, soutenu par les utilisateurs',
         bullets: [
-            'Development driven by real users',
-            'Faster iteration on features that matter',
-
+            'Développement guidé par les vrais utilisateurs',
+            'Itération plus rapide sur les fonctionnalités importantes',
         ],
         type: 'support',
-        actionLabel: 'Contribute to development',
-        url: 'https://buymeacoffee.com/evinjohnn'
+        actionLabel: 'Contribuer au projet',
+        url: 'https://github.com/GuillaumeBld/Cluely_fr'
     }
 ];
 
@@ -322,13 +321,13 @@ export const FeatureSpotlight: React.FC = () => {
                                             >
                                                 <span>
                                                     {isInterested && !isSupport
-                                                        ? 'Interested'
+                                                        ? 'Intéressé'
                                                         : (isSupport ? (
                                                             <span className="flex items-center gap-2">
                                                                 <Rocket size={14} className="text-[#1C1C1E]" strokeWidth={2.5} />
-                                                                Fund development
+                                                                Contribuer au projet
                                                             </span>
-                                                        ) : (currentFeature.actionLabel || 'Mark interest'))
+                                                        ) : (currentFeature.actionLabel || 'M\'intéresse'))
                                                     }
                                                 </span>
 

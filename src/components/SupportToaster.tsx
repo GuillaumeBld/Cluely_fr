@@ -81,9 +81,9 @@ export const SupportToaster: React.FC<SupportToasterProps> = ({ className }) => 
     const handleSupport = () => {
         clickTimeRef.current = Date.now();
         if (window.electronAPI?.openExternal) {
-            window.electronAPI.openExternal('https://buymeacoffee.com/evinjohnn');
+            window.electronAPI.openExternal('https://github.com/GuillaumeBld/Cluely_fr');
         } else {
-            window.open('https://buymeacoffee.com/evinjohnn', '_blank');
+            window.open('https://github.com/GuillaumeBld/Cluely_fr', '_blank');
         }
     };
 
@@ -174,14 +174,14 @@ export const SupportToaster: React.FC<SupportToasterProps> = ({ className }) => 
                             <div className="flex flex-col items-center text-center">
                                 {/* Headline */}
                                 <h3 className="text-[26px] font-[600] leading-[1.2] text-[#F3F3F3] tracking-[-0.01em] mb-[12px] antialiased">
-                                    Built by one.<br />
-                                    Used by thousands.
+                                    Construit seul.<br />
+                                    Utilisé par des milliers.
                                 </h3>
                                 {/* Body */}
                                 <p className="text-[14px] leading-[1.6] text-white/60 max-w-[480px] font-medium antialiased">
-                                    Natively is built and maintained by one developer.<br />
-                                    If it’s part of your daily workflow, your support keeps<br />
-                                    it moving forward.
+                                    Cluely.fr est développé et maintenu par un seul développeur.<br />
+                                    Si c’est devenu une partie de votre quotidien, votre soutien<br />
+                                    permet de faire avancer le projet.
                                 </p>
                             </div>
                         </div>
@@ -200,7 +200,7 @@ export const SupportToaster: React.FC<SupportToasterProps> = ({ className }) => 
                                 <div className="absolute inset-0 bg-gradient-to-b from-[#FF6A5C] to-[#E55B4D] opacity-100 transition-all" />
                                 <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                                 <span className="relative z-10 text-[15px] font-[600] text-white/95 group-hover:text-white flex items-center justify-center gap-2 tracking-wide">
-                                    Support the Builder
+                                    Soutenir le projet
                                 </span>
                             </button>
 
@@ -209,7 +209,7 @@ export const SupportToaster: React.FC<SupportToasterProps> = ({ className }) => 
                                 onClick={handleDismiss}
                                 className="text-[14px] text-white/30 font-medium hover:text-white/60 transition-colors duration-200"
                             >
-                                Not now
+                                Pas maintenant
                             </button>
                         </div>
                     </motion.div>

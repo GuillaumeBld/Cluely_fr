@@ -219,12 +219,12 @@ const SettingsPopup = () => {
                 {/* Donate */}
                 <div
                     // @ts-ignore
-                    onClick={() => window.electronAPI.openExternal('https://buymeacoffee.com/evinjohnn')}
+                    onClick={() => window.electronAPI.openExternal('https://github.com/GuillaumeBld/Cluely_fr')}
                     className="flex items-center justify-between px-3 py-2 hover:bg-pink-500/10 rounded-lg transition-colors duration-200 group cursor-pointer interaction-base interaction-press"
                 >
                     <div className="flex items-center gap-3">
                         <Heart className="w-3.5 h-3.5 text-pink-400 group-hover:fill-pink-400 transition-all duration-300" />
-                        <span className="text-[12px] text-slate-400 group-hover:text-pink-100 transition-colors">Donate</span>
+                        <span className="text-[12px] text-slate-400 group-hover:text-pink-100 transition-colors">Soutenir</span>
                     </div>
                     <div className="opacity-60 group-hover:opacity-100 transition-opacity">
                         <Link className="w-3 h-3 text-slate-500 group-hover:text-pink-400" />
