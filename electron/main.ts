@@ -1235,7 +1235,7 @@ export class AppState {
     console.log('[Main] updateTrayMenu called. Screenshot Accelerator:', screenshotAccel);
 
     // Update tooltip for verification
-    this.tray.setToolTip(`Natively (${screenshotAccel}) - Press Cmd+Shift+Space to show`);
+    this.tray.setToolTip(`Cluely.fr (${screenshotAccel}) - Appuyez sur Cmd+Maj+Espace pour afficher`);
 
     // Helper to format accelerator for display (e.g. CommandOrControl+H -> Cmd+H)
     const formatAccel = (accel: string) => {

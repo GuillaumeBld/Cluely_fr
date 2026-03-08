@@ -89,6 +89,10 @@ export const AIProvidersSettings: React.FC = () => {
     const [testStatus, setTestStatus] = useState<Record<string, 'idle' | 'testing' | 'success' | 'error'>>({});
     const [testError, setTestError] = useState<Record<string, string>>({});
 
+    // --- OpenRouter ---
+    const [openrouterApiKey, setOpenrouterApiKey] = useState('');
+    const [openrouterModel, setOpenrouterModel] = useState('google/gemini-flash-1.5');
+
     // --- Custom Providers ---
     const [customProviders, setCustomProviders] = useState<CustomProvider[]>([]);
     const [isEditingCustom, setIsEditingCustom] = useState(false);
@@ -122,8 +126,10 @@ export const AIProvidersSettings: React.FC = () => {
                         gemini: creds.hasGeminiKey,
                         groq: creds.hasGroqKey,
                         openai: creds.hasOpenaiKey,
-                        claude: creds.hasClaudeKey
+                        claude: creds.hasClaudeKey,
+                        openrouter: creds.hasOpenRouterKey,
                     });
+                    if (creds.openrouterModel) setOpenrouterModel(creds.openrouterModel);
                 }
 
                 // @ts-ignore
@@ -244,6 +250,8 @@ export const AIProvidersSettings: React.FC = () => {
             if (provider === 'openai') result = await window.electronAPI.setOpenaiApiKey(key);
             // @ts-ignore
             if (provider === 'claude') result = await window.electronAPI.setClaudeApiKey(key);
+            // @ts-ignore
+            if (provider === 'openrouter') result = await window.electronAPI.invoke('set-openrouter-api-key', key);
 
             if (result && result.success) {
                 setSavedStatus(prev => ({ ...prev, [provider]: true }));
@@ -270,6 +278,8 @@ export const AIProvidersSettings: React.FC = () => {
             if (provider === 'openai') result = await window.electronAPI.setOpenaiApiKey('');
             // @ts-ignore
             if (provider === 'claude') result = await window.electronAPI.setClaudeApiKey('');
+            // @ts-ignore
+            if (provider === 'openrouter') result = await window.electronAPI.invoke('set-openrouter-api-key', '');
 
             if (result && result.success) {
                 setHasStoredKey(prev => ({ ...prev, [provider]: false }));
@@ -701,6 +711,83 @@ export const AIProvidersSettings: React.FC = () => {
                         {testError.claude && <p className="text-[10px] text-red-400 mt-1.5">{testError.claude}</p>}
                     </div>
 
+                    {/* OpenRouter */}
+                    <div className="bg-bg-item-surface rounded-xl p-5 border border-border-subtle">
+                        <div className="mb-2">
+                            <label className="block text-xs font-medium text-text-primary uppercase tracking-wide">
+                                OpenRouter API Key
+                                {hasStoredKey.openrouter && <span className="ml-2 text-green-500 normal-case">✓ Saved</span>}
+                            </label>
+                            <p className="text-[10px] text-text-tertiary mt-0.5">Accès unifié à 200+ modèles (Gemini, Claude, Llama, DeepSeek…)</p>
+                        </div>
+                        <div className="flex gap-2 mb-3">
+                            <input
+                                type="password"
+                                value={openrouterApiKey}
+                                onChange={(e) => setOpenrouterApiKey(e.target.value)}
+                                placeholder={hasStoredKey.openrouter ? "••••••••••••" : "sk-or-v1-..."}
+                                className="flex-1 bg-bg-input border border-border-subtle rounded-lg px-4 py-2.5 text-xs text-text-primary focus:outline-none focus:border-accent-primary transition-colors"
+                            />
+                            <button
+                                onClick={() => handleSaveKey('openrouter', openrouterApiKey, setOpenrouterApiKey)}
+                                disabled={savingStatus.openrouter || !openrouterApiKey.trim()}
+                                className={`px-5 py-2.5 rounded-lg text-xs font-medium transition-colors ${savedStatus.openrouter
+                                    ? 'bg-green-500/20 text-green-400'
+                                    : 'bg-bg-input hover:bg-bg-secondary border border-border-subtle text-text-primary disabled:opacity-50'
+                                    }`}
+                            >
+                                {savingStatus.openrouter ? 'Saving...' : savedStatus.openrouter ? 'Saved!' : 'Save'}
+                            </button>
+                            {hasStoredKey.openrouter && (
+                                <button
+                                    onClick={() => handleRemoveKey('openrouter', setOpenrouterApiKey)}
+                                    className="px-2.5 py-2.5 rounded-lg text-xs font-medium text-text-tertiary hover:text-red-500 hover:bg-red-500/10 transition-all"
+                                    title="Remove API Key"
+                                >
+                                    <Trash2 size={16} strokeWidth={1.5} />
+                                </button>
+                            )}
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-2">
+                                <span className="text-[10px] text-text-tertiary">Modèle :</span>
+                                <select
+                                    value={openrouterModel}
+                                    onChange={async (e) => {
+                                        setOpenrouterModel(e.target.value);
+                                        // @ts-ignore
+                                        await window.electronAPI?.invoke('set-openrouter-model', e.target.value);
+                                    }}
+                                    className="bg-bg-input border border-border-subtle rounded-md px-2 py-1 text-[10px] text-text-primary focus:outline-none focus:border-accent-primary"
+                                >
+                                    <optgroup label="Google (économique)">
+                                        <option value="google/gemini-flash-1.5">Gemini Flash 1.5 — rapide &amp; pas cher</option>
+                                        <option value="google/gemini-2.0-flash-001">Gemini 2.0 Flash — excellent rapport qualité/prix</option>
+                                    </optgroup>
+                                    <optgroup label="Meta / Open Source">
+                                        <option value="meta-llama/llama-3.1-8b-instruct">Llama 3.1 8B — très économique</option>
+                                        <option value="meta-llama/llama-3.3-70b-instruct">Llama 3.3 70B — qualité élevée</option>
+                                    </optgroup>
+                                    <optgroup label="DeepSeek">
+                                        <option value="deepseek/deepseek-chat">DeepSeek Chat — top rapport qualité/prix</option>
+                                        <option value="deepseek/deepseek-r1">DeepSeek R1 — raisonnement avancé</option>
+                                    </optgroup>
+                                    <optgroup label="Anthropic">
+                                        <option value="anthropic/claude-3-haiku">Claude 3 Haiku — rapide &amp; abordable</option>
+                                        <option value="anthropic/claude-3.5-haiku">Claude 3.5 Haiku — meilleur Haiku</option>
+                                    </optgroup>
+                                    <optgroup label="OpenAI">
+                                        <option value="openai/gpt-4o-mini">GPT-4o Mini — rapide &amp; pas cher</option>
+                                        <option value="openai/gpt-4o">GPT-4o — multimodal complet</option>
+                                    </optgroup>
+                                </select>
+                            </div>
+                        </div>
+                        <p className="text-[10px] text-text-tertiary mt-2">
+                            Une fois sauvegardé, sélectionnez <strong className="text-text-secondary">openrouter-{openrouterModel}</strong> dans le sélecteur de modèle.
+                        </p>
+                    </div>
+
                 </div>
             </div>
 
@@ -815,7 +902,7 @@ export const AIProvidersSettings: React.FC = () => {
                                     type="text"
                                     value={customName}
                                     onChange={(e) => setCustomName(e.target.value)}
-                                    placeholder="My Custom LLM"
+                                    placeholder="Mon LLM personnalisé"
                                     className="w-full bg-bg-input border border-border-subtle rounded-lg px-4 py-2.5 text-xs text-text-primary focus:outline-none focus:border-accent-primary transition-colors"
                                 />
                             </div>
@@ -840,7 +927,7 @@ export const AIProvidersSettings: React.FC = () => {
                                     type="text"
                                     value={customResponsePath}
                                     onChange={(e) => setCustomResponsePath(e.target.value)}
-                                    placeholder="e.g. choices[0].message.content"
+                                    placeholder="ex. choices[0].message.content"
                                     className="w-full bg-bg-input border border-border-subtle rounded-lg px-4 py-2.5 text-xs text-text-primary focus:outline-none focus:border-accent-primary transition-colors font-mono"
                                 />
                                 <p className="text-[10px] text-text-secondary mt-1">

@@ -73,7 +73,7 @@ export class CalendarManager extends EventEmitter {
                         }
 
                         if (code) {
-                            res.end('Authentication successful! You can close this window and return to Natively.');
+                            res.end('Authentification réussie ! Vous pouvez fermer cette fenêtre et retourner sur Cluely.fr.');
                             server.close();
 
                             // 2. Exchange code for tokens
@@ -292,11 +292,11 @@ export class CalendarManager extends EventEmitter {
     private showNotification(event: CalendarEvent) {
         const { Notification } = require('electron');
         const notif = new Notification({
-            title: 'Meeting starting soon',
-            body: `"${event.title}" starts in 2 minutes. Start Natively?`,
+            title: 'Réunion imminente',
+            body: `"${event.title}" commence dans 2 minutes. Démarrer Cluely.fr ?`,
             actions: [
-                { type: 'button', text: 'Start Meeting' },
-                { type: 'button', text: 'Dismiss' }
+                { type: 'button', text: 'Démarrer la réunion' },
+                { type: 'button', text: 'Ignorer' }
             ],
             sound: true
         });

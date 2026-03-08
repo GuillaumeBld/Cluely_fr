@@ -539,160 +539,160 @@ export class DatabaseManager {
 
         const durationMs = 300000; // 5 min
 
-        const summaryMarkdown = `# Overview
+        const summaryMarkdown = `# Vue d’ensemble
 
-Natively is a real-time AI meeting assistant designed to help you stay focused, informed, and fast-moving during calls. Get live insights while you speak, instant answers to questions, and structured notes after every meeting.
+Cluely.fr est un assistant IA de réunion en temps réel conçu pour vous aider à rester concentré, informé et réactif pendant vos appels. Obtenez des informations en direct pendant que vous parlez, des réponses instantanées à vos questions, et des notes structurées après chaque réunion.
 
-# Getting Started
+# Démarrage
 
-### Start a Session
-Click **Start Session** from the dashboard.
-Join a scheduled meeting and start directly from the meeting notification.
+### Démarrer une session
+Cliquez sur **Démarrer une session** depuis le tableau de bord.
+Rejoignez une réunion planifiée et démarrez directement depuis la notification de réunion.
 
-### During a Meeting
-- Use the **five quick action buttons** for real-time assistance
-- Show or hide Natively at any time:
-  - **Mac**: Cmd + B
-  - **Windows**: Ctrl + B
-- Move the widget anywhere on your screen by hovering over the top pill and dragging
+### Pendant une réunion
+- Utilisez les **cinq boutons d’action rapide** pour une assistance en temps réel
+- Afficher ou masquer Cluely.fr à tout moment :
+  - **Mac** : Cmd + B
+  - **Windows** : Ctrl + B
+- Déplacez le widget n’importe où sur votre écran en survolant la pilule supérieure et en faisant glisser
 
-# Main Features
+# Fonctionnalités principales
 
-## Five Quick Action Buttons
-- **What to answer**: Instantly generates a context-aware response to the current topic.
-- **Shorten**: Refines the last suggested answer to be more concise and natural.
-- **Recap**: Generates a comprehensive summary of the conversation so far.
-- **Follow Up Question**: Suggests strategic questions you can ask to drive the conversation.
-- **Answer**: Manually trigger a response or use voice input to ask specific questions.
+## Cinq boutons d’action rapide
+- **Quoi répondre** : Génère instantanément une réponse contextuelle au sujet en cours.
+- **Raccourcir** : Affine la dernière réponse suggérée pour la rendre plus concise et naturelle.
+- **Récap** : Génère un résumé complet de la conversation jusqu’à présent.
+- **Question de suivi** : Suggère des questions stratégiques que vous pouvez poser pour faire avancer la conversation.
+- **Répondre** : Déclenchez manuellement une réponse ou utilisez la saisie vocale pour poser des questions spécifiques.
 
-## Meeting Insights (Launcher)
-- **Smart Note Taking**: Automatically captures key points, action items, and structured summaries.
-- **Summary**: A concise high-level brief of the entire meeting.
-- **Transcript**: Full real-time speech-to-text transcript, available during and after the call.
-- **Usage**: Track your interaction history and see how Natively assisted you.
+## Insights de réunion (Launcher)
+- **Prise de notes intelligente** : Capture automatiquement les points clés, les actions à réaliser et les résumés structurés.
+- **Résumé** : Un bref résumé de haut niveau de l’intégralité de la réunion.
+- **Transcript** : Transcription vocale complète en temps réel, disponible pendant et après l’appel.
+- **Utilisation** : Suivez votre historique d’interaction et voyez comment Cluely.fr vous a assisté.
 
-## Live Insights
-Click **Live Insights** during a call to view:
-- Real-time questions and prompts
-- Detected keywords and topics
-- Context-aware suggestions based on the conversation
-- Click any insight to get an instant response.
+## Insights en direct
+Cliquez sur **Insights en direct** pendant un appel pour voir :
+- Questions et invites en temps réel
+- Mots-clés et sujets détectés
+- Suggestions contextuelles basées sur la conversation
+- Cliquez sur n’importe quel insight pour obtenir une réponse instantanée.
 
-## AI Chat
-- Type your question and press **Enter** or click **Submit**
-- Enable **Smart Mode** for advanced reasoning and coding assistance
+## Chat IA
+- Tapez votre question et appuyez sur **Entrée** ou cliquez sur **Envoyer**
+- Activez le **Mode avancé** pour l’assistance au raisonnement et au codage
 
-## Screenshots
-- **Full Screen Screenshot**: Cmd + H
-- **Selective Screenshot**: Cmd + Shift + H
+## Captures d’écran
+- **Capture plein écran** : Cmd + H
+- **Capture sélective** : Cmd + Maj + H
 
-# Making the Most of Natively
+# Tirer le meilleur parti de Cluely.fr
 
-### Custom Context
-Upload resumes, project briefs, sales scripts, or other documents to tailor responses to your workflow. (coming soon).
+### Contexte personnalisé
+Téléchargez des CV, des briefs de projet, des scripts de vente ou d’autres documents pour adapter les réponses à votre flux de travail (bientôt disponible).
 
-### Language Preferences
-Go to **Settings → Language Preferences** to:
-- Change input and output language
-- Enable real-time translation during calls
+### Préférences de langue
+Allez dans **Paramètres → Préférences de langue** pour :
+- Changer la langue d’entrée et de sortie
+- Activer la traduction en temps réel pendant les appels
 
-### Undetectability
-Unlock the **Undetectability** add-on to keep Natively invisible during screen sharing.
+### Indétectabilité
+Activez le module **Indétectabilité** pour garder Cluely.fr invisible lors du partage d’écran.
 
-# Interface Basics
+# Interface de base
 
-- **Dashboard**: Start meetings and view recent activity
-- **Start Session**: Begin a new meeting instantly
-- **Settings**: Configure API keys, language, and visibility
-- **History**: Review past meetings, notes, and transcripts
+- **Tableau de bord** : Démarrez des réunions et consultez l’activité récente
+- **Démarrer une session** : Commencez une nouvelle réunion instantanément
+- **Paramètres** : Configurez les clés API, la langue et la visibilité
+- **Historique** : Consultez les réunions passées, les notes et les transcripts
 
-# API Setup
+# Configuration de l’API
 
-1. Open **Settings**
-2. Scroll to **Credentials**
-3. Add your API keys:
+1. Ouvrez **Paramètres**
+2. Faites défiler jusqu’à **Identifiants**
+3. Ajoutez vos clés API :
    - **Gemini**
    - **Groq**
-4. To enable real-time transcription, select the location of your **Google Cloud service account JSON file**.
+4. Pour activer la transcription en temps réel, sélectionnez l’emplacement de votre **fichier JSON de compte de service Google Cloud**.
 
-If you don’t already have one, follow the steps below to create it.
+Si vous n’en avez pas encore, suivez les étapes ci-dessous pour en créer un.
 
-# Creating a Google Speech-to-Text Service Account
+# Création d’un compte de service Google Speech-to-Text
 
-## 1. Create or Select a Project
-- Open **Google Cloud Console**
-- Create a new project or select an existing one
-- Ensure billing is enabled
+## 1. Créer ou sélectionner un projet
+- Ouvrez **Google Cloud Console**
+- Créez un nouveau projet ou sélectionnez-en un existant
+- Assurez-vous que la facturation est activée
 
-## 2. Enable Speech-to-Text API
-- Go to **APIs & Services → Library**
-- Enable **Speech-to-Text API**
+## 2. Activer l’API Speech-to-Text
+- Allez dans **APIs & Services → Bibliothèque**
+- Activez **Speech-to-Text API**
 
-## 3. Create a Service Account
-- Navigate to **IAM & Admin → Service Accounts**
-- Click **Create Service Account**
-- **Name**: natively-stt
-- **Description**: optional
+## 3. Créer un compte de service
+- Naviguez vers **IAM & Admin → Comptes de service**
+- Cliquez sur **Créer un compte de service**
+- **Nom** : cluely-fr-stt
+- **Description** : optionnel
 
-## 4. Assign Permissions
-- Grant the following role: **Speech-to-Text User** (\`roles/speech.client\`)
+## 4. Attribuer les permissions
+- Accordez le rôle suivant : **Speech-to-Text User** (\`roles/speech.client\`)
 
-## 5. Create a JSON Key
-- Open the service account
-- Go to **Keys → Add Key → Create new key**
-- Select **JSON**
-- Download the file
+## 5. Créer une clé JSON
+- Ouvrez le compte de service
+- Allez dans **Clés → Ajouter une clé → Créer une nouvelle clé**
+- Sélectionnez **JSON**
+- Téléchargez le fichier
 
-**Once downloaded, return to Settings → Credentials in Natively and select this file to complete setup.**
+**Une fois téléchargé, retournez dans Paramètres → Identifiants dans Cluely.fr et sélectionnez ce fichier pour terminer la configuration.**
 
-# Free Google Cloud Credit (New Users)
+# Crédit Google Cloud gratuit (nouveaux utilisateurs)
 
-New Google Cloud accounts receive **$300 in free credits**, valid for 90 days.
+Les nouveaux comptes Google Cloud reçoivent **300 $ de crédits gratuits**, valables 90 jours.
 
-To activate:
-1. Visit [cloud.google.com](https://cloud.google.com)
-2. Click **Get started for free**
-3. Sign in with a Google account
-4. Add billing details (card required)
-5. Activate the free trial
+Pour activer :
+1. Visitez [cloud.google.com](https://cloud.google.com)
+2. Cliquez sur **Commencer gratuitement**
+3. Connectez-vous avec un compte Google
+4. Ajoutez les informations de facturation (carte requise)
+5. Activez l’essai gratuit
 
-The credit can be used for Speech-to-Text and is sufficient for extended testing and regular usage.
+Le crédit peut être utilisé pour Speech-to-Text et est suffisant pour des tests étendus et une utilisation régulière.
 
 # Support
 
-If you need help with setup or usage, contact us anytime at:
-natively.contact@gmail.com`;
+Si vous avez besoin d’aide pour la configuration ou l’utilisation, contactez-nous à tout moment à :
+guillaume@autoflux.fr`;
 
         const demoMeeting: Meeting = {
             id: demoId,
-            title: "Natively Demo & Guide",
+            title: "Guide de démarrage Cluely.fr",
             date: today.toISOString(),
             duration: "5:00",
-            summary: "Complete guide to using Natively - your real-time AI meeting assistant.",
+            summary: "Guide complet pour utiliser Cluely.fr, votre assistant IA de réunion en temps réel.",
             detailedSummary: {
                 overview: summaryMarkdown,
                 actionItems: [],
                 keyPoints: []
             },
             transcript: [
-                { speaker: 'interviewer', text: "Welcome to Natively! Let me show you how it works.", timestamp: 0 },
-                { speaker: 'user', text: "Thanks! I'm excited to try it out.", timestamp: 5000 },
-                { speaker: 'interviewer', text: "You have 5 quick action buttons. 'What to answer' listens to the conversation and suggests what you should say.", timestamp: 10000 },
-                { speaker: 'user', text: "That sounds helpful for interviews.", timestamp: 18000 },
-                { speaker: 'interviewer', text: "Check out the 'How to Use' section in the notes for API setup instructions.", timestamp: 20000 },
-                { speaker: 'interviewer', text: "'Shorten' condenses the last response. 'Recap' summarizes the entire conversation so far.", timestamp: 22000 },
-                { speaker: 'user', text: "What about the other buttons?", timestamp: 30000 },
-                { speaker: 'interviewer', text: "'Follow Up Questions' suggests questions you can ask. 'Answer' lets you speak a question and get an instant response.", timestamp: 35000 },
-                { speaker: 'user', text: "Can I take screenshots during calls?", timestamp: 45000 },
-                { speaker: 'interviewer', text: "Yes! Press Cmd+H for full screen or Cmd+Shift+H to select an area. The AI will analyze it and help you.", timestamp: 50000 },
-                { speaker: 'user', text: "How do I hide Natively during screen share?", timestamp: 60000 },
-                { speaker: 'interviewer', text: "Press Cmd+B to toggle visibility anytime. You can also enable undetectable mode in settings.", timestamp: 65000 },
-                { speaker: 'user', text: "This is amazing. What happens after the call?", timestamp: 75000 },
-                { speaker: 'interviewer', text: "You get detailed meeting notes with action items, key points, full transcript, and a log of all AI interactions.", timestamp: 80000 }
+                { speaker: 'interviewer', text: "Bienvenue sur Cluely.fr ! Laissez-moi vous montrer comment ça fonctionne.", timestamp: 0 },
+                { speaker: 'user', text: "Merci ! J'ai hâte d'essayer.", timestamp: 5000 },
+                { speaker: 'interviewer', text: "Vous avez 5 boutons d'action rapide. 'Quoi répondre' écoute la conversation et suggère ce que vous devriez dire.", timestamp: 10000 },
+                { speaker: 'user', text: "Ça semble très utile pour les entretiens.", timestamp: 18000 },
+                { speaker: 'interviewer', text: "Consultez la section 'Guide d'utilisation' dans les notes pour les instructions de configuration API.", timestamp: 20000 },
+                { speaker: 'interviewer', text: "'Raccourcir' condense la dernière réponse. 'Récap' résume toute la conversation jusqu'à présent.", timestamp: 22000 },
+                { speaker: 'user', text: "Et les autres boutons ?", timestamp: 30000 },
+                { speaker: 'interviewer', text: "'Questions de suivi' suggère des questions que vous pouvez poser. 'Répondre' vous permet de parler une question et d'obtenir une réponse instantanée.", timestamp: 35000 },
+                { speaker: 'user', text: "Puis-je prendre des captures d'écran pendant les appels ?", timestamp: 45000 },
+                { speaker: 'interviewer', text: "Oui ! Appuyez sur Cmd+H pour plein écran ou Cmd+Maj+H pour sélectionner une zone. L'IA l'analysera et vous aidera.", timestamp: 50000 },
+                { speaker: 'user', text: "Comment masquer Cluely.fr lors du partage d'écran ?", timestamp: 60000 },
+                { speaker: 'interviewer', text: "Appuyez sur Cmd+B pour basculer la visibilité à tout moment. Vous pouvez aussi activer le mode indétectable dans les paramètres.", timestamp: 65000 },
+                { speaker: 'user', text: "C'est incroyable. Que se passe-t-il après l'appel ?", timestamp: 75000 },
+                { speaker: 'interviewer', text: "Vous obtenez des notes de réunion détaillées avec les actions à réaliser, les points clés, le transcript complet et un journal de toutes les interactions IA.", timestamp: 80000 }
             ],
             usage: [
-                { type: 'assist', timestamp: 15000, question: 'What features does Natively have?', answer: 'Natively offers 5 quick action buttons, screenshot analysis, real-time transcription, and comprehensive meeting notes.' },
-                { type: 'followup', timestamp: 40000, question: 'How do the action buttons work?', answer: 'Each button serves a specific purpose: suggest answers, shorten responses, recap conversations, generate follow-up questions, or get instant voice-to-answer responses.' }
+                { type: 'assist', timestamp: 15000, question: 'Quelles fonctionnalités propose Cluely.fr ?', answer: 'Cluely.fr propose 5 boutons d\'action rapide, l\'analyse de captures d\'écran, la transcription en temps réel et des notes de réunion complètes.' },
+                { type: 'followup', timestamp: 40000, question: 'Comment fonctionnent les boutons d\'action ?', answer: 'Chaque bouton a un objectif précis : suggérer des réponses, raccourcir les réponses, récapituler les conversations, générer des questions de suivi, ou obtenir des réponses voix-en-texte instantanées.' }
             ],
             isProcessed: true
         };

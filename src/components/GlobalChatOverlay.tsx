@@ -368,7 +368,7 @@ const GlobalChatOverlay: React.FC<GlobalChatOverlayProps> = ({
                                     value={query}
                                     onChange={(e) => setQuery(e.target.value)}
                                     onKeyDown={handleInputKeyDown}
-                                    placeholder="Ask me anything..."
+                                    placeholder="Posez-moi n'importe quelle question..."
                                     className="w-full pl-5 pr-12 py-3 bg-bg-elevated shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-border-muted dark:bg-bg-elevated/20 dark:backdrop-blur-xl dark:border-border-subtle rounded-full text-sm text-text-primary placeholder-text-tertiary/70 focus:outline-none transition-all"
                                 />
                                 <button

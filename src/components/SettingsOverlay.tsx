@@ -967,7 +967,7 @@ const SettingsOverlay: React.FC<SettingsOverlayProps> = ({ isOpen, onClose }) =>
 
                                         <div>
                                             <h3 className="text-lg font-bold text-text-primary mb-1">General settings</h3>
-                                            <p className="text-xs text-text-secondary mb-2">Customize how Natively works for you</p>
+                                            <p className="text-xs text-text-secondary mb-2">Personnalisez le fonctionnement de Cluely.fr</p>
 
                                             <div className="space-y-4">
                                                 {/* Open at Login */}
@@ -977,8 +977,8 @@ const SettingsOverlay: React.FC<SettingsOverlayProps> = ({ isOpen, onClose }) =>
                                                             <Power size={20} />
                                                         </div>
                                                         <div>
-                                                            <h3 className="text-sm font-bold text-text-primary">Open Natively when you log in</h3>
-                                                            <p className="text-xs text-text-secondary mt-0.5">Natively will open automatically when you log in to your computer</p>
+                                                            <h3 className="text-sm font-bold text-text-primary">Ouvrir Cluely.fr au démarrage</h3>
+                                                            <p className="text-xs text-text-secondary mt-0.5">Cluely.fr s'ouvrira automatiquement à la connexion</p>
                                                         </div>
                                                     </div>
                                                     <div
@@ -1026,7 +1026,7 @@ const SettingsOverlay: React.FC<SettingsOverlayProps> = ({ isOpen, onClose }) =>
                                                         </div>
                                                         <div>
                                                             <h3 className="text-sm font-bold text-text-primary">Theme</h3>
-                                                            <p className="text-xs text-text-secondary mt-0.5">Customize how Natively looks on your device</p>
+                                                            <p className="text-xs text-text-secondary mt-0.5">Personnalisez l'apparence de Cluely.fr</p>
                                                         </div>
                                                     </div>
 
@@ -1080,7 +1080,7 @@ const SettingsOverlay: React.FC<SettingsOverlayProps> = ({ isOpen, onClose }) =>
                                                         <div>
                                                             <h3 className="text-sm font-bold text-text-primary">Version</h3>
                                                             <p className="text-xs text-text-secondary mt-0.5">
-                                                                You are currently using Natively version {packageJson.version}
+                                                                Vous utilisez Cluely.fr version {packageJson.version}
                                                             </p>
                                                         </div>
                                                     </div>
@@ -1148,9 +1148,9 @@ const SettingsOverlay: React.FC<SettingsOverlayProps> = ({ isOpen, onClose }) =>
                                                 <h3 className="text-lg font-bold text-text-primary">Process Disguise</h3>
                                             </div>
                                             <p className="text-xs text-text-secondary">
-                                                Disguise Natively as another application to prevent detection during screen sharing.
+                                                Déguisez Cluely.fr en une autre application pour éviter la détection lors du partage d'écran.
                                                 <span className="block mt-1 text-text-tertiary">
-                                                    Select a disguise to be automatically applied when Undetectable mode is on.
+                                                    Choisissez un déguisement appliqué automatiquement en mode Indétectable.
                                                 </span>
                                             </p>
                                         </div>
@@ -1197,7 +1197,7 @@ const SettingsOverlay: React.FC<SettingsOverlayProps> = ({ isOpen, onClose }) =>
                                     <div className="flex items-start justify-between">
                                         <div>
                                             <h3 className="text-lg font-bold text-text-primary mb-1">Keyboard shortcuts</h3>
-                                            <p className="text-xs text-text-secondary">Natively works with these easy to remember commands.</p>
+                                            <p className="text-xs text-text-secondary">Cluely.fr fonctionne avec ces raccourcis faciles à mémoriser.</p>
                                         </div>
                                         <button
                                             onClick={resetShortcuts}
@@ -1509,7 +1509,7 @@ const SettingsOverlay: React.FC<SettingsOverlayProps> = ({ isOpen, onClose }) =>
                                                                     type="text"
                                                                     value={sttAzureRegion}
                                                                     onChange={(e) => setSttAzureRegion(e.target.value)}
-                                                                    placeholder="e.g. eastus"
+                                                                    placeholder="ex. eastus"
                                                                     className="flex-1 bg-bg-input border border-border-subtle rounded-lg px-3 py-2 text-sm text-text-primary placeholder-text-tertiary focus:outline-none focus:border-accent-primary transition-colors"
                                                                 />
                                                                 <button
@@ -1523,10 +1523,10 @@ const SettingsOverlay: React.FC<SettingsOverlayProps> = ({ isOpen, onClose }) =>
                                                                     disabled={!sttAzureRegion.trim()}
                                                                     className="px-5 py-2.5 rounded-lg text-xs font-medium bg-bg-input hover:bg-bg-input/80 border border-border-subtle text-text-primary disabled:opacity-50 transition-colors"
                                                                 >
-                                                                    Save
+                                                                    Sauvegarder
                                                                 </button>
                                                             </div>
-                                                            <p className="text-[10px] text-text-tertiary">e.g. eastus, westeurope, westus2</p>
+                                                            <p className="text-[10px] text-text-tertiary">ex. eastus, westeurope, westus2</p>
                                                         </div>
                                                     )}
 
@@ -1578,7 +1578,7 @@ const SettingsOverlay: React.FC<SettingsOverlayProps> = ({ isOpen, onClose }) =>
                                                 value={recognitionLanguage}
                                                 options={languageOptions}
                                                 onChange={handleLanguageChange}
-                                                placeholder="Select Accent"
+                                                placeholder="Choisir un accent"
                                             />
                                             <div className="flex gap-2 items-center -mt-2 px-1">
                                                 <Info size={14} className="text-text-secondary shrink-0" />
@@ -1606,7 +1606,7 @@ const SettingsOverlay: React.FC<SettingsOverlayProps> = ({ isOpen, onClose }) =>
                                                     setSelectedInput(id);
                                                     localStorage.setItem('preferredInputDeviceId', id);
                                                 }}
-                                                placeholder="Default Microphone"
+                                                placeholder="Microphone par défaut"
                                             />
 
                                             <div>
@@ -1632,7 +1632,7 @@ const SettingsOverlay: React.FC<SettingsOverlayProps> = ({ isOpen, onClose }) =>
                                                     setSelectedOutput(id);
                                                     localStorage.setItem('preferredOutputDeviceId', id);
                                                 }}
-                                                placeholder="Default Speakers"
+                                                placeholder="Haut-parleurs par défaut"
                                             />
 
                                             <div className="flex justify-end">
