@@ -3,12 +3,14 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Heart, X, ExternalLink } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { useT } from '../i18n';
 
 interface SupportToasterProps {
     className?: string;
 }
 
 export const SupportToaster: React.FC<SupportToasterProps> = ({ className }) => {
+    const { t } = useT();
     const [isVisible, setIsVisible] = useState(false);
     const [hasDonated, setHasDonated] = useState(false);
     const [isButtonHovered, setIsButtonHovered] = useState(false);
@@ -173,15 +175,12 @@ export const SupportToaster: React.FC<SupportToasterProps> = ({ className }) => 
                             {/* Typography Stack */}
                             <div className="flex flex-col items-center text-center">
                                 {/* Headline */}
-                                <h3 className="text-[26px] font-[600] leading-[1.2] text-[#F3F3F3] tracking-[-0.01em] mb-[12px] antialiased">
-                                    Construit seul.<br />
-                                    Utilisé par des milliers.
+                                <h3 className="text-[26px] font-[600] leading-[1.2] text-[#F3F3F3] tracking-[-0.01em] mb-[12px] antialiased whitespace-pre-line">
+                                    {t(‘support_headline’)}
                                 </h3>
                                 {/* Body */}
-                                <p className="text-[14px] leading-[1.6] text-white/60 max-w-[480px] font-medium antialiased">
-                                    Cluely.fr est développé et maintenu par un seul développeur.<br />
-                                    Si c’est devenu une partie de votre quotidien, votre soutien<br />
-                                    permet de faire avancer le projet.
+                                <p className="text-[14px] leading-[1.6] text-white/60 max-w-[480px] font-medium antialiased whitespace-pre-line">
+                                    {t(‘support_body’)}
                                 </p>
                             </div>
                         </div>
@@ -200,7 +199,7 @@ export const SupportToaster: React.FC<SupportToasterProps> = ({ className }) => 
                                 <div className="absolute inset-0 bg-gradient-to-b from-[#FF6A5C] to-[#E55B4D] opacity-100 transition-all" />
                                 <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                                 <span className="relative z-10 text-[15px] font-[600] text-white/95 group-hover:text-white flex items-center justify-center gap-2 tracking-wide">
-                                    Soutenir le projet
+                                    {t('support_btn')}
                                 </span>
                             </button>
 
@@ -209,7 +208,7 @@ export const SupportToaster: React.FC<SupportToasterProps> = ({ className }) => 
                                 onClick={handleDismiss}
                                 className="text-[14px] text-white/30 font-medium hover:text-white/60 transition-colors duration-200"
                             >
-                                Pas maintenant
+                                {t('support_dismiss')}
                             </button>
                         </div>
                     </motion.div>

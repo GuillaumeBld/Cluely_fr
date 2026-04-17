@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { createPortal } from 'react-dom';
 import { Search, Sparkles, FileText } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useT } from '../i18n';
 
 // ============================================
 // Types
@@ -93,6 +94,7 @@ const TopSearchPill: React.FC<TopSearchPillProps> = ({
     onOpenMeeting,
     onExpansionChange
 }) => {
+    const { t } = useT();
     const [state, setState] = useState<PillState>('idle');
     const [query, setQuery] = useState('');
     const [selectedIndex, setSelectedIndex] = useState(-1);
@@ -298,7 +300,7 @@ const TopSearchPill: React.FC<TopSearchPillProps> = ({
                                         focus:outline-none
                                         ${state === 'idle' ? 'cursor-pointer' : 'cursor-text'}
                                     `}
-                                        placeholder="Rechercher ou poser une question..."
+                                        placeholder={t('search_placeholder')}
                                     />
                                 </div>
 

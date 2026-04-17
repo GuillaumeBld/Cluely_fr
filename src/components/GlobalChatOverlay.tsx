@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { X, Copy, Check, Globe, ArrowUp } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import nativelyIcon from './icon.png';
+import { useT } from '../i18n';
 
 // ============================================
 // Types
@@ -115,6 +116,7 @@ const GlobalChatOverlay: React.FC<GlobalChatOverlayProps> = ({
     onClose,
     initialQuery = ''
 }) => {
+    const { t } = useT();
     const [messages, setMessages] = useState<Message[]>([]);
     const [chatState, setChatState] = useState<ChatState>('idle');
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -368,7 +370,7 @@ const GlobalChatOverlay: React.FC<GlobalChatOverlayProps> = ({
                                     value={query}
                                     onChange={(e) => setQuery(e.target.value)}
                                     onKeyDown={handleInputKeyDown}
-                                    placeholder="Posez-moi n'importe quelle question..."
+                                    placeholder={t('chat_placeholder')}
                                     className="w-full pl-5 pr-12 py-3 bg-bg-elevated shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-border-muted dark:bg-bg-elevated/20 dark:backdrop-blur-xl dark:border-border-subtle rounded-full text-sm text-text-primary placeholder-text-tertiary/70 focus:outline-none transition-all"
                                 />
                                 <button
