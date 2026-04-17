@@ -159,6 +159,8 @@ const Launcher: React.FC<LauncherProps> = ({ onStartMeeting, onOpenSettings }) =
     const [isCalendarConnected, setIsCalendarConnected] = useState(false);
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [kbContext, setKbContext] = useState<string | null>(null);
+    const [emailContext, setEmailContext] = useState<Record<string, Array<{ subject: string; sender: string; date: string; snippet: string; mailbox: string }>> | null>(null);
+    const [emailContextExpanded, setEmailContextExpanded] = useState(false);
     const [activeTab, setActiveTab] = useState<'meetings' | 'multica'>('meetings');
     const [showWorkspaceSelector, setShowWorkspaceSelector] = useState(false);
     const [activeWorkspace, setActiveWorkspace] = useState<Workspace | null>(null);
@@ -199,6 +201,12 @@ const Launcher: React.FC<LauncherProps> = ({ onStartMeeting, onOpenSettings }) =
 
         if (window.electronAPI?.onKbContext) {
             cleanups.push(window.electronAPI.onKbContext(ctx => setKbContext(ctx)));
+        }
+        if (window.electronAPI?.onEmailContext) {
+            cleanups.push(window.electronAPI.onEmailContext(payload => {
+                setEmailContext(payload);
+                setEmailContextExpanded(false);
+            }));
         }
         if ((window.electronAPI as any)?.onZoomMeetingDetected) {
             cleanups.push((window.electronAPI as any).onZoomMeetingDetected(() => setShowWorkspaceSelector(true)));
@@ -395,6 +403,57 @@ const Launcher: React.FC<LauncherProps> = ({ onStartMeeting, onOpenSettings }) =
                                                         <X size={11} />
                                                     </button>
                                                 </div>
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
+
+                                    {/* Email context banner */}
+                                    <AnimatePresence>
+                                        {emailContext && Object.keys(emailContext).length > 0 && (
+                                            <motion.div
+                                                initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
+                                                className="mx-4 mt-2 rounded-xl border border-emerald-500/20 bg-emerald-950/20 overflow-hidden"
+                                            >
+                                                <div className="flex items-center gap-2 px-3 py-2 hover:bg-emerald-500/5 transition-colors">
+                                                    <span className="text-[9px] font-bold tracking-widest text-emerald-400 uppercase shrink-0">Mail</span>
+                                                    <button
+                                                        onClick={() => setEmailContextExpanded(v => !v)}
+                                                        className="text-[11px] text-text-secondary flex-1 text-left truncate flex items-center gap-2"
+                                                    >
+                                                        <span className="flex-1 truncate">
+                                                            {Object.values(emailContext).reduce((sum, msgs) => sum + msgs.length, 0)} message(s) from {Object.keys(emailContext).length} attendee(s)
+                                                        </span>
+                                                        <span className="text-text-tertiary text-[10px] shrink-0">{emailContextExpanded ? '▼' : '▶'}</span>
+                                                    </button>
+                                                    <button
+                                                        onClick={() => setEmailContext(null)}
+                                                        className="shrink-0 text-text-tertiary hover:text-text-primary"
+                                                    >
+                                                        <X size={11} />
+                                                    </button>
+                                                </div>
+                                                <AnimatePresence>
+                                                    {emailContextExpanded && (
+                                                        <motion.div
+                                                            initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
+                                                            className="px-3 pb-3 pt-1 space-y-2 border-t border-emerald-500/10 overflow-hidden"
+                                                        >
+                                                            {Object.entries(emailContext).map(([sender, msgs]) => (
+                                                                <div key={sender}>
+                                                                    <div className="text-[10px] font-semibold text-emerald-300/80 mb-1 truncate">{sender}</div>
+                                                                    <div className="space-y-1">
+                                                                        {msgs.slice(0, 3).map((m, i) => (
+                                                                            <div key={i} className="text-[10px] text-text-tertiary leading-snug">
+                                                                                <div className="text-text-secondary truncate font-medium">{m.subject || '(no subject)'}</div>
+                                                                                <div className="line-clamp-2 opacity-70">{m.snippet}</div>
+                                                                            </div>
+                                                                        ))}
+                                                                    </div>
+                                                                </div>
+                                                            ))}
+                                                        </motion.div>
+                                                    )}
+                                                </AnimatePresence>
                                             </motion.div>
                                         )}
                                     </AnimatePresence>
