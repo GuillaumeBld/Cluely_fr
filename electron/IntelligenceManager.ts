@@ -4,6 +4,7 @@
 
 import { EventEmitter } from 'events';
 import { LLMHelper } from './LLMHelper';
+import { KBManager } from './services/KBManager';
 
 export interface TranscriptSegment {
     marker?: string;
@@ -107,10 +108,28 @@ export class IntelligenceManager extends EventEmitter {
         title?: string;
         calendarEventId?: string;
         source?: 'manual' | 'calendar';
+        multicaWorkspaceId?: string;
+        multicaWorkspaceName?: string;
     } | null = null;
+
+    // Screenshots captured during the current meeting
+    private meetingScreenshots: Array<{ path: string; timestamp: number; label?: string }> = [];
 
     public setMeetingMetadata(metadata: any) {
         this.currentMeetingMetadata = metadata;
+    }
+
+    public addMeetingScreenshot(screenshotPath: string, label?: string): void {
+        this.meetingScreenshots.push({
+            path: screenshotPath,
+            timestamp: Date.now(),
+            label
+        });
+        console.log(`[IntelligenceManager] Meeting screenshot added: ${screenshotPath} (total: ${this.meetingScreenshots.length})`);
+    }
+
+    public getMeetingScreenshots(): Array<{ path: string; timestamp: number; label?: string }> {
+        return this.meetingScreenshots;
     }
 
     // Mode state
@@ -938,10 +957,12 @@ export class IntelligenceManager extends EventEmitter {
             usage: [...this.fullUsage],
             startTime: this.sessionStartTime,
             durationMs: durationMs,
-            context: this.getFullSessionContext() // Use FULL session context, not just recent window
+            context: this.getFullSessionContext(), // Use FULL session context, not just recent window
+            screenshots: [...this.meetingScreenshots]
         };
 
         // 2. Reset state immediately so new meeting can start or UI is clean
+        this.meetingScreenshots = [];
         this.reset();
 
         const meetingId = crypto.randomUUID();
@@ -979,7 +1000,7 @@ export class IntelligenceManager extends EventEmitter {
     /**
      * Heavy lifting: LLM Title, Summary, and DB Write
      */
-    private async processAndSaveMeeting(data: { transcript: TranscriptSegment[], usage: any[], startTime: number, durationMs: number, context: string }, meetingId: string): Promise<void> {
+    private async processAndSaveMeeting(data: { transcript: TranscriptSegment[], usage: any[], startTime: number, durationMs: number, context: string, screenshots?: Array<{ path: string; timestamp: number; label?: string }> }, meetingId: string): Promise<void> {
         let title = "Untitled Session";
         let summaryData: { actionItems: string[], keyPoints: string[] } = { actionItems: [], keyPoints: [] };
         let calendarEventId: string | undefined;
@@ -1055,10 +1076,7 @@ export class IntelligenceManager extends EventEmitter {
             const meetingData: Meeting = {
                 id: meetingId,
                 title: title,
-                date: new Date().toISOString(), // This will use current time of completion, maybe usage start time is better? 
-                // Actually, using completion time updates the sort order to top.
-                // But let's respect original date. Ideally we pass date in data.
-                // For now, new Date() is fine as it's just a few seconds difference.
+                date: new Date().toISOString(),
                 duration: durationStr,
                 summary: "See detailed summary",
                 detailedSummary: summaryData,
@@ -1066,11 +1084,43 @@ export class IntelligenceManager extends EventEmitter {
                 usage: data.usage,
                 calendarEventId: calendarEventId,
                 source: source,
-                isProcessed: true // Mark as processed
+                isProcessed: true,
+                screenshots: data.screenshots || []
             };
 
             // Save to SQLite
             DatabaseManager.getInstance().saveMeeting(meetingData, data.startTime, data.durationMs);
+
+            // Sync to KB + NotebookLM (non-blocking)
+            const kb = KBManager.getInstance();
+            if (kb.isAvailable()) {
+                const transcriptText = data.transcript
+                    .map(s => `[${s.speaker}] ${s.text}`)
+                    .join('\n');
+                kb.onMeetingEnd({
+                    title,
+                    transcript: transcriptText,
+                    actionItems: summaryData.actionItems || [],
+                    screenshots: data.screenshots || [],
+                }).catch(err => console.error('[IntelligenceManager] KB sync failed:', err));
+            }
+
+            // Push action items as issues to Multica workspace (if one was selected)
+            const workspaceId = this.currentMeetingMetadata?.multicaWorkspaceId;
+            const multicaWorkspaceName = this.currentMeetingMetadata?.multicaWorkspaceName;
+            if (workspaceId && summaryData.actionItems?.length) {
+                kb.pushIssuesToMultica({
+                    workspaceId,
+                    actionItems: summaryData.actionItems,
+                    meetingTitle: title,
+                }).then(() => {
+                    const wins = require('electron').BrowserWindow.getAllWindows();
+                    wins.forEach((w: any) => w.webContents.send('multica-issues-pushed', {
+                        count: summaryData.actionItems!.length,
+                        workspaceName: multicaWorkspaceName || workspaceId,
+                    }));
+                }).catch(err => console.error('[IntelligenceManager] Multica push failed:', err));
+            }
 
             // Clear metadata
             this.currentMeetingMetadata = null;

@@ -108,6 +108,7 @@ interface ElectronAPI {
   multicaCreateIssue: (opts: { workspaceId: string; title: string; description?: string; priority?: string }) => Promise<any>
   multicaIsReady: () => Promise<{ ready: boolean }>
   onMulticaStatusChange: (callback: (data: { status: 'ready' | 'failed'; error?: string }) => void) => () => void
+  onMulticaIssuesPushed: (callback: (data: { count: number; workspaceName: string }) => void) => () => void
 
   // Intelligence Mode Events
   onIntelligenceAssistUpdate: (callback: (data: { insight: string }) => void) => () => void
@@ -609,6 +610,11 @@ contextBridge.exposeInMainWorld("electronAPI", {
     const sub = (_: any, data: { status: 'ready' | 'failed'; error?: string }) => callback(data);
     ipcRenderer.on('multica-status-change', sub);
     return () => ipcRenderer.removeListener('multica-status-change', sub);
+  },
+  onMulticaIssuesPushed: (callback: (data: { count: number; workspaceName: string }) => void) => {
+    const sub = (_: any, data: { count: number; workspaceName: string }) => callback(data);
+    ipcRenderer.on('multica-issues-pushed', sub);
+    return () => ipcRenderer.removeListener('multica-issues-pushed', sub);
   },
 
   // Streaming Chat

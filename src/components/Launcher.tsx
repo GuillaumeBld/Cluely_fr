@@ -1,16 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { ToggleLeft, ToggleRight, Search, Zap, Calendar, ArrowRight, ArrowLeft, MoreHorizontal, Globe, Clock, ChevronRight, Settings, RefreshCw, Eye, EyeOff, Ghost, Plus, Mail, Link as LinkIcon, ChevronDown, Trash2, Bell, Check, Download } from 'lucide-react';
+import { ArrowLeft, ArrowRight, MoreHorizontal, Calendar, Clock, ChevronRight, Settings, RefreshCw, Ghost, Plus, Trash2, Download, Zap, Link as LinkIcon, X } from 'lucide-react';
 import { generateMeetingPDF } from '../utils/pdfGenerator';
 import icon from "./icon.png";
-import mainui from "../UI_comp/mainui.png";
-import calender from "../UI_comp/calender.png";
 import ConnectCalendarButton from './ui/ConnectCalendarButton';
 import MeetingDetails from './MeetingDetails';
 import TopSearchPill from './TopSearchPill';
 import GlobalChatOverlay from './GlobalChatOverlay';
+import WorkspaceSelector, { Workspace, MULTICA_API, MULTICA_TOKEN } from './WorkspaceSelector';
+import MulticaPanel from './MulticaPanel';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FeatureSpotlight } from './FeatureSpotlight';
-import { analytics } from '../lib/analytics/analytics.service'; // Added analytics import
+import { analytics } from '../lib/analytics/analytics.service';
 import { useShortcuts } from '../hooks/useShortcuts';
 
 interface Meeting {
@@ -19,24 +18,11 @@ interface Meeting {
     date: string;
     duration: string;
     summary: string;
-    detailedSummary?: {
-        actionItems: string[];
-        keyPoints: string[];
-    };
-    transcript?: Array<{
-        speaker: string;
-        text: string;
-        timestamp: number;
-    }>;
-    usage?: Array<{
-        type: 'assist' | 'followup' | 'chat' | 'followup_questions';
-        timestamp: number;
-        question?: string;
-        answer?: string;
-        items?: string[];
-    }>;
-    active?: boolean; // UI state
-    time?: string; // Optional for compatibility
+    detailedSummary?: { actionItems: string[]; keyPoints: string[] };
+    transcript?: Array<{ speaker: string; text: string; timestamp: number }>;
+    usage?: Array<{ type: 'assist' | 'followup' | 'chat' | 'followup_questions'; timestamp: number; question?: string; answer?: string; items?: string[] }>;
+    active?: boolean;
+    time?: string;
 }
 
 interface LauncherProps {
@@ -44,29 +30,125 @@ interface LauncherProps {
     onOpenSettings: () => void;
 }
 
-// Helper to format date groups
 const getGroupLabel = (dateStr: string) => {
-    if (dateStr === "Today") return "Aujourd'hui"; // Backward compatibility
-
+    if (dateStr === "Today") return "Aujourd'hui";
     const date = new Date(dateStr);
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const yesterday = new Date(today);
     yesterday.setDate(yesterday.getDate() - 1);
-
     const checkDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-
     if (checkDate.getTime() === today.getTime()) return "Aujourd'hui";
     if (checkDate.getTime() === yesterday.getTime()) return "Hier";
-
-    return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+    return date.toLocaleDateString('fr-FR', { weekday: 'long', month: 'long', day: 'numeric' });
 };
 
-// Helper to format time (e.g. 3:14pm)
 const formatTime = (dateStr: string) => {
-    if (dateStr === "Aujourd'hui") return "À l'instant"; // Legacy
+    if (dateStr === "Aujourd\u2019hui" || dateStr === "Aujourd'hui") return "À l'instant";
     const date = new Date(dateStr);
-    return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }).toLowerCase();
+    return date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+};
+
+const formatDurationPill = (durationStr: string) => {
+    if (!durationStr) return "00:00";
+    if (durationStr.includes(':')) {
+        const [mins, secs] = durationStr.split(':');
+        return `${mins.padStart(2, '0')}:${(secs || '00')}`;
+    }
+    const minutes = parseInt(durationStr.replace('min', '').trim()) || 0;
+    return `${minutes.toString().padStart(2, '0')}:00`;
+};
+
+const formatEventTime = (iso: string) =>
+    new Date(iso).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+
+const formatEventDate = (iso: string) => {
+    const d = new Date(iso);
+    const today = new Date();
+    const tomorrow = new Date(today); tomorrow.setDate(today.getDate() + 1);
+    if (d.toDateString() === today.toDateString()) return "Aujourd'hui";
+    if (d.toDateString() === tomorrow.toDateString()) return "Demain";
+    return d.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' });
+};
+
+const minutesUntil = (iso: string) => Math.ceil((new Date(iso).getTime() - Date.now()) / 60000);
+
+// Mini calendar component
+const MiniCalendar: React.FC<{ events: any[]; onEventClick: (e: any) => void }> = ({ events, onEventClick }) => {
+    const now = new Date();
+    const [viewDate, setViewDate] = useState(now);
+
+    const year = viewDate.getFullYear();
+    const month = viewDate.getMonth();
+    const firstDay = new Date(year, month, 1).getDay(); // 0=Sun
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    // Adjust so Monday is first
+    const startOffset = (firstDay + 6) % 7;
+
+    const cells: (number | null)[] = [];
+    for (let i = 0; i < startOffset; i++) cells.push(null);
+    for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+
+    const eventDays = new Set(
+        events
+            .filter(e => {
+                const d = new Date(e.startTime);
+                return d.getFullYear() === year && d.getMonth() === month;
+            })
+            .map(e => new Date(e.startTime).getDate())
+    );
+
+    const prevMonth = () => setViewDate(new Date(year, month - 1, 1));
+    const nextMonth = () => setViewDate(new Date(year, month + 1, 1));
+
+    const dayLabels = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
+
+    return (
+        <div className="w-full select-none">
+            {/* Month nav */}
+            <div className="flex items-center justify-between mb-2 px-1">
+                <button onClick={prevMonth} className="p-1 text-text-tertiary hover:text-text-primary transition-colors rounded">
+                    <ArrowLeft size={12} />
+                </button>
+                <span className="text-[11px] font-semibold text-text-secondary capitalize">
+                    {viewDate.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}
+                </span>
+                <button onClick={nextMonth} className="p-1 text-text-tertiary hover:text-text-primary transition-colors rounded">
+                    <ArrowRight size={12} />
+                </button>
+            </div>
+
+            {/* Day headers */}
+            <div className="grid grid-cols-7 mb-1">
+                {dayLabels.map((d, i) => (
+                    <div key={i} className="text-center text-[9px] font-medium text-text-tertiary py-0.5">{d}</div>
+                ))}
+            </div>
+
+            {/* Day cells */}
+            <div className="grid grid-cols-7 gap-y-0.5">
+                {cells.map((day, i) => {
+                    if (!day) return <div key={i} />;
+                    const isToday = day === now.getDate() && month === now.getMonth() && year === now.getFullYear();
+                    const hasEvent = eventDays.has(day);
+                    const isPast = new Date(year, month, day) < new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                    return (
+                        <div key={i} className="flex flex-col items-center py-0.5">
+                            <div className={`
+                                w-6 h-6 flex items-center justify-center rounded-full text-[10px] font-medium cursor-default transition-colors
+                                ${isToday ? 'bg-sky-500 text-white' : isPast ? 'text-text-tertiary' : 'text-text-secondary hover:bg-white/5'}
+                            `}>
+                                {day}
+                            </div>
+                            {hasEvent && (
+                                <div className={`w-1 h-1 rounded-full mt-0.5 ${isToday ? 'bg-white/60' : 'bg-sky-400'}`} />
+                            )}
+                        </div>
+                    );
+                })}
+            </div>
+        </div>
+    );
 };
 
 const Launcher: React.FC<LauncherProps> = ({ onStartMeeting, onOpenSettings }) => {
@@ -74,749 +156,483 @@ const Launcher: React.FC<LauncherProps> = ({ onStartMeeting, onOpenSettings }) =
     const [isDetectable, setIsDetectable] = useState(false);
     const [selectedMeeting, setSelectedMeeting] = useState<Meeting | null>(null);
     const [upcomingEvents, setUpcomingEvents] = useState<any[]>([]);
-    const [isPrepared, setIsPrepared] = useState(false);
-    const [preparedEvent, setPreparedEvent] = useState<any>(null);
     const [isCalendarConnected, setIsCalendarConnected] = useState(false);
     const [isRefreshing, setIsRefreshing] = useState(false);
-    const [showNotification, setShowNotification] = useState(false);
-
-    // Global search state (for AI chat overlay)
+    const [kbContext, setKbContext] = useState<string | null>(null);
+    const [activeTab, setActiveTab] = useState<'meetings' | 'multica'>('meetings');
+    const [showWorkspaceSelector, setShowWorkspaceSelector] = useState(false);
+    const [activeWorkspace, setActiveWorkspace] = useState<Workspace | null>(null);
+    const [forwardMeeting, setForwardMeeting] = useState<Meeting | null>(null);
+    const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
+    const [menuEntered, setMenuEntered] = useState(false);
     const [isGlobalChatOpen, setIsGlobalChatOpen] = useState(false);
     const [submittedGlobalQuery, setSubmittedGlobalQuery] = useState('');
+    const [multicaToast, setMulticaToast] = useState<{ count: number; workspaceName: string } | null>(null);
+
+    const { isShortcutPressed } = useShortcuts();
 
     const fetchMeetings = () => {
-        if (window.electronAPI && window.electronAPI.getRecentMeetings) {
-            window.electronAPI.getRecentMeetings().then(setMeetings).catch(err => console.error("Failed to fetch meetings:", err));
-        }
+        window.electronAPI?.getRecentMeetings?.().then(setMeetings).catch(() => {});
     };
 
     const fetchEvents = () => {
-        if (window.electronAPI && window.electronAPI.getUpcomingEvents) {
-            window.electronAPI.getUpcomingEvents().then(setUpcomingEvents).catch(err => console.error("Failed to fetch events:", err));
-        }
-    }
+        window.electronAPI?.getUpcomingEvents?.().then(setUpcomingEvents).catch(() => {});
+    };
 
     const handleRefresh = async () => {
         setIsRefreshing(true);
-        analytics.trackCommandExecuted('refresh_calendar');
         try {
-            if (window.electronAPI && window.electronAPI.calendarRefresh) {
-                setShowNotification(true);
-                await window.electronAPI.calendarRefresh();
-                fetchEvents();
-                fetchMeetings();
-                setTimeout(() => {
-                    setShowNotification(false);
-                }, 3000);
-            } else {
-                console.warn("electronAPI.calendarRefresh not found");
-            }
-        } catch (e) {
-            console.error("Refresh failed in handleRefresh:", e);
-        } finally {
-            // Ensure distinct feedback provided (min 500ms spin)
-            setTimeout(() => setIsRefreshing(false), 500);
-        }
+            await window.electronAPI?.calendarRefresh?.();
+            fetchEvents(); fetchMeetings();
+        } catch {}
+        setTimeout(() => setIsRefreshing(false), 600);
     };
 
-    // Keybinds
-    const { isShortcutPressed } = useShortcuts();
-
     useEffect(() => {
-        console.log("Launcher mounted");
-        // Seed demo data if needed (safe to call always)
-        if (window.electronAPI && window.electronAPI.invoke) {
-            window.electronAPI.invoke('seed-demo').catch(err => console.error("Failed to seed demo:", err));
-        }
+        window.electronAPI?.invoke?.('seed-demo').catch(() => {});
+        window.electronAPI?.getUndetectable?.().then(u => setIsDetectable(!u));
 
-        // Sync initial undetectable state
-        if (window.electronAPI?.getUndetectable) {
-            window.electronAPI.getUndetectable().then((undetectable) => {
-                setIsDetectable(!undetectable);
-            });
-        }
+        const cleanups: (() => void)[] = [];
 
-        // Listen for undetectable changes
-        let removeUndetectableListener: (() => void) | undefined;
-        if (window.electronAPI?.onUndetectableChanged) {
-            removeUndetectableListener = window.electronAPI.onUndetectableChanged((undetectable) => {
-                setIsDetectable(!undetectable);
-            });
+        cleanups.push(window.electronAPI.onMeetingsUpdated(fetchMeetings));
+        cleanups.push(window.electronAPI.onUndetectableChanged?.((u) => setIsDetectable(!u)) ?? (() => {}));
+
+        if (window.electronAPI?.onKbContext) {
+            cleanups.push(window.electronAPI.onKbContext(ctx => setKbContext(ctx)));
+        }
+        if ((window.electronAPI as any)?.onZoomMeetingDetected) {
+            cleanups.push((window.electronAPI as any).onZoomMeetingDetected(() => setShowWorkspaceSelector(true)));
+        }
+        if (window.electronAPI?.onMulticaIssuesPushed) {
+            cleanups.push(window.electronAPI.onMulticaIssuesPushed((data) => {
+                setMulticaToast(data);
+                setTimeout(() => setMulticaToast(null), 4000);
+            }));
         }
 
         fetchMeetings();
         fetchEvents();
 
-        // Listen for background updates (e.g. after meeting processing finishes)
-        const removeMeetingsListener = window.electronAPI.onMeetingsUpdated(() => {
-            console.log("Received meetings-updated event");
-            fetchMeetings();
-        });
-
-        // Simple polling for events every minute
         const interval = setInterval(fetchEvents, 60000);
-
-        // Global Keydown for Launcher-specific shortcuts (Cmd+B)
         const handleKeyDown = (e: KeyboardEvent) => {
-            if (isShortcutPressed(e, 'toggleVisibility')) {
-                e.preventDefault();
-                window.electronAPI.toggleWindow();
-            }
+            if (isShortcutPressed(e, 'toggleVisibility')) { e.preventDefault(); window.electronAPI.toggleWindow(); }
         };
         window.addEventListener('keydown', handleKeyDown);
 
         return () => {
-            if (removeMeetingsListener) removeMeetingsListener();
-            if (removeUndetectableListener) removeUndetectableListener();
+            cleanups.forEach(fn => fn());
             clearInterval(interval);
             window.removeEventListener('keydown', handleKeyDown);
         };
     }, [isShortcutPressed]);
 
-    // Filter next meeting (within 60 mins)
-    const nextMeeting = upcomingEvents.find(e => {
-        const diff = new Date(e.startTime).getTime() - Date.now();
-        return diff > -5 * 60000 && diff < 60 * 60000; // -5 min to +60 min
-    });
-
-    const handlePrepare = (event: any) => {
-        setPreparedEvent(event);
-        setIsPrepared(true);
-    };
-
-    const handleStartPreparedMeeting = async () => {
-        if (!preparedEvent) return;
-        analytics.trackCommandExecuted('start_prepared_meeting');
-        try {
-            const inputDeviceId = localStorage.getItem('preferredInputDeviceId');
-            const outputDeviceId = localStorage.getItem('preferredOutputDeviceId');
-
-            await window.electronAPI.invoke('start-meeting', {
-                title: preparedEvent.title,
-                calendarEventId: preparedEvent.id,
-                source: 'calendar',
-                audio: { inputDeviceId, outputDeviceId }
-            });
-            setIsPrepared(false);
-        } catch (e) {
-            console.error("Failed to start prepared meeting", e);
-        }
-    };
-
-    if (!window.electronAPI) {
-        return <div className="text-white p-10">Error: Electron API not initialized. Check preload script.</div>;
-    }
-
-    const toggleDetectable = () => {
-        const newState = !isDetectable;
-        setIsDetectable(newState);
-        window.electronAPI?.setUndetectable(!newState); // Note: setUndetectable takes the *undetectable* state, which is inverse of *detectable*
-        analytics.trackModeSelected(newState ? 'launcher' : 'undetectable'); // If visible (detectable), mode is normal/launcher. If not detectable, mode is undetectable.
-    };
-
-    // Group meetings
-    const groupedMeetings = meetings.reduce((acc, meeting) => {
-        const label = getGroupLabel(meeting.date);
-        if (!acc[label]) acc[label] = [];
-        acc[label].push(meeting);
-        return acc;
-    }, {} as Record<string, Meeting[]>);
-
-    // Group order (Today, Yesterday, then others sorted new to old is implicit via API return order ideally, 
-    // but JS object key order isn't guaranteed. We can use a Map or just known keys.)
-    // Simple sort for keys:
-    const sortedGroups = Object.keys(groupedMeetings).sort((a, b) => {
-        if (a === 'Aujourd'hui') return -1;
-        if (b === 'Aujourd'hui') return 1;
-        if (a === 'Hier') return -1;
-        if (b === 'Hier') return 1;
-        // Approximation for others: parse date
-        return new Date(b).getTime() - new Date(a).getTime();
-    });
-
-
-    const [forwardMeeting, setForwardMeeting] = useState<Meeting | null>(null);
-    const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
-    const [menuEntered, setMenuEntered] = useState(false);
-
+    useEffect(() => { setMenuEntered(false); }, [activeMenuId]);
     useEffect(() => {
-        setMenuEntered(false);
-    }, [activeMenuId]);
-
-    // Global click listener to close menu
-    useEffect(() => {
-        const handleClickOutside = () => setActiveMenuId(null);
-        window.addEventListener('click', handleClickOutside);
-        return () => window.removeEventListener('click', handleClickOutside);
+        const close = () => setActiveMenuId(null);
+        window.addEventListener('click', close);
+        return () => window.removeEventListener('click', close);
     }, []);
 
-    const handleOpenMeeting = async (meeting: Meeting) => {
-        setForwardMeeting(null); // Clear forward history on new navigation
-        console.log("[Launcher] Opening meeting:", meeting.id);
-        analytics.trackCommandExecuted('open_meeting_details');
+    // Next meeting = soonest within 2h from now
+    const upcomingSorted = [...upcomingEvents].sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
+    const nextMeeting = upcomingSorted.find(e => {
+        const diff = new Date(e.startTime).getTime() - Date.now();
+        return diff > -5 * 60000 && diff < 120 * 60000;
+    });
+    const futureEvents = upcomingSorted.filter(e => new Date(e.startTime).getTime() > Date.now() - 5 * 60000);
 
-        // Fetch full meeting details including transcript and usage
-        if (window.electronAPI && window.electronAPI.getMeetingDetails) {
-            try {
-                console.log("[Launcher] Fetching full meeting details...");
-                const fullMeeting = await window.electronAPI.getMeetingDetails(meeting.id);
-                console.log("[Launcher] Got meeting details:", fullMeeting);
-                console.log("[Launcher] Transcript count:", fullMeeting?.transcript?.length);
-                console.log("[Launcher] Usage count:", fullMeeting?.usage?.length);
-                if (fullMeeting) {
-                    setSelectedMeeting(fullMeeting);
-                    return;
-                }
-            } catch (err) {
-                console.error("[Launcher] Failed to fetch meeting details:", err);
-            }
-        } else {
-            console.warn("[Launcher] getMeetingDetails not available on electronAPI");
-        }
-        // Fallback to list-view data if fetch fails
+    const handleOpenMeeting = async (meeting: Meeting) => {
+        setForwardMeeting(null);
+        try {
+            const full = await window.electronAPI?.getMeetingDetails?.(meeting.id);
+            if (full) { setSelectedMeeting(full); return; }
+        } catch {}
         setSelectedMeeting(meeting);
     };
 
-    const handleBack = () => {
-        setForwardMeeting(selectedMeeting);
-        setSelectedMeeting(null);
-    };
+    const groupedMeetings = meetings.reduce((acc, m) => {
+        const label = getGroupLabel(m.date);
+        if (!acc[label]) acc[label] = [];
+        acc[label].push(m);
+        return acc;
+    }, {} as Record<string, Meeting[]>);
 
-    const handleForward = () => {
-        if (forwardMeeting) {
-            setSelectedMeeting(forwardMeeting);
-            setForwardMeeting(null);
-        }
-    };
+    const sortedGroups = Object.keys(groupedMeetings).sort((a, b) => {
+        if (a === "Aujourd'hui") return -1; if (b === "Aujourd'hui") return 1;
+        if (a === 'Hier') return -1; if (b === 'Hier') return 1;
+        return new Date(b).getTime() - new Date(a).getTime();
+    });
 
-    // Helper to format duration to mm:ss or mmm:ss
-    // Helper to format duration to mm:ss or mmm:ss
-    const formatDurationPill = (durationStr: string) => {
-        if (!durationStr) return "00:00";
-
-        // Check if it's already in colon format (e.g. "5:30", "105:20")
-        if (durationStr.includes(':')) {
-            const parts = durationStr.split(':');
-            const mins = parts[0];
-            const secs = parts[1] || "00";
-
-            // Allow 3 digits for mins if >= 100, otherwise pad to 2
-            const formattedMins = mins.length >= 3 ? mins : mins.padStart(2, '0');
-            return `${formattedMins}:${secs}`;
-        }
-
-        // Fallback for "X min" format (legacy)
-        const minutes = parseInt(durationStr.replace('min', '').trim()) || 0;
-        const mm = minutes.toString().padStart(2, '0');
-        return `${mm}:00`;
-    };
+    if (!window.electronAPI) return <div className="text-white p-10">Electron API unavailable.</div>;
 
     return (
-        <div className="h-full w-full flex flex-col bg-bg-primary text-text-primary font-sans overflow-hidden selection:bg-accent-secondary/30">
-            {/* 1. Header (Static) */}
-            <header className="relative h-[40px] shrink-0 flex items-center justify-between pl-0 pr-2 drag-region select-none bg-bg-secondary border-b border-border-subtle z-[200]">
-                {/* Left: Spacing for Traffic Lights + Navigation Arrows */}
-                <div className="flex items-center gap-1 no-drag">
-                    <div className="w-[70px]" /> {/* Traffic Light Spacer */}
+        <div className="h-full w-full flex flex-col bg-bg-primary text-text-primary font-sans overflow-hidden selection:bg-sky-500/30">
 
-                    {/* Back Button */}
+            {/* ── Header ── */}
+            <header className="h-[40px] shrink-0 flex items-center justify-between pl-0 pr-2 drag-region select-none bg-bg-secondary border-b border-border-subtle z-[200]">
+                <div className="flex items-center gap-1 no-drag">
+                    <div className="w-[70px]" />
                     <button
-                        onClick={selectedMeeting ? handleBack : undefined}
+                        onClick={() => { if (selectedMeeting) { setForwardMeeting(selectedMeeting); setSelectedMeeting(null); } }}
                         disabled={!selectedMeeting}
-                        className={`
-                            transition-all duration-300 p-1 flex items-center justify-center mt-1 ml-2
-                            ${selectedMeeting
-                                ? 'text-text-secondary hover:text-text-primary hover:drop-shadow-[0_0_8px_rgba(255,255,255,0.5)] cursor-pointer'
-                                : 'text-text-tertiary opacity-50 cursor-default'}
-                        `}
+                        className={`p-1 mt-1 ml-2 transition-colors ${selectedMeeting ? 'text-text-secondary hover:text-text-primary cursor-pointer' : 'text-text-tertiary opacity-40 cursor-default'}`}
                     >
                         <ArrowLeft size={16} />
                     </button>
-
-                    {/* Forward Button */}
                     <button
-                        onClick={handleForward}
+                        onClick={() => { if (forwardMeeting) { setSelectedMeeting(forwardMeeting); setForwardMeeting(null); } }}
                         disabled={!forwardMeeting}
-                        className={`
-                            transition-all duration-300 p-1 flex items-center justify-center mt-1
-                            ${forwardMeeting
-                                ? 'text-text-secondary hover:text-text-primary hover:drop-shadow-[0_0_8px_rgba(255,255,255,0.5)] cursor-pointer'
-                                : 'text-text-tertiary opacity-0 cursor-default'}
-                        `}
+                        className={`p-1 mt-1 transition-colors ${forwardMeeting ? 'text-text-secondary hover:text-text-primary cursor-pointer' : 'text-text-tertiary opacity-0 cursor-default'}`}
                     >
                         <ArrowRight size={16} />
                     </button>
+
+                    {/* Tabs */}
+                    <div className="flex items-center gap-1 ml-3 border border-white/10 rounded-full p-0.5">
+                        <button onClick={() => setActiveTab('meetings')}
+                            className={`px-3 py-0.5 rounded-full text-xs font-medium transition-all ${activeTab === 'meetings' ? 'bg-white/15 text-text-primary' : 'text-text-secondary hover:text-text-primary'}`}>
+                            Réunions
+                        </button>
+                        <button onClick={() => setActiveTab('multica')}
+                            className={`px-3 py-0.5 rounded-full text-xs font-medium transition-all ${activeTab === 'multica' ? 'bg-white/15 text-text-primary' : 'text-text-secondary hover:text-text-primary'}`}>
+                            Multica
+                        </button>
+                    </div>
                 </div>
 
-
-                {/* Center: Spotlight-style Search Pill */}
-                <TopSearchPill
-                    meetings={meetings}
-                    onAIQuery={(query) => {
-                        analytics.trackCommandExecuted('ai_query_search');
-                        setSubmittedGlobalQuery(query);
-                        setIsGlobalChatOpen(true);
-                    }}
-                    onLiteralSearch={(query) => {
-                        // For now, also use AI query for literal search
-                        // Could be enhanced to do fuzzy filtering in the UI
-                        analytics.trackCommandExecuted('literal_search');
-                        setSubmittedGlobalQuery(query);
-                        setIsGlobalChatOpen(true);
-                    }}
-                    onOpenMeeting={(meetingId) => {
-                        const meeting = meetings.find(m => m.id === meetingId);
-                        if (meeting) {
-                            handleOpenMeeting(meeting);
-                            analytics.trackCommandExecuted('open_meeting_from_search');
-                        }
-                    }}
+                <TopSearchPill meetings={meetings}
+                    onAIQuery={q => { setSubmittedGlobalQuery(q); setIsGlobalChatOpen(true); }}
+                    onLiteralSearch={q => { setSubmittedGlobalQuery(q); setIsGlobalChatOpen(true); }}
+                    onOpenMeeting={id => { const m = meetings.find(x => x.id === id); if (m) handleOpenMeeting(m); }}
                 />
 
-                {/* Right: Actions */}
-                <div className="flex items-center gap-3 no-drag">
+                <div className="flex items-center gap-2 no-drag">
                     <button
-                        onClick={() => {
-                            onOpenSettings();
-                            // analytics.trackCommandExecuted('open_settings'); // Optional, high volume
-                        }}
-                        className="p-2 text-text-secondary hover:text-text-primary transition-all duration-300 hover:drop-shadow-[0_0_8px_rgba(255,255,255,0.5)]"
-                        title="Settings"
+                        onClick={handleRefresh}
+                        className={`p-1.5 text-text-tertiary hover:text-text-primary transition-colors rounded-lg hover:bg-white/5 ${isRefreshing ? 'animate-spin text-sky-400' : ''}`}
+                        title="Actualiser"
                     >
-                        <Settings size={18} />
+                        <RefreshCw size={14} />
+                    </button>
+                    <button onClick={onOpenSettings} className="p-1.5 text-text-tertiary hover:text-text-primary transition-colors rounded-lg hover:bg-white/5">
+                        <Settings size={14} />
                     </button>
                 </div>
             </header>
 
+            {/* ── Body ── */}
             <div className="relative flex-1 flex flex-col overflow-hidden">
                 {!isDetectable && (
-                    <div className="absolute inset-1 border-2 border-dashed border-white/20 rounded-2xl pointer-events-none z-[100]" />
+                    <div className="absolute inset-1 border-2 border-dashed border-white/15 rounded-2xl pointer-events-none z-[100]" />
                 )}
-                <AnimatePresence mode="wait">
-                    {selectedMeeting ? (
-                        <motion.div
-                            key="details"
-                            className="flex-1 overflow-hidden"
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            transition={{ duration: 0.15 }}
-                        >
-                            <MeetingDetails
-                                meeting={selectedMeeting}
-                                onBack={handleBack}
-                                onOpenSettings={onOpenSettings}
-                            />
-                        </motion.div>
-                    ) : (
-                        <motion.div
-                            key="launcher"
-                            className="flex-1 flex flex-col overflow-hidden"
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            transition={{ duration: 0.15 }}
-                        >
 
-                            {/* Main Area - Fixed Top, Scrollable Bottom */}
-                            {/* Top Section is now effectively static due to parent flex col */}
+                {/* Multica native panel */}
+                {activeTab === 'multica' && (
+                    <div className="flex-1 overflow-hidden flex flex-col">
+                        <MulticaPanel />
+                    </div>
+                )}
 
-                            {/* TOP SECTION: Grey Background (Scrolls with content) */}
-                            <section className="bg-bg-elevated px-8 pt-6 pb-8 border-b border-border-subtle shrink-0">
-                                <div className="max-w-4xl mx-auto space-y-6">
-                                    {/* 1.5. Hero Header (Title + Controls + CTA) */}
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-4">
-                                            <h1 className="text-3xl font-celeb-light font-medium text-text-primary tracking-wide drop-shadow-sm">Mes Réunions</h1>
+                {activeTab === 'meetings' && (
+                    <AnimatePresence mode="wait">
+                        {selectedMeeting ? (
+                            <motion.div key="details" className="flex-1 overflow-hidden" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.12 }}>
+                                <MeetingDetails meeting={selectedMeeting} onBack={() => { setForwardMeeting(selectedMeeting); setSelectedMeeting(null); }} onOpenSettings={onOpenSettings} />
+                            </motion.div>
+                        ) : (
+                            <motion.div key="main" className="flex-1 flex overflow-hidden" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.12 }}>
 
-                                            {/* Refresh Button */}
+                                {/* ── Left column: meetings list ── */}
+                                <div className="flex-1 flex flex-col overflow-hidden border-r border-border-subtle">
+
+                                    {/* Top bar: title + detectable toggle + start button */}
+                                    <div className="flex items-center justify-between px-5 pt-4 pb-3 shrink-0 border-b border-border-subtle">
+                                        <div className="flex items-center gap-3">
+                                            <h1 className="text-base font-semibold text-text-primary tracking-tight">Mes Réunions</h1>
+                                            {/* Detectable pill */}
                                             <button
-                                                onClick={handleRefresh}
-                                                disabled={isRefreshing}
-                                                className={`p-2 text-text-secondary hover:text-text-primary hover:bg-white/10 rounded-full transition-colors ${isRefreshing ? 'animate-spin text-blue-400' : ''}`}
-                                                title="Actualiser"
+                                                onClick={() => {
+                                                    const next = !isDetectable;
+                                                    setIsDetectable(next);
+                                                    window.electronAPI?.setUndetectable?.(!next);
+                                                }}
+                                                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium border transition-all ${
+                                                    isDetectable
+                                                        ? 'border-white/10 text-text-tertiary hover:border-white/20'
+                                                        : 'border-sky-500/30 text-sky-400 bg-sky-500/10'
+                                                }`}
+                                                title={isDetectable ? "Mode détectable" : "Mode indétectable"}
                                             >
-                                                <RefreshCw size={18} />
+                                                {isDetectable
+                                                    ? <Ghost size={11} />
+                                                    : <svg width="11" height="11" viewBox="0 0 24 24" fill="white"><path d="M12 2C7.58 2 4 5.58 4 10v12l3-3 2.5 2.5L12 19l2.5 2.5L17 19l3 3V10c0-4.42-3.58-8-8-8z"/><circle cx="9" cy="10" r="1.5" fill="black"/><circle cx="15" cy="10" r="1.5" fill="black"/></svg>
+                                                }
+                                                {isDetectable ? 'Détectable' : 'Indétectable'}
                                             </button>
-
-                                            {/* Detectable Toggle Pill */}
-                                            <div className="flex items-center gap-3 bg-[#101011] border border-border-muted rounded-full px-3 py-1.5 min-w-[140px]">
-                                                {isDetectable ? (
-                                                    <Ghost
-                                                        size={14}
-                                                        strokeWidth={2} // Using 2 for clearer visibility
-                                                        className="text-white transition-colors"
-                                                    />
-                                                ) : (
-                                                    <svg
-                                                        width="14"
-                                                        height="14"
-                                                        viewBox="0 0 24 24"
-                                                        fill="none"
-                                                        xmlns="http://www.w3.org/2000/svg"
-                                                        className="transition-colors"
-                                                    >
-                                                        <path
-                                                            d="M12 2C7.58172 2 4 5.58172 4 10V22L7 19L9.5 21.5L12 19L14.5 21.5L17 19L20 22V10C20 5.58172 16.4183 2 12 2Z"
-                                                            fill="white"
-                                                        />
-                                                        <circle cx="9" cy="10" r="1.5" fill="black" />
-                                                        <circle cx="15" cy="10" r="1.5" fill="black" />
-                                                    </svg>
-                                                )}
-                                                <span className={`text-xs font-medium flex-1 transition-colors text-[#B7B7B8]`}>
-                                                    {isDetectable ? "Détectable" : "Indétectable"}
-                                                </span>
-                                                <div
-                                                    className={`w-8 h-4 rounded-full relative cursor-pointer transition-colors ${!isDetectable ? 'bg-blue-500' : 'bg-zinc-700'}`}
-                                                    onClick={toggleDetectable}
-                                                >
-                                                    <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-all ${!isDetectable ? 'left-[18px]' : 'left-0.5'}`} />
-                                                </div>
-                                            </div>
                                         </div>
 
-                                        {/* Start Natively CTA Pill */}
+                                        {/* Start button */}
                                         <button
-                                            onClick={() => {
-                                                onStartMeeting();
-                                                analytics.trackCommandExecuted('start_natively_cta');
-                                            }}
-                                            className="
-                                    group relative overflow-hidden
-                                    bg-gradient-to-b from-sky-400 via-sky-500 to-blue-600
-                                    text-white
-                                    px-6 py-3
-                                    rounded-full
-                                    font-celeb font-medium tracking-normal
-                                    shadow-[inset_0_1px_1px_rgba(255,255,255,0.7),inset_0_-1px_2px_rgba(0,0,0,0.1),0_2px_10px_rgba(14,165,233,0.4),0_0_0_1px_rgba(255,255,255,0.15)]
-                                    hover:shadow-[inset_0_1px_2px_rgba(255,255,255,0.8),inset_0_-1px_3px_rgba(0,0,0,0.15),0_6px_16px_rgba(14,165,233,0.6),0_0_0_1px_rgba(255,255,255,0.25)]
-                                    hover:brightness-110
-                                    hover:scale-[1.01]
-                                    active:scale-[0.99]
-                                    transition-all duration-500 ease-out
-                                    flex items-center justify-center gap-3
-                                    backdrop-blur-xl
-                                "
+                                            onClick={() => { setShowWorkspaceSelector(true); analytics.trackCommandExecuted('start_natively_cta'); }}
+                                            className="flex items-center gap-2 px-4 py-1.5 rounded-full text-[12px] font-semibold bg-sky-500 hover:bg-sky-400 text-white transition-all shadow-md shadow-sky-500/20 active:scale-95"
                                         >
-                                            {/* Top Highlight Band */}
-                                            <div className="absolute inset-x-3 top-0 h-[40%] bg-gradient-to-b from-white/40 to-transparent blur-[2px] rounded-b-lg opacity-80 pointer-events-none" />
-
-                                            {/* Internal "suspended light" glow */}
-                                            <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/5 to-white/10 opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
-
-                                            <img src={icon} alt="Logo" className="w-[18px] h-[18px] object-contain brightness-0 invert drop-shadow-[0_1px_2px_rgba(0,0,0,0.1)] opacity-90" />
-                                            <span className="drop-shadow-[0_1px_1px_rgba(0,0,0,0.1)] text-[20px] leading-none">Démarrer Cluely.fr</span>
+                                            <img src={icon} alt="" className="w-3.5 h-3.5 brightness-0 invert" />
+                                            Démarrer
                                         </button>
                                     </div>
 
-                                    {/* 2. Hero Section Cards */}
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 h-[198px]">
-                                        {/* PREPARED STATE CARD */}
-                                        {isPrepared && preparedEvent ? (
-                                            <div className="md:col-span-3 relative group rounded-xl overflow-hidden border border-emerald-500/30 bg-bg-secondary flex flex-col items-center justify-center p-6 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-emerald-900/40 via-bg-secondary to-bg-secondary">
-
-                                                <div className="absolute top-4 right-4 text-emerald-400">
-                                                    <Zap size={16} className="text-yellow-400" />
+                                    {/* KB context banner */}
+                                    <AnimatePresence>
+                                        {kbContext && (
+                                            <motion.div
+                                                initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
+                                                className="mx-4 mt-3 rounded-xl border border-sky-500/20 bg-sky-950/30 px-3 py-2.5 overflow-hidden"
+                                            >
+                                                <div className="flex items-start gap-2">
+                                                    <span className="text-[9px] font-bold tracking-widest text-sky-400 uppercase mt-0.5 shrink-0">KB</span>
+                                                    <p className="text-[11px] text-text-secondary leading-relaxed flex-1 line-clamp-3">{kbContext}</p>
+                                                    <button onClick={() => setKbContext(null)} className="shrink-0 text-text-tertiary hover:text-text-primary mt-0.5">
+                                                        <X size={11} />
+                                                    </button>
                                                 </div>
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
 
-                                                <div className="text-center max-w-lg z-10">
-                                                    <span className="inline-block px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 text-[10px] font-bold tracking-wider mb-4 border border-emerald-500/20">
-                                                        PRÊT À REJOINDRE
-                                                    </span>
-                                                    <h2 className="text-2xl font-bold text-white mb-2">{preparedEvent.title}</h2>
-                                                    <p className="text-xs text-text-secondary mb-6 flex items-center justify-center gap-2">
-                                                        <Calendar size={12} />
-                                                        {new Date(preparedEvent.startTime).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })} - {new Date(preparedEvent.endTime).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
-                                                        {preparedEvent.link && " • Link Ready"}
-                                                    </p>
+                                    {/* Active workspace badge */}
+                                    {activeWorkspace && (
+                                        <div className="flex items-center gap-2 px-5 pt-2.5">
+                                            <span className="text-[10px] text-text-tertiary">Espace actif</span>
+                                            <span className="text-[10px] font-semibold text-sky-400 px-2 py-0.5 bg-sky-500/10 rounded-full border border-sky-500/20">
+                                                {activeWorkspace.issue_prefix} · {activeWorkspace.name}
+                                            </span>
+                                            <button onClick={() => setActiveWorkspace(null)} className="text-[10px] text-text-tertiary hover:text-text-secondary ml-auto">changer</button>
+                                        </div>
+                                    )}
 
-                                                    <div className="flex items-center gap-3 justify-center">
-                                                        <button
-                                                            onClick={handleStartPreparedMeeting}
-                                                            className="bg-emerald-500 hover:bg-emerald-400 text-white px-8 py-3 rounded-xl text-sm font-semibold transition-all shadow-lg hover:shadow-emerald-500/25 active:scale-95 flex items-center gap-2"
-                                                        >
-                                                            Start Meeting
-                                                            <ArrowRight size={16} />
-                                                        </button>
-                                                        <button
-                                                            onClick={() => setIsPrepared(false)}
-                                                            className="px-4 py-3 rounded-xl text-xs font-medium text-text-tertiary hover:text-white transition-colors"
-                                                        >
-                                                            Cancel
-                                                        </button>
+                                    {/* Meeting list */}
+                                    <main className="flex-1 overflow-y-auto custom-scrollbar">
+                                        <div className="px-4 py-3 space-y-5">
+                                            {sortedGroups.map(label => (
+                                                <section key={label}>
+                                                    <h3 className="text-[11px] font-medium text-text-tertiary uppercase tracking-wider mb-2 px-1">{label}</h3>
+                                                    <div className="space-y-0.5">
+                                                        {groupedMeetings[label].map(m => (
+                                                            <motion.div
+                                                                key={m.id}
+                                                                className="group relative flex items-center justify-between px-3 py-2 rounded-lg hover:bg-white/5 transition-colors cursor-pointer"
+                                                                onClick={() => handleOpenMeeting(m)}
+                                                            >
+                                                                <span className={`text-[13px] font-medium max-w-[55%] truncate ${m.title === 'Processing...' ? 'text-sky-400 italic animate-pulse' : 'text-text-primary'}`}>
+                                                                    {m.title}
+                                                                </span>
+                                                                <div className="flex items-center gap-3">
+                                                                    <span className="bg-white/5 text-text-tertiary text-[9px] px-1.5 py-0.5 rounded-full font-mono min-w-[34px] text-center">
+                                                                        {formatDurationPill(m.duration)}
+                                                                    </span>
+                                                                    <span className="text-[12px] text-text-tertiary font-medium min-w-[42px] text-right transition-all group-hover:opacity-0 group-hover:translate-x-2">
+                                                                        {formatTime(m.date)}
+                                                                    </span>
+                                                                </div>
+
+                                                                {/* Hover actions */}
+                                                                <div className="absolute right-2 opacity-0 translate-x-3 transition-all group-hover:opacity-100 group-hover:translate-x-0">
+                                                                    <button className="p-1.5 text-text-tertiary hover:text-text-primary"
+                                                                        onClick={e => { e.stopPropagation(); setActiveMenuId(activeMenuId === m.id ? null : m.id); }}>
+                                                                        <MoreHorizontal size={14} />
+                                                                    </button>
+                                                                </div>
+
+                                                                <AnimatePresence>
+                                                                    {activeMenuId === m.id && (
+                                                                        <motion.div
+                                                                            initial={{ opacity: 0, scale: 0.95, y: 6 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }}
+                                                                            transition={{ duration: 0.1 }}
+                                                                            className="absolute right-0 top-full mt-1 w-[100px] bg-[#1E1E20]/90 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden p-1"
+                                                                            onClick={e => e.stopPropagation()}
+                                                                            onMouseEnter={() => setMenuEntered(true)}
+                                                                            onMouseLeave={() => { if (menuEntered) setActiveMenuId(null); }}
+                                                                        >
+                                                                            <button className="w-full flex items-center gap-2 px-3 py-1.5 text-[11px] text-text-primary hover:bg-white/10 rounded-lg transition-colors text-left"
+                                                                                onClick={async () => {
+                                                                                    setActiveMenuId(null);
+                                                                                    const full = await window.electronAPI?.getMeetingDetails?.(m.id).catch(() => null);
+                                                                                    generateMeetingPDF(full || m);
+                                                                                }}>
+                                                                                <Download size={12} /> Export
+                                                                            </button>
+                                                                            <button className="w-full flex items-center gap-2 px-3 py-1.5 text-[11px] text-red-400 hover:bg-red-500/10 rounded-lg transition-colors text-left"
+                                                                                onClick={async () => {
+                                                                                    const ok = await window.electronAPI?.deleteMeeting?.(m.id);
+                                                                                    if (ok) setMeetings(prev => prev.filter(x => x.id !== m.id));
+                                                                                    setActiveMenuId(null);
+                                                                                }}>
+                                                                                <Trash2 size={12} /> Supprimer
+                                                                            </button>
+                                                                        </motion.div>
+                                                                    )}
+                                                                </AnimatePresence>
+                                                            </motion.div>
+                                                        ))}
                                                     </div>
-                                                </div>
+                                                </section>
+                                            ))}
 
-                                                {/* Glows */}
-                                                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[300px] h-[300px] bg-emerald-500/10 blur-[100px] pointer-events-none" />
+                                            {meetings.length === 0 && (
+                                                <div className="flex flex-col items-center justify-center py-16 text-center">
+                                                    <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center mb-3">
+                                                        <Clock size={16} className="text-text-tertiary" />
+                                                    </div>
+                                                    <p className="text-sm text-text-tertiary">Aucune réunion récente</p>
+                                                    <p className="text-xs text-text-tertiary/60 mt-1">Démarrez une session pour commencer</p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </main>
+                                </div>
+
+                                {/* ── Right column: calendar ── */}
+                                <div className="w-[240px] shrink-0 flex flex-col overflow-hidden bg-bg-secondary">
+
+                                    {/* Next event hero */}
+                                    {nextMeeting ? (
+                                        <div className="px-4 pt-4 pb-3 border-b border-border-subtle">
+                                            <div className="flex items-center gap-1.5 mb-2">
+                                                <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                                                <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider">
+                                                    {minutesUntil(nextMeeting.startTime) <= 0 ? 'En cours' : `Dans ${minutesUntil(nextMeeting.startTime)} min`}
+                                                </span>
+                                            </div>
+                                            <p className="text-[12px] font-semibold text-text-primary line-clamp-2 leading-tight mb-1">{nextMeeting.title}</p>
+                                            <p className="text-[10px] text-text-tertiary mb-3">
+                                                {formatEventTime(nextMeeting.startTime)} – {formatEventTime(nextMeeting.endTime)}
+                                            </p>
+                                            <button
+                                                onClick={() => { setShowWorkspaceSelector(true); analytics.trackCommandExecuted('start_from_calendar'); }}
+                                                className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 text-[11px] font-semibold border border-emerald-500/20 transition-all"
+                                            >
+                                                <Zap size={11} />
+                                                Rejoindre
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <div className="px-4 pt-4 pb-3 border-b border-border-subtle">
+                                            <p className="text-[11px] text-text-tertiary">Aucune réunion prochaine</p>
+                                        </div>
+                                    )}
+
+                                    {/* Mini calendar */}
+                                    <div className="px-3 pt-3 pb-2 border-b border-border-subtle">
+                                        <MiniCalendar events={upcomingEvents} onEventClick={() => {}} />
+                                    </div>
+
+                                    {/* Upcoming event list */}
+                                    <div className="flex-1 overflow-y-auto custom-scrollbar">
+                                        {!isCalendarConnected ? (
+                                            <div className="flex flex-col items-center justify-center h-full px-4 py-6 text-center gap-3">
+                                                <Calendar size={20} className="text-text-tertiary" />
+                                                <p className="text-[11px] text-text-secondary leading-relaxed">Connectez votre calendrier pour voir vos événements</p>
+                                                <ConnectCalendarButton onConnect={() => setIsCalendarConnected(true)} />
+                                            </div>
+                                        ) : futureEvents.length === 0 ? (
+                                            <div className="flex flex-col items-center justify-center h-full px-4 py-6 text-center">
+                                                <p className="text-[11px] text-text-tertiary">Aucun événement à venir</p>
                                             </div>
                                         ) : (
-                                            /* Dynamic Next Meeting OR Default Intro */
-                                            nextMeeting ? (
-                                                <div className="md:col-span-2 relative group rounded-xl overflow-hidden bg-bg-secondary flex flex-col">
-                                                    {/* Header */}
-                                                    <div className="p-5 flex-1 relative z-10">
-                                                        <div className="flex items-center gap-2 mb-2">
-                                                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                                                            <span className="text-[11px] font-bold text-emerald-400 uppercase tracking-wider">À venir</span>
-                                                            <span className="text-[11px] text-text-tertiary">• Commence dans {Math.max(0, Math.ceil((new Date(nextMeeting.startTime).getTime() - Date.now()) / 60000))} min</span>
-                                                        </div>
-
-                                                        <h2 className="text-xl font-bold text-white leading-tight mb-1 line-clamp-2">
-                                                            {nextMeeting.title}
-                                                        </h2>
-
-                                                        <div className="flex items-center gap-2 text-text-secondary text-xs mt-2">
-                                                            <Calendar size={12} />
-                                                            <span>{new Date(nextMeeting.startTime).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })} - {new Date(nextMeeting.endTime).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span>
-                                                            {nextMeeting.link && (
-                                                                <>
-                                                                    <span className="opacity-20">|</span>
-                                                                    <LinkIcon size={12} />
-                                                                    <span className="truncate max-w-[150px]">Lien trouvé</span>
-                                                                </>
-                                                            )}
-                                                        </div>
-                                                    </div>
-
-                                                    {/* Actions */}
-                                                    <div className="p-4 bg-bg-elevated/50 border-t border-border-subtle flex items-center gap-3">
-                                                        <button
-                                                            onClick={() => handlePrepare(nextMeeting)}
-                                                            className="flex-1 bg-white/10 hover:bg-white/20 border border-white/10 text-white px-4 py-2 rounded-lg text-xs font-medium transition-all flex items-center justify-center gap-2"
+                                            <div className="px-3 py-2 space-y-px">
+                                                {futureEvents.slice(0, 12).map((ev, i) => {
+                                                    const mins = minutesUntil(ev.startTime);
+                                                    const isNext = ev === nextMeeting;
+                                                    return (
+                                                        <div key={ev.id || i}
+                                                            className={`flex items-start gap-2.5 px-2 py-2 rounded-lg transition-colors cursor-default ${isNext ? 'bg-emerald-500/10' : 'hover:bg-white/5'}`}
                                                         >
-                                                            <Zap size={13} className="text-yellow-400" />
-                                                            Prepare
-                                                        </button>
-                                                        <button
-                                                            onClick={onStartMeeting} // For now just start, later could link
-                                                            className="px-4 py-2 rounded-lg text-xs font-medium text-text-secondary hover:text-text-primary hover:bg-white/5 transition-all"
-                                                        >
-                                                            Start now
-                                                        </button>
-                                                    </div>
-
-                                                    {/* Background Decoration */}
-                                                    <div className="absolute top-0 right-0 w-[150px] h-[150px] bg-emerald-500/10 blur-[60px] pointer-events-none" />
-                                                </div>
-                                            ) : (
-                                                <div className="md:col-span-2 h-full">
-                                                    <FeatureSpotlight />
-                                                </div>
-                                            )
+                                                            <div className="flex flex-col items-center gap-0.5 shrink-0 pt-0.5">
+                                                                <span className="text-[9px] font-bold text-text-tertiary uppercase">
+                                                                    {formatEventDate(ev.startTime)}
+                                                                </span>
+                                                                <span className="text-[10px] font-semibold text-text-secondary">
+                                                                    {formatEventTime(ev.startTime)}
+                                                                </span>
+                                                            </div>
+                                                            <div className="flex-1 min-w-0">
+                                                                <p className={`text-[11px] font-medium truncate ${isNext ? 'text-emerald-300' : 'text-text-primary'}`}>
+                                                                    {ev.title}
+                                                                </p>
+                                                                {ev.link && (
+                                                                    <p className="text-[9px] text-sky-400/70 flex items-center gap-1 mt-0.5">
+                                                                        <LinkIcon size={8} /> Lien disponible
+                                                                    </p>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
                                         )}
+                                    </div>
 
-
-
-                                        {/* Right Secondary Card */}
-                                        <div className="md:col-span-1 rounded-xl overflow-hidden bg-bg-elevated relative group flex flex-col items-center pt-6 text-center">
-                                            {/* Backdrop Image */}
-                                            <div className="absolute inset-0">
-                                                <img src={calender} alt="" className="w-full h-full object-cover opacity-100 transition-opacity duration-500 translate-x--1 translate-y-[1px] scale-105" />
-                                            </div>
-
-                                            {/* Content Layer */}
-                                            <div className="relative z-10 w-full flex flex-col items-center h-full">
-                                                <h3 className="text-[19px] leading-tight mb-4">
-                                                    {isCalendarConnected ? (
-                                                        <>
-                                                            <span className="block font-semibold text-white">Calendar linked</span>
-                                                            <span className="block font-medium text-white/60 text-[0.95em]">Events synced</span>
-                                                        </>
-                                                    ) : (
-                                                        <>
-                                                            <span className="block font-semibold text-white">Link your calendar to</span>
-                                                            <span className="block font-medium text-white/60 text-[0.95em]">see upcoming events</span>
-                                                        </>
-                                                    )}
-                                                </h3>
-
-                                                <ConnectCalendarButton
-                                                    className="-translate-x-0.5"
-                                                    onConnect={() => setIsCalendarConnected(true)}
-                                                />
-                                            </div>
+                                    {/* Connect calendar footer if not connected */}
+                                    {isCalendarConnected && (
+                                        <div className="px-3 py-2 border-t border-border-subtle">
+                                            <button
+                                                onClick={handleRefresh}
+                                                className={`w-full flex items-center justify-center gap-1.5 py-1.5 text-[10px] text-text-tertiary hover:text-text-secondary rounded-lg hover:bg-white/5 transition-all ${isRefreshing ? 'animate-pulse' : ''}`}
+                                            >
+                                                <RefreshCw size={10} className={isRefreshing ? 'animate-spin' : ''} />
+                                                Actualiser le calendrier
+                                            </button>
                                         </div>
-                                    </div>
+                                    )}
                                 </div>
-                            </section>
 
-                            {/* BOTTOM SECTION: Black Background (Scrollable content) */}
-                            <main className="flex-1 overflow-y-auto custom-scrollbar bg-bg-primary">
-                                <section className="px-8 py-8 min-h-full">
-                                    <div className="max-w-4xl mx-auto space-y-8">
-
-                                        {/* Iterating Date Groups */}
-                                        {sortedGroups.map((label) => (
-                                            <section key={label}>
-                                                <h3 className="text-[13px] font-medium text-text-secondary mb-3 pl-1">{label}</h3>
-                                                <div className="space-y-1">
-                                                    {groupedMeetings[label].map((m) => (
-                                                        <motion.div
-                                                            key={m.id}
-                                                            layoutId={`meeting-${m.id}`}
-                                                            className="group relative flex items-center justify-between px-3 py-2 rounded-lg bg-transparent hover:bg-[#18181B] transition-colors cursor-pointer"
-                                                            onClick={() => handleOpenMeeting(m)}
-                                                        >
-                                                            <div className={`font-medium text-[14px] max-w-[60%] truncate ${m.title === 'Processing...' ? 'text-blue-400 italic animate-pulse' : 'text-[#F4F4F5]'}`}>
-                                                                {m.title}
-                                                            </div>
-
-                                                            {/* Time & Duration Section */}
-                                                            <div className="flex items-center gap-4">
-                                                                {m.title === 'Processing...' ? (
-                                                                    <div className="flex items-center gap-2 transition-all duration-200 ease-out group-hover:opacity-0 group-hover:translate-x-2 delayed-hover-exit">
-                                                                        <RefreshCw size={12} className="animate-spin text-blue-500" />
-                                                                        <span className="text-xs text-blue-500 font-medium">Finalizing...</span>
-                                                                    </div>
-                                                                ) : (
-                                                                    <>
-                                                                        <span className="relative z-10 bg-[#242426] text-[#9F9FAA] text-[9px] px-1.5 py-0.5 rounded-full font-medium min-w-[35px] text-center tracking-wide">
-                                                                            {formatDurationPill(m.duration)}
-                                                                        </span>
-
-                                                                        {/* Time Text (Should fade out on hover) */}
-                                                                        <span className="text-[13px] text-[#D4D4D8] font-medium min-w-[60px] text-right transition-all duration-200 ease-out group-hover:opacity-0 group-hover:translate-x-2 delayed-hover-exit">
-                                                                            {formatTime(m.date)}
-                                                                        </span>
-                                                                    </>
-                                                                )}
-                                                            </div>
-
-                                                            {/* Context Menu Trigger (Slides in on hover) */}
-                                                            <div className="absolute right-3 top-1/2 -translate-y-1/2 opacity-0 translate-x-4 transition-all duration-300 ease-out group-hover:opacity-100 group-hover:translate-x-0">
-                                                                <button
-                                                                    className="p-1.5 text-text-secondary hover:text-white transition-colors"
-                                                                    onClick={(e) => {
-                                                                        e.stopPropagation();
-                                                                        setActiveMenuId(activeMenuId === m.id ? null : m.id);
-                                                                    }}
-                                                                >
-                                                                    <MoreHorizontal size={16} />
-                                                                </button>
-                                                            </div>
-
-                                                            {/* Dropdown Menu */}
-                                                            <AnimatePresence>
-                                                                {activeMenuId === m.id && (
-                                                                    <motion.div
-                                                                        initial={{ opacity: 0, scale: 0.95, y: 10 }}
-                                                                        animate={{ opacity: 1, scale: 1, y: 0 }}
-                                                                        exit={{ opacity: 0, scale: 0.95, y: 5 }}
-                                                                        transition={{ duration: 0.1 }}
-                                                                        className="absolute right-0 top-full mt-1 w-[90px] bg-[#1E1E1E]/80 backdrop-blur-xl border border-white/10 rounded-lg shadow-2xl z-50 overflow-hidden"
-                                                                        onClick={(e) => e.stopPropagation()}
-                                                                        onMouseEnter={() => setMenuEntered(true)}
-                                                                        onMouseLeave={() => {
-                                                                            if (menuEntered) setActiveMenuId(null);
-                                                                        }}
-                                                                    >
-                                                                        <div className="p-1 flex flex-col gap-0.5">
-                                                                            <button
-                                                                                className="w-full flex items-center gap-2 px-3 py-1.5 text-[12px] text-text-primary hover:bg-white/10 rounded-lg transition-colors text-left"
-                                                                                onClick={async () => {
-                                                                                    setActiveMenuId(null);
-                                                                                    analytics.trackPdfExported();
-                                                                                    // Fetch full details if needed
-                                                                                    if (window.electronAPI && window.electronAPI.getMeetingDetails) {
-                                                                                        try {
-                                                                                            const fullMeeting = await window.electronAPI.getMeetingDetails(m.id);
-                                                                                            if (fullMeeting) {
-                                                                                                generateMeetingPDF(fullMeeting);
-                                                                                            } else {
-                                                                                                generateMeetingPDF(m);
-                                                                                            }
-                                                                                        } catch (e) {
-                                                                                            console.error("Failed to fetch details for PDF", e);
-                                                                                            generateMeetingPDF(m);
-                                                                                        }
-                                                                                    } else {
-                                                                                        generateMeetingPDF(m);
-                                                                                    }
-                                                                                }}
-                                                                            >
-                                                                                <Download size={13} />
-                                                                                Export
-                                                                            </button>
-                                                                            <button
-                                                                                className="w-full flex items-center gap-2 px-3 py-1.5 text-[12px] text-red-400 hover:bg-red-500/10 hover:text-red-300 rounded-lg transition-colors text-left"
-                                                                                onClick={async () => {
-                                                                                    if (window.electronAPI && window.electronAPI.deleteMeeting) {
-                                                                                        const success = await window.electronAPI.deleteMeeting(m.id);
-                                                                                        if (success) {
-                                                                                            // Optimistic update or refetch
-                                                                                            setMeetings(prev => prev.filter(meeting => meeting.id !== m.id));
-                                                                                        }
-                                                                                    }
-                                                                                    setActiveMenuId(null);
-                                                                                }}
-                                                                            >
-                                                                                <Trash2 size={13} />
-                                                                                Delete
-                                                                            </button>
-                                                                        </div>
-                                                                    </motion.div>
-                                                                )}
-                                                            </AnimatePresence>
-                                                        </motion.div>
-                                                    ))}
-                                                </div>
-                                            </section>
-                                        ))}
-
-                                        {meetings.length === 0 && (
-                                            <div className="p-4 text-text-tertiary text-sm">Aucune réunion récente.</div>
-                                        )}
-
-                                    </div>
-                                </section>
-                            </main>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+                )}
             </div>
 
+            {/* Global Chat */}
+            <GlobalChatOverlay
+                isOpen={isGlobalChatOpen}
+                onClose={() => { setIsGlobalChatOpen(false); setSubmittedGlobalQuery(''); }}
+                initialQuery={submittedGlobalQuery}
+            />
 
-
-            {/* Notification Toast - Liquid Glass (macOS 26 Tahoe Concept) */}
+            {/* Multica push toast */}
             <AnimatePresence>
-                {showNotification && (
+                {multicaToast && (
                     <motion.div
-                        initial={{ x: 300, opacity: 0, scale: 0.9 }}
-                        animate={{ x: 0, opacity: 1, scale: 1 }}
-                        exit={{ x: 300, opacity: 0, scale: 0.95 }}
-                        transition={{ type: "spring", stiffness: 350, damping: 30, mass: 1 }}
-                        className="fixed bottom-10 right-10 z-[2000] flex items-center gap-4 pl-4 pr-6 py-3.5 rounded-[18px] bg-[#2A2A2E]/40 backdrop-blur-xl saturate-[180%] border border-white/10 shadow-[0_40px_80px_-20px_rgba(0,0,0,0.6),inset_0_1px_0_rgba(255,255,255,0.3),inset_0_-1px_0_rgba(255,255,255,0.05)] ring-1 ring-black/10"
+                        key="multica-toast"
+                        initial={{ opacity: 0, y: 12 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: 12 }}
+                        transition={{ duration: 0.2 }}
+                        className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[600] bg-sky-600 text-white text-xs font-medium px-4 py-2 rounded-xl shadow-lg pointer-events-none"
                     >
-                        {/* Liquid Icon Orb */}
-                        <div className="relative flex items-center justify-center w-9 h-9 rounded-full bg-gradient-to-b from-blue-400/20 to-blue-600/20 shadow-[inset_0_1px_0_rgba(255,255,255,0.2)] border border-white/5">
-                            <div className="absolute inset-0 rounded-full bg-blue-500/20 blur-md" />
-                            <RefreshCw size={15} className="text-blue-300 animate-[spin_2s_linear_infinite] drop-shadow-[0_0_5px_rgba(59,130,246,0.6)]" />
-                        </div>
-
-                        {/* Text Content */}
-                        <div className="flex flex-col gap-0.5">
-                            <span className="text-[14px] font-semibold text-white/95 leading-none tracking-tight drop-shadow-md">Actualisé</span>
-                            <span className="text-[11px] text-blue-200/60 font-medium leading-none tracking-wide">Synchronisé avec le calendrier</span>
-                        </div>
-
-                        {/* Specular Highlight Overlay */}
-                        <div className="absolute inset-0 rounded-[18px] bg-gradient-to-tr from-white/5 via-transparent to-transparent pointer-events-none" />
+                        {multicaToast.count} action item{multicaToast.count !== 1 ? 's' : ''} pushed to {multicaToast.workspaceName}
                     </motion.div>
                 )}
             </AnimatePresence>
 
-            {/* Global Chat Overlay */}
-            <GlobalChatOverlay
-                isOpen={isGlobalChatOpen}
-                onClose={() => {
-                    setIsGlobalChatOpen(false);
-                    setSubmittedGlobalQuery('');
-                }}
-                initialQuery={submittedGlobalQuery}
-            />
-        </div >
+            {/* Workspace Selector */}
+            <AnimatePresence>
+                {showWorkspaceSelector && (
+                    <WorkspaceSelector
+                        onSelect={ws => {
+                            setShowWorkspaceSelector(false);
+                            setActiveWorkspace(ws);
+                            if (ws) {
+                                window.electronAPI?.invoke?.('start-meeting', { multicaWorkspaceId: ws.id, multicaWorkspaceName: ws.name }).catch(() => {});
+                            } else {
+                                onStartMeeting();
+                            }
+                        }}
+                        onCancel={() => setShowWorkspaceSelector(false)}
+                    />
+                )}
+            </AnimatePresence>
+        </div>
     );
 };
 
