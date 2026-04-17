@@ -1670,6 +1670,14 @@ async function initializeApp() {
           launcher.webContents.send('zoom-meeting-detected');
         }
       });
+
+      zoomWatcher.on('zoom-meeting-ended', () => {
+        console.log('[Main] Zoom meeting ended — auto-ending active meeting');
+        appState.endMeeting().catch((err) => {
+          console.error('[Main] Failed to auto-end meeting on Zoom close:', err);
+        });
+      });
+
       zoomWatcher.start();
       console.log('[Main] ZoomWatcher started');
     } catch (e) {
