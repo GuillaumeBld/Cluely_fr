@@ -151,6 +151,11 @@ interface ElectronAPI {
   getUpcomingEvents: () => Promise<Array<{ id: string; title: string; startTime: string; endTime: string; link?: string; source: 'google' }>>
   calendarRefresh: () => Promise<{ success: boolean; error?: string }>
 
+  // Email Context (Mail.app, macOS only)
+  getSenderEmails: (senderEmail: string) => Promise<Array<{ subject: string; sender: string; date: string; snippet: string; mailbox: string }>>
+  getMultiSenderEmails: (senderEmails: string[]) => Promise<Record<string, Array<{ subject: string; sender: string; date: string; snippet: string; mailbox: string }>>>
+  emailManagerAvailable: () => Promise<boolean>
+
   // Auto-Update
   onUpdateAvailable: (callback: (info: any) => void) => () => void
   onUpdateDownloaded: (callback: (info: any) => void) => () => void
@@ -699,6 +704,9 @@ contextBridge.exposeInMainWorld("electronAPI", {
   getCalendarStatus: () => ipcRenderer.invoke('get-calendar-status'),
   getUpcomingEvents: () => ipcRenderer.invoke('get-upcoming-events'),
   calendarRefresh: () => ipcRenderer.invoke('calendar-refresh'),
+  getSenderEmails: (senderEmail: string) => ipcRenderer.invoke('get-sender-emails', senderEmail),
+  getMultiSenderEmails: (senderEmails: string[]) => ipcRenderer.invoke('get-multi-sender-emails', senderEmails),
+  emailManagerAvailable: () => ipcRenderer.invoke('email-manager-available'),
 
   // Auto-Update
   onUpdateAvailable: (callback: (info: any) => void) => {

@@ -1526,6 +1526,28 @@ export function initializeIpcHandlers(appState: AppState): void {
   });
 
   // ==========================================
+  // Email Context Handlers (Mail.app)
+  // ==========================================
+
+  safeHandle("get-sender-emails", async (_, senderEmail: string) => {
+    const { EmailManager } = require('./services/EmailManager');
+    if (typeof senderEmail !== 'string') return [];
+    return EmailManager.getInstance().getMessagesFromSender(senderEmail);
+  });
+
+  safeHandle("get-multi-sender-emails", async (_, senderEmails: string[]) => {
+    const { EmailManager } = require('./services/EmailManager');
+    if (!Array.isArray(senderEmails)) return {};
+    const map = await EmailManager.getInstance().getMessagesFromSenders(senderEmails);
+    return Object.fromEntries(map);
+  });
+
+  safeHandle("email-manager-available", async () => {
+    const { EmailManager } = require('./services/EmailManager');
+    return EmailManager.getInstance().isAvailable();
+  });
+
+  // ==========================================
   // Follow-up Email Handlers
   // ==========================================
 

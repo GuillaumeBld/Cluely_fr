@@ -153,6 +153,11 @@ export interface ElectronAPI {
   getUpcomingEvents: () => Promise<Array<{ id: string; title: string; startTime: string; endTime: string; link?: string; source: 'google' }>>
   calendarRefresh: () => Promise<{ success: boolean; error?: string }>
 
+  // Email Context (Mail.app, macOS only)
+  getSenderEmails: (senderEmail: string) => Promise<Array<{ subject: string; sender: string; date: string; snippet: string; mailbox: string }>>
+  getMultiSenderEmails: (senderEmails: string[]) => Promise<Record<string, Array<{ subject: string; sender: string; date: string; snippet: string; mailbox: string }>>>
+  emailManagerAvailable: () => Promise<boolean>
+
   invoke: (channel: string, ...args: any[]) => Promise<any>
 
   // Auto-Update
