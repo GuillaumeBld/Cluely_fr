@@ -49,6 +49,7 @@ interface Meeting {
         answer?: string;
         items?: string[];
     }>;
+    screenshots?: Array<{ path: string; timestamp: number; label?: string }>;
 }
 
 interface MeetingDetailsProps {
@@ -60,7 +61,7 @@ interface MeetingDetailsProps {
 const MeetingDetails: React.FC<MeetingDetailsProps> = ({ meeting: initialMeeting }) => {
     // We need local state for the meeting object to reflect optimistic updates
     const [meeting, setMeeting] = useState<Meeting>(initialMeeting);
-    const [activeTab, setActiveTab] = useState<'summary' | 'transcript' | 'usage'>('summary');
+    const [activeTab, setActiveTab] = useState<'summary' | 'transcript' | 'usage' | 'screenshots'>('summary');
     const [query, setQuery] = useState('');
     const [isCopied, setIsCopied] = useState(false);
     const [isChatOpen, setIsChatOpen] = useState(false);
@@ -212,7 +213,7 @@ ${meeting.detailedSummary.keyPoints?.map(item => `- ${item}`).join('\n') || 'Non
                     {/* Designing Tabs to match reference 1:1 (Dark Pill Container) */}
                     <div className="flex items-center justify-between mb-8">
                         <div className="bg-[#E5E5EA] dark:bg-[#121214] p-1 rounded-xl inline-flex items-center gap-0.5 border border-black/[0.04] dark:border-white/[0.08]">
-                            {['summary', 'transcript', 'usage'].map((tab) => (
+                            {(['summary', 'transcript', 'usage', ...(meeting.screenshots && meeting.screenshots.length > 0 ? ['screenshots'] : [])] as string[]).map((tab) => (
                                 <button
                                     key={tab}
                                     onClick={() => setActiveTab(tab as any)}
@@ -229,7 +230,7 @@ ${meeting.detailedSummary.keyPoints?.map(item => `- ${item}`).join('\n') || 'Non
                                             transition={{ type: "spring", stiffness: 400, damping: 30 }}
                                         />
                                     )}
-                                    {tab === 'summary' ? 'Résumé' : tab === 'transcript' ? 'Transcription' : 'Utilisation'}
+                                    {tab === 'summary' ? 'Résumé' : tab === 'transcript' ? 'Transcription' : tab === 'usage' ? 'Utilisation' : 'Captures'}
                                 </button>
                             ))}
                         </div>
@@ -458,6 +459,26 @@ ${meeting.detailedSummary.keyPoints?.map(item => `- ${item}`).join('\n') || 'Non
                                     </div>
                                 ))}
                                 {!meeting.usage?.length && <p className="text-text-tertiary">No usage history.</p>}
+                            </motion.section>
+                        )}
+
+                        {activeTab === 'screenshots' && (
+                            <motion.section initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="pb-10">
+                                <div className="grid grid-cols-2 gap-3">
+                                    {meeting.screenshots?.map((s, i) => (
+                                        <div key={i} className="rounded-xl overflow-hidden border border-border-subtle bg-bg-item-surface">
+                                            <img
+                                                src={`file://${s.path}`}
+                                                alt={s.label || `Capture ${i + 1}`}
+                                                className="w-full object-cover cursor-pointer hover:opacity-90 transition-opacity"
+                                                onClick={() => window.electronAPI?.invoke?.('open-path', s.path).catch(() => {})}
+                                            />
+                                            <div className="px-3 py-2 text-[11px] text-text-tertiary">
+                                                {s.label || formatTime(s.timestamp)}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
                             </motion.section>
                         )}
                     </div>
