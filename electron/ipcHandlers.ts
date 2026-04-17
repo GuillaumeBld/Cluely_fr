@@ -145,7 +145,7 @@ export function initializeIpcHandlers(appState: AppState): void {
   );
 
   safeHandle("multica-create-workspace", (_event, payload: unknown) =>
-    withMultica(() => {
+    withMultica((): Promise<unknown> => {
       const { name, slug } = (payload || {}) as any;
       if (typeof name !== 'string' || !name.trim()) return Promise.resolve({ error: 'name required' });
       if (typeof slug !== 'string' || !slug.trim()) return Promise.resolve({ error: 'slug required' });
@@ -154,14 +154,14 @@ export function initializeIpcHandlers(appState: AppState): void {
   );
 
   safeHandle("multica-get-issues", (_event, workspaceId: unknown) =>
-    withMultica(() => {
+    withMultica((): Promise<unknown> => {
       if (typeof workspaceId !== 'string' || !workspaceId) return Promise.resolve([]);
       return multica.getIssues(workspaceId);
     })
   );
 
   safeHandle("multica-create-issue", (_event, opts: unknown) =>
-    withMultica(() => {
+    withMultica((): Promise<unknown> => {
       const o = (opts || {}) as any;
       if (typeof o.workspaceId !== 'string' || !o.workspaceId) return Promise.resolve({ error: 'workspaceId required' });
       if (typeof o.title !== 'string' || !o.title.trim()) return Promise.resolve({ error: 'title required' });

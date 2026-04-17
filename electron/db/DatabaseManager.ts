@@ -31,6 +31,7 @@ export interface Meeting {
     calendarEventId?: string;
     source?: 'manual' | 'calendar';
     isProcessed?: boolean;
+    screenshots?: Array<{ path: string; timestamp: number; label?: string }>;
 }
 
 export class DatabaseManager {
@@ -128,6 +129,12 @@ export class DatabaseManager {
         this.db.exec(createTranscriptsTable);
         this.db.exec(createAiInteractionsTable);
 
+        // Migration: add screenshots_json column if not present
+        const existingCols = (this.db.prepare("PRAGMA table_info(meetings)").all() as any[]).map((c: any) => c.name);
+        if (!existingCols.includes('screenshots_json')) {
+            this.db.prepare("ALTER TABLE meetings ADD COLUMN screenshots_json TEXT DEFAULT '[]'").run();
+        }
+
         // RAG: Semantic chunks with embeddings
         const createChunksTable = `
             CREATE TABLE IF NOT EXISTS chunks (
@@ -206,8 +213,8 @@ export class DatabaseManager {
         }
 
         const insertMeeting = this.db.prepare(`
-            INSERT OR REPLACE INTO meetings (id, title, start_time, duration_ms, summary_json, created_at, calendar_event_id, source, is_processed)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT OR REPLACE INTO meetings (id, title, start_time, duration_ms, summary_json, created_at, calendar_event_id, source, is_processed, screenshots_json)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `);
 
         const insertTranscript = this.db.prepare(`
@@ -236,7 +243,8 @@ export class DatabaseManager {
                 meeting.date, // Using the ISO string as created_at for sorting simply
                 meeting.calendarEventId || null,
                 meeting.source || 'manual',
-                meeting.isProcessed ? 1 : 0
+                meeting.isProcessed ? 1 : 0,
+                JSON.stringify(meeting.screenshots || [])
             );
 
             // 2. Insert Transcript
@@ -443,7 +451,8 @@ export class DatabaseManager {
             calendarEventId: meetingRow.calendar_event_id,
             source: meetingRow.source,
             transcript: transcript,
-            usage: usage
+            usage: usage,
+            screenshots: JSON.parse(meetingRow.screenshots_json || '[]')
         };
     }
 

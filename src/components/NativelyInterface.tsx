@@ -59,6 +59,9 @@ interface NativelyInterfaceProps {
 const NativelyInterface: React.FC<NativelyInterfaceProps> = ({ onEndMeeting }) => {
     const [isExpanded, setIsExpanded] = useState(true);
     const [inputValue, setInputValue] = useState('');
+    const [screenshotFlash, setScreenshotFlash] = useState<string | null>(null); // base64 preview for flash animation
+    const [screenshotCount, setScreenshotCount] = useState(0);
+    const [isCapturingScreenshot, setIsCapturingScreenshot] = useState(false);
     const { shortcuts, isShortcutPressed } = useShortcuts();
     const [messages, setMessages] = useState<Message[]>([]);
     const [isConnected, setIsConnected] = useState(false);
@@ -592,6 +595,15 @@ const NativelyInterface: React.FC<NativelyInterfaceProps> = ({ onEndMeeting }) =
         }));
         // Screenshot taken - attach to chat input instead of auto-analyzing
         cleanups.push(window.electronAPI.onScreenshotTaken(handleScreenshotAttach));
+
+        // Meeting screenshot captured — show flash thumbnail
+        if ((window.electronAPI as any).onMeetingScreenshotTaken) {
+            cleanups.push((window.electronAPI as any).onMeetingScreenshotTaken((data: { path: string; preview: string }) => {
+                setScreenshotCount(c => c + 1);
+                setScreenshotFlash(data.preview);
+                setTimeout(() => setScreenshotFlash(null), 2000);
+            }));
+        }
 
         // Selective Screenshot (Latent Context)
         if (window.electronAPI.onScreenshotAttached) {
@@ -1657,6 +1669,55 @@ Provide only the answer, nothing else.`;
                                             </span>
                                             <ChevronDown size={14} className="shrink-0 transition-transform" />
                                         </button>
+
+                                        <div className="w-px h-3 bg-white/10 mx-1" />
+
+                                        {/* Meeting Screenshot Button */}
+                                        <div className="relative">
+                                            <button
+                                                onClick={async () => {
+                                                    if (isCapturingScreenshot) return;
+                                                    setIsCapturingScreenshot(true);
+                                                    try {
+                                                        await (window.electronAPI as any).captureMeetingScreenshot();
+                                                    } catch (e) {
+                                                        console.error('[NativelyInterface] Meeting screenshot failed:', e);
+                                                    } finally {
+                                                        setIsCapturingScreenshot(false);
+                                                    }
+                                                }}
+                                                disabled={isCapturingScreenshot}
+                                                title={`Capturer l'écran (${screenshotCount} pris)`}
+                                                className={`
+                                                    w-7 h-7 flex items-center justify-center rounded-lg relative
+                                                    interaction-base interaction-press
+                                                    ${isCapturingScreenshot ? 'text-sky-400 bg-sky-400/10' : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'}
+                                                `}
+                                            >
+                                                <Camera className="w-3.5 h-3.5" />
+                                                {screenshotCount > 0 && (
+                                                    <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-sky-500 text-white text-[8px] font-bold flex items-center justify-center">
+                                                        {screenshotCount}
+                                                    </span>
+                                                )}
+                                            </button>
+                                            {/* Flash thumbnail */}
+                                            <AnimatePresence>
+                                                {screenshotFlash && (
+                                                    <motion.div
+                                                        initial={{ opacity: 0, scale: 0.8, y: 4 }}
+                                                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                                                        exit={{ opacity: 0, scale: 0.9 }}
+                                                        className="absolute bottom-9 left-1/2 -translate-x-1/2 w-24 h-16 rounded-lg overflow-hidden border border-sky-500/40 shadow-xl"
+                                                    >
+                                                        <img src={screenshotFlash} alt="screenshot" className="w-full h-full object-cover" />
+                                                        <div className="absolute inset-0 bg-sky-500/10 flex items-end justify-center pb-1">
+                                                            <span className="text-[8px] text-sky-300 font-medium">Capturé</span>
+                                                        </div>
+                                                    </motion.div>
+                                                )}
+                                            </AnimatePresence>
+                                        </div>
 
                                         <div className="w-px h-3 bg-white/10 mx-1" />
 
