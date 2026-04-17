@@ -42,6 +42,8 @@ export interface StoredCredentials {
     azureRegion?: string;
     ibmWatsonApiKey?: string;
     ibmWatsonRegion?: string;
+    openrouterApiKey?: string;
+    openrouterModel?: string;
 }
 
 export class CredentialsManager {
@@ -170,6 +172,18 @@ export class CredentialsManager {
         this.credentials.claudeApiKey = key;
         this.saveCredentials();
         console.log('[CredentialsManager] Claude API Key updated');
+    }
+
+    public setOpenRouterApiKey(key: string): void {
+        this.credentials.openrouterApiKey = key;
+        this.saveCredentials();
+        console.log('[CredentialsManager] OpenRouter API Key updated');
+    }
+
+    public setOpenRouterModel(model: string): void {
+        this.credentials.openrouterModel = model;
+        this.saveCredentials();
+        console.log('[CredentialsManager] OpenRouter model updated:', model);
     }
 
     public setGoogleServiceAccountPath(filePath: string): void {

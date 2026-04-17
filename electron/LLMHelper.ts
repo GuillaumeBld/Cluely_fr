@@ -20,53 +20,6 @@ import axios from 'axios';
 import { createProviderRateLimiters, RateLimiter } from './services/RateLimiter';
 const execAsync = promisify(exec);
 
-/**
- * OpenAI token param compatibility:
- * - Newer OpenAI behavior may require `max_completion_tokens`
- * - Older models / some providers expect `max_tokens`
- *
- * Strategy: try `max_completion_tokens` first, retry once with `max_tokens`
- * only if the error looks like an unknown/invalid parameter error.
- */
-private async openaiChatCompletionsCreateWithTokenFallback(params: {
-  model: string;
-  messages: any[];
-  temperature?: number;
-  stream?: boolean;
-  maxTokens?: number;
-}) {
-  if (!this.openaiClient) throw new Error("OpenAI client not initialized");
-
-  const { maxTokens, ...rest } = params;
-
-  const call = (tokenParam: "max_completion_tokens" | "max_tokens") => {
-    const tokenObj =
-      typeof maxTokens === "number" ? { [tokenParam]: maxTokens } : {};
-    return this.openaiClient!.chat.completions.create({
-      ...rest,
-      ...tokenObj,
-    } as any);
-  };
-
-  try {
-    return await call("max_completion_tokens");
-  } catch (err: any) {
-    const msg = String(err?.message ?? "");
-
-    // Only retry when it plausibly failed due to the parameter name.
-    const looksLikeParamError =
-      msg.includes("max_completion_tokens") ||
-      msg.includes("Unknown parameter") ||
-      msg.includes("Unrecognized request argument") ||
-      msg.includes("Additional properties are not allowed") ||
-      msg.includes("Invalid request");
-
-    if (!looksLikeParamError) throw err;
-
-    return await call("max_tokens");
-  }
-}
-
 interface OllamaResponse {
   response: string
   done: boolean
@@ -87,6 +40,8 @@ export class LLMHelper {
   private client: GoogleGenAI | null = null
   private groqClient: Groq | null = null
   private openaiClient: OpenAI | null = null
+  private openrouterClient: OpenAI | null = null
+  private openrouterModelId: string | null = null
   private claudeClient: Anthropic | null = null
   private apiKey: string | null = null
   private groqApiKey: string | null = null
@@ -176,6 +131,21 @@ export class LLMHelper {
     console.log("[LLMHelper] Claude API Key updated.");
   }
 
+  public setOpenRouterApiKey(apiKey: string, model?: string) {
+    this.openrouterClient = new OpenAI({
+      apiKey,
+      baseURL: 'https://openrouter.ai/api/v1',
+      dangerouslyAllowBrowser: true,
+    });
+    if (model) this.openrouterModelId = model;
+    console.log(`[LLMHelper] OpenRouter client initialized. Model: ${this.openrouterModelId}`);
+  }
+
+  public setOpenRouterModel(model: string) {
+    this.openrouterModelId = model;
+    console.log(`[LLMHelper] OpenRouter model set to: ${model}`);
+  }
+
   /**
    * Scrub all API keys from memory to minimize exposure window.
    * Called on app quit.
@@ -188,6 +158,7 @@ export class LLMHelper {
     this.client = null;
     this.groqClient = null;
     this.openaiClient = null;
+    this.openrouterClient = null;
     this.claudeClient = null;
     // Destroy rate limiters
     if (this.rateLimiters) {
@@ -222,6 +193,16 @@ export class LLMHelper {
       this.customProvider = null;
       this.activeCurlProvider = null;
       console.log(`[LLMHelper] Switched to Ollama: ${this.ollamaModel}`);
+      return;
+    }
+
+    if (targetModelId.startsWith('openrouter-')) {
+      this.useOllama = false;
+      this.customProvider = null;
+      this.activeCurlProvider = null;
+      this.openrouterModelId = targetModelId.replace('openrouter-', '');
+      this.currentModelId = targetModelId;
+      console.log(`[LLMHelper] Switched to OpenRouter: ${this.openrouterModelId}`);
       return;
     }
 
@@ -260,6 +241,46 @@ export class LLMHelper {
     // Remove any leading/trailing whitespace
     text = text.trim();
     return text;
+  }
+
+  /**
+   * OpenAI token param compatibility:
+   * Try `max_completion_tokens` first, retry once with `max_tokens`
+   * only if the error looks like an unknown/invalid parameter error.
+   */
+  private async openaiChatCompletionsCreateWithTokenFallback(params: {
+    model: string;
+    messages: any[];
+    temperature?: number;
+    stream?: boolean;
+    maxTokens?: number;
+  }) {
+    if (!this.openaiClient) throw new Error("OpenAI client not initialized");
+
+    const { maxTokens, ...rest } = params;
+
+    const call = (tokenParam: "max_completion_tokens" | "max_tokens") => {
+      const tokenObj =
+        typeof maxTokens === "number" ? { [tokenParam]: maxTokens } : {};
+      return this.openaiClient!.chat.completions.create({
+        ...rest,
+        ...tokenObj,
+      } as any);
+    };
+
+    try {
+      return await call("max_completion_tokens");
+    } catch (err: any) {
+      const msg = String(err?.message ?? "");
+      const looksLikeParamError =
+        msg.includes("max_completion_tokens") ||
+        msg.includes("Unknown parameter") ||
+        msg.includes("Unrecognized request argument") ||
+        msg.includes("Additional properties are not allowed") ||
+        msg.includes("Invalid request");
+      if (!looksLikeParamError) throw err;
+      return await call("max_tokens");
+    }
   }
 
   private async callOllama(prompt: string): Promise<string> {
@@ -781,6 +802,9 @@ ANSWER DIRECTLY:`;
       if (this.currentModelId === OPENAI_MODEL && this.openaiClient) {
         return await this.generateWithOpenai(userContent, openaiSystemPrompt, imagePath);
       }
+      if (this.currentModelId.startsWith('openrouter-') && this.openrouterClient) {
+        return await this.generateWithOpenai(userContent, openaiSystemPrompt, imagePath);
+      }
       if (this.currentModelId === CLAUDE_MODEL && this.claudeClient) {
         return await this.generateWithClaude(userContent, claudeSystemPrompt, imagePath);
       }
@@ -928,7 +952,10 @@ ANSWER DIRECTLY:`;
    * Non-streaming OpenAI generation with proper system/user separation
    */
   private async generateWithOpenai(userMessage: string, systemPrompt?: string, imagePath?: string): Promise<string> {
-    if (!this.openaiClient) throw new Error("OpenAI client not initialized");
+    const isOpenRouter = this.currentModelId.startsWith('openrouter-');
+    const client = isOpenRouter ? this.openrouterClient : this.openaiClient;
+    const modelId = isOpenRouter ? (this.openrouterModelId || 'google/gemini-flash-1.5') : OPENAI_MODEL;
+    if (!client) throw new Error(isOpenRouter ? "OpenRouter client not initialized" : "OpenAI client not initialized");
 
     await this.rateLimiters.openai.acquire();
 
@@ -951,15 +978,11 @@ ANSWER DIRECTLY:`;
       messages.push({ role: "user", content: userMessage });
     }
 
-    //Call OpenAI with fallback method for tokenization.
-    const response = await this.openaiChatCompletionsCreateWithTokenFallback({
-  model: OPENAI_MODEL,
-  messages,
-  temperature: 0.4,
-  maxTokens: 8192,
-});
+    const response = isOpenRouter
+      ? await client!.chat.completions.create({ model: modelId, messages, temperature: 0.4, max_tokens: 8192 } as any)
+      : await this.openaiChatCompletionsCreateWithTokenFallback({ model: modelId, messages, temperature: 0.4, maxTokens: 8192 });
 
-    return response.choices[0]?.message?.content || "";
+    return (response as any).choices[0]?.message?.content || "";
   }
 
   // The handler for cURL requests
@@ -1386,6 +1409,13 @@ ANSWER DIRECTLY:`;
       return;
     }
 
+    // OpenRouter (OpenAI-compatible)
+    if (this.currentModelId.startsWith('openrouter-') && this.openrouterClient) {
+      const orSystem = systemPromptOverride || OPENAI_SYSTEM_PROMPT;
+      yield* this.streamWithOpenai(userContent, orSystem);
+      return;
+    }
+
     // Claude
     if (this.currentModelId === CLAUDE_MODEL && this.claudeClient) {
       const claudeSystem = systemPromptOverride || CLAUDE_SYSTEM_PROMPT;
@@ -1454,7 +1484,10 @@ ANSWER DIRECTLY:`;
    * Stream response from OpenAI with proper system/user message separation
    */
   private async * streamWithOpenai(userMessage: string, systemPrompt?: string): AsyncGenerator<string, void, unknown> {
-    if (!this.openaiClient) throw new Error("OpenAI client not initialized");
+    const isOpenRouter = this.currentModelId.startsWith('openrouter-');
+    const client = isOpenRouter ? this.openrouterClient : this.openaiClient;
+    const modelId = isOpenRouter ? (this.openrouterModelId || 'google/gemini-flash-1.5') : OPENAI_MODEL;
+    if (!client) throw new Error(isOpenRouter ? "OpenRouter client not initialized" : "OpenAI client not initialized");
 
     const messages: any[] = [];
     if (systemPrompt) {
@@ -1462,17 +1495,11 @@ ANSWER DIRECTLY:`;
     }
     messages.push({ role: "user", content: userMessage });
 
-    
-  //Streaming OpenAI call with fallback method.
-    const stream = await this.openaiChatCompletionsCreateWithTokenFallback({
-  model: OPENAI_MODEL,
-  messages,
-  stream: true,
-  temperature: 0.4,
-  maxTokens: 8192,
-});
+    const stream = isOpenRouter
+      ? await client!.chat.completions.create({ model: modelId, messages, stream: true, temperature: 0.4, max_tokens: 8192 } as any)
+      : await this.openaiChatCompletionsCreateWithTokenFallback({ model: modelId, messages, stream: true, temperature: 0.4, maxTokens: 8192 });
 
-    for await (const chunk of stream) {
+    for await (const chunk of (stream as any)) {
       const content = chunk.choices[0]?.delta?.content;
       if (content) {
         yield content;

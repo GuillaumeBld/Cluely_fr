@@ -17,6 +17,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({ currentModel, onSe
     const [activeTab, setActiveTab] = useState<'cloud' | 'custom' | 'local'>('cloud');
     const [ollamaModels, setOllamaModels] = useState<string[]>([]);
     const [customProviders, setCustomProviders] = useState<CustomProvider[]>([]);
+    const [openrouterModel, setOpenrouterModel] = useState<string | null>(null);
     const dropdownRef = useRef<HTMLDivElement>(null);
 
     // Close on click outside
@@ -43,6 +44,12 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({ currentModel, onSe
                 // Load Ollama
                 const local = await window.electronAPI?.invoke('get-available-ollama-models') as string[];
                 if (local) setOllamaModels(local);
+
+                // Load OpenRouter model if key is set
+                const creds = await window.electronAPI?.getStoredCredentials?.() as any;
+                if (creds?.hasOpenRouterKey && creds?.openrouterModel) {
+                    setOpenrouterModel(creds.openrouterModel);
+                }
             } catch (e) {
                 console.error("Failed to load models:", e);
             }
@@ -64,6 +71,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({ currentModel, onSe
 
     const getModelDisplayName = (model: string) => {
         if (model.startsWith('ollama-')) return model.replace('ollama-', '');
+        if (model.startsWith('openrouter-')) return `OR: ${model.replace('openrouter-', '')}`;
         if (model === 'gemini-3-flash-preview') return 'Gemini 3 Flash';
         if (model === 'gemini-3-pro-preview') return 'Gemini 3 Pro';
         if (model === 'llama-3.3-70b-versatile') return 'Groq Llama 3.3';
@@ -158,6 +166,19 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({ currentModel, onSe
                                     selected={currentModel === 'llama-3.3-70b-versatile'}
                                     onSelect={() => handleSelect('llama-3.3-70b-versatile')}
                                 />
+                                {openrouterModel && (
+                                    <>
+                                        <div className="h-px bg-border-subtle my-1" />
+                                        <ModelOption
+                                            id={`openrouter-${openrouterModel}`}
+                                            name={`OR: ${openrouterModel.split('/').pop()}`}
+                                            desc="OpenRouter"
+                                            icon={<Cloud size={14} />}
+                                            selected={currentModel === `openrouter-${openrouterModel}`}
+                                            onSelect={() => handleSelect(`openrouter-${openrouterModel}`)}
+                                        />
+                                    </>
+                                )}
                             </div>
                         )}
 
