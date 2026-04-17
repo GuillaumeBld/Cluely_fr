@@ -1,5 +1,15 @@
 import { GeminiContent } from "./types";
 
+// Runtime UI language — updated via set-ui-lang IPC
+let _uiLang: 'fr' | 'en' = 'fr';
+export function setUiLang(lang: 'fr' | 'en'): void { _uiLang = lang; }
+export function getUiLang(): 'fr' | 'en' { return _uiLang; }
+export function langInstruction(): string {
+  return _uiLang === 'en'
+    ? 'LANGUAGE: Always respond in English.'
+    : 'LANGUE: Réponds TOUJOURS en français.';
+}
+
 // ==========================================
 // CORE IDENTITY & SHARED GUIDELINES
 // ==========================================

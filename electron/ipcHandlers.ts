@@ -1112,6 +1112,16 @@ export function initializeIpcHandlers(appState: AppState): void {
   });
 
   // Set Groq Fast Text Mode
+  safeHandle("set-ui-lang", (_, lang: string) => {
+    try {
+      const { setUiLang } = require('./llm/prompts');
+      if (lang === 'fr' || lang === 'en') setUiLang(lang);
+      return { success: true };
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
+  });
+
   safeHandle("set-groq-fast-text-mode", (_, enabled: boolean) => {
     try {
       const llmHelper = appState.processingHelper.getLLMHelper();

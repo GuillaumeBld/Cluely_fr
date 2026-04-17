@@ -11,6 +11,7 @@ import { AnimatePresence, motion } from "framer-motion"
 import UpdateBanner from "./components/UpdateBanner"
 import { SupportToaster } from "./components/SupportToaster"
 import { analytics } from "./lib/analytics/analytics.service"
+import { LanguageProvider } from "./i18n"
 
 const queryClient = new QueryClient()
 
@@ -113,49 +114,56 @@ const App: React.FC = () => {
   // Render Logic
   if (isSettingsWindow) {
     return (
-      <div className="h-full min-h-0 w-full">
-        <QueryClientProvider client={queryClient}>
-          <ToastProvider>
-            <SettingsPopup />
-            <ToastViewport />
-          </ToastProvider>
-        </QueryClientProvider>
-      </div>
+      <LanguageProvider>
+        <div className="h-full min-h-0 w-full">
+          <QueryClientProvider client={queryClient}>
+            <ToastProvider>
+              <SettingsPopup />
+              <ToastViewport />
+            </ToastProvider>
+          </QueryClientProvider>
+        </div>
+      </LanguageProvider>
     );
   }
 
   if (isModelSelectorWindow) {
     return (
-      <div className="h-full min-h-0 w-full overflow-hidden">
-        <QueryClientProvider client={queryClient}>
-          <ToastProvider>
-            <ModelSelectorWindow />
-            <ToastViewport />
-          </ToastProvider>
-        </QueryClientProvider>
-      </div>
+      <LanguageProvider>
+        <div className="h-full min-h-0 w-full overflow-hidden">
+          <QueryClientProvider client={queryClient}>
+            <ToastProvider>
+              <ModelSelectorWindow />
+              <ToastViewport />
+            </ToastProvider>
+          </QueryClientProvider>
+        </div>
+      </LanguageProvider>
     );
   }
 
   // --- OVERLAY WINDOW (Meeting Interface) ---
   if (isOverlayWindow) {
     return (
-      <div className="w-full relative bg-transparent">
-        <QueryClientProvider client={queryClient}>
-          <ToastProvider>
-            <NativelyInterface
-              onEndMeeting={handleEndMeeting}
-            />
-            <ToastViewport />
-          </ToastProvider>
-        </QueryClientProvider>
-      </div>
+      <LanguageProvider>
+        <div className="w-full relative bg-transparent">
+          <QueryClientProvider client={queryClient}>
+            <ToastProvider>
+              <NativelyInterface
+                onEndMeeting={handleEndMeeting}
+              />
+              <ToastViewport />
+            </ToastProvider>
+          </QueryClientProvider>
+        </div>
+      </LanguageProvider>
     );
   }
 
   // --- LAUNCHER WINDOW (Default) ---
   // Renders if window=launcher OR no param
   return (
+    <LanguageProvider>
     <div className="h-full min-h-0 w-full relative">
       <AnimatePresence>
         {showStartup ? (
@@ -197,6 +205,7 @@ const App: React.FC = () => {
       <UpdateBanner />
       <SupportToaster />
     </div>
+    </LanguageProvider>
   )
 }
 

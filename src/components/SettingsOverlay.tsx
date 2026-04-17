@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
+import { useT } from '../i18n';
 import packageJson from '../../package.json';
 import {
     X, Mic, Speaker, Monitor, Keyboard, User, LifeBuoy, LogOut, Upload,
@@ -223,6 +224,7 @@ interface SettingsOverlayProps {
 
 const SettingsOverlay: React.FC<SettingsOverlayProps> = ({ isOpen, onClose }) => {
     const [activeTab, setActiveTab] = useState('general');
+    const { lang, setLang } = useT();
     const { shortcuts, updateShortcut, resetShortcuts } = useShortcuts();
     const [isUndetectable, setIsUndetectable] = useState(false);
     const [disguiseMode, setDisguiseMode] = useState<'terminal' | 'settings' | 'activity' | 'none'>('none');
@@ -921,6 +923,23 @@ const SettingsOverlay: React.FC<SettingsOverlayProps> = ({ isOpen, onClose }) =>
                         <div className="flex-1 overflow-y-auto bg-bg-main p-8">
                             {activeTab === 'general' && (
                                 <div className="space-y-6 animated fadeIn">
+                                    {/* Language Toggle */}
+                                    <div className="space-y-3.5">
+                                        <div className="bg-bg-item-surface rounded-xl p-5 border border-border-subtle flex items-center justify-between">
+                                            <div>
+                                                <h3 className="text-base font-semibold text-text-primary">Interface Language</h3>
+                                                <p className="text-xs text-text-secondary mt-0.5">Langue de l'interface / UI language</p>
+                                            </div>
+                                            <div className="flex gap-1 bg-bg-main rounded-lg p-0.5">
+                                                {(['fr', 'en'] as const).map((l) => (
+                                                    <button key={l} onClick={() => setLang(l)}
+                                                        className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${lang === l ? 'bg-accent-primary text-white' : 'text-text-secondary hover:text-text-primary'}`}>
+                                                        {l === 'fr' ? 'FR' : 'EN'}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </div>
                                     <div className="space-y-3.5">
                                         {/* UndetectableToggle */}
                                         <div className={`bg-bg-item-surface rounded-xl p-5 border border-border-subtle flex items-center justify-between transition-all ${isUndetectable ? 'shadow-lg shadow-blue-500/10' : ''}`}>

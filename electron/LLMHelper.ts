@@ -9,7 +9,8 @@ import {
   UNIVERSAL_SYSTEM_PROMPT, UNIVERSAL_ANSWER_PROMPT, UNIVERSAL_WHAT_TO_ANSWER_PROMPT,
   UNIVERSAL_RECAP_PROMPT, UNIVERSAL_FOLLOWUP_PROMPT, UNIVERSAL_FOLLOW_UP_QUESTIONS_PROMPT, UNIVERSAL_ASSIST_PROMPT,
   CUSTOM_SYSTEM_PROMPT, CUSTOM_ANSWER_PROMPT, CUSTOM_WHAT_TO_ANSWER_PROMPT,
-  CUSTOM_RECAP_PROMPT, CUSTOM_FOLLOWUP_PROMPT, CUSTOM_FOLLOW_UP_QUESTIONS_PROMPT, CUSTOM_ASSIST_PROMPT
+  CUSTOM_RECAP_PROMPT, CUSTOM_FOLLOWUP_PROMPT, CUSTOM_FOLLOW_UP_QUESTIONS_PROMPT, CUSTOM_ASSIST_PROMPT,
+  langInstruction
 } from "./llm/prompts"
 import { deepVariableReplacer, getByPath } from './utils/curlUtils';
 import curl2Json from "@bany/curl-to-json";
@@ -758,7 +759,7 @@ ANSWER DIRECTLY:`;
 
       const combinedMessages = {
         gemini: buildMessage(HARD_SYSTEM_PROMPT),
-        groq: alternateGroqMessage || buildMessage(GROQ_SYSTEM_PROMPT),
+        groq: alternateGroqMessage || buildMessage(this.withLang(GROQ_SYSTEM_PROMPT)),
       };
 
       // GROQ FAST TEXT OVERRIDE (Text-Only)
@@ -929,6 +930,10 @@ ANSWER DIRECTLY:`;
       }
       return `I encountered an error: ${error.message || "Unknown error"}. Please try again.`;
     }
+  }
+
+  private withLang(prompt: string): string {
+    return `${prompt}\n${langInstruction()}`;
   }
 
   private async generateWithGroq(fullMessage: string): Promise<string> {
@@ -1256,7 +1261,7 @@ ANSWER DIRECTLY:`;
 
     const combinedMessages = {
       gemini: buildCombinedMessage(HARD_SYSTEM_PROMPT),
-      groq: buildCombinedMessage(GROQ_SYSTEM_PROMPT),
+      groq: buildCombinedMessage(this.withLang(GROQ_SYSTEM_PROMPT)),
     };
 
     if (this.useOllama) {
@@ -1373,7 +1378,7 @@ ANSWER DIRECTLY:`;
     if (this.groqFastTextMode && !isMultimodal && this.groqClient) {
       console.log(`[LLMHelper] ⚡️ Groq Fast Text Mode Active (Streaming). Routing to Groq...`);
       try {
-        const groqSystem = systemPromptOverride || GROQ_SYSTEM_PROMPT;
+        const groqSystem = this.withLang(systemPromptOverride || GROQ_SYSTEM_PROMPT);
         const groqFullMessage = `${groqSystem}\n\n${userContent}`;
         yield* this.streamWithGroq(groqFullMessage);
         return;
@@ -1400,7 +1405,7 @@ ANSWER DIRECTLY:`;
 
     // OpenAI
     if (this.currentModelId === OPENAI_MODEL && this.openaiClient) {
-      const openAiSystem = systemPromptOverride || OPENAI_SYSTEM_PROMPT;
+      const openAiSystem = this.withLang(systemPromptOverride || OPENAI_SYSTEM_PROMPT);
       if (isMultimodal && imagePath) {
         yield* this.streamWithOpenaiMultimodal(userContent, imagePath, openAiSystem);
       } else {
@@ -1411,14 +1416,14 @@ ANSWER DIRECTLY:`;
 
     // OpenRouter (OpenAI-compatible)
     if (this.currentModelId.startsWith('openrouter-') && this.openrouterClient) {
-      const orSystem = systemPromptOverride || OPENAI_SYSTEM_PROMPT;
+      const orSystem = this.withLang(systemPromptOverride || OPENAI_SYSTEM_PROMPT);
       yield* this.streamWithOpenai(userContent, orSystem);
       return;
     }
 
     // Claude
     if (this.currentModelId === CLAUDE_MODEL && this.claudeClient) {
-      const claudeSystem = systemPromptOverride || CLAUDE_SYSTEM_PROMPT;
+      const claudeSystem = this.withLang(systemPromptOverride || CLAUDE_SYSTEM_PROMPT);
       if (isMultimodal && imagePath) {
         yield* this.streamWithClaudeMultimodal(userContent, imagePath, claudeSystem);
       } else {
@@ -1430,7 +1435,7 @@ ANSWER DIRECTLY:`;
     // Groq (Text Only)
     if (this.currentModelId === GROQ_MODEL && this.groqClient && !isMultimodal) {
       // Build Groq message
-      const groqSystem = systemPromptOverride ? finalSystemPrompt : GROQ_SYSTEM_PROMPT;
+      const groqSystem = this.withLang(systemPromptOverride ? finalSystemPrompt : GROQ_SYSTEM_PROMPT);
       const groqFullMessage = `${groqSystem}\n\n${userContent}`;
       yield* this.streamWithGroq(groqFullMessage);
       return;
