@@ -4,10 +4,12 @@ import {
     Heart, Mail, MicOff, Star, Bug
 } from 'lucide-react';
 import evinProfile from '../assets/evin.png';
+import { useT } from '../i18n';
 
 interface AboutSectionProps { }
 
 export const AboutSection: React.FC<AboutSectionProps> = () => {
+    const { t } = useT();
     const donationClickTimeRef = useRef<number | null>(null);
 
     // Initial check for donation status not needed for visuals anymore (since we removed key input)
@@ -55,13 +57,13 @@ export const AboutSection: React.FC<AboutSectionProps> = () => {
         <div className="space-y-6 animated fadeIn pb-10">
             {/* Header */}
             <div>
-                <h3 className="text-lg font-bold text-text-primary mb-1">À propos de Cluely.fr</h3>
-                <p className="text-sm text-text-secondary">Conçu pour être invisible, intelligent et fiable.</p>
+                <h3 className="text-lg font-bold text-text-primary mb-1">{t('about_title')}</h3>
+                <p className="text-sm text-text-secondary">{t('about_subtitle')}</p>
             </div>
 
             {/* Architecture Section */}
             <div>
-                <h4 className="text-xs font-bold text-text-tertiary uppercase tracking-wider mb-2 px-1">Comment fonctionne Cluely.fr</h4>
+                <h4 className="text-xs font-bold text-text-tertiary uppercase tracking-wider mb-2 px-1">{t('about_how')}</h4>
                 <div className="bg-bg-item-surface rounded-xl border border-border-subtle overflow-hidden">
                     <div className="p-3 border-b border-border-subtle bg-bg-card/50">
                         <div className="flex items-start gap-4">
@@ -69,10 +71,8 @@ export const AboutSection: React.FC<AboutSectionProps> = () => {
                                 <Cpu size={20} />
                             </div>
                             <div>
-                                <h5 className="text-sm font-bold text-text-primary mb-1">Intelligence hybride</h5>
-                                <p className="text-xs text-text-secondary leading-relaxed">
-                                    Achemine intelligemment les requêtes entre des modèles ultra-rapides pour les tâches simples et des modèles de raisonnement (Gemini, OpenAI, Claude) pour les tâches complexes. Alimenté par une reconnaissance vocale professionnelle de 7+ fournisseurs.
-                                </p>
+                                <h5 className="text-sm font-bold text-text-primary mb-1">{t('about_hybrid_title')}</h5>
+                                <p className="text-xs text-text-secondary leading-relaxed">{t('about_hybrid_desc')}</p>
                             </div>
                         </div>
                     </div>
@@ -83,10 +83,8 @@ export const AboutSection: React.FC<AboutSectionProps> = () => {
                                 <Database size={20} />
                             </div>
                             <div>
-                                <h5 className="text-sm font-bold text-text-primary mb-1">RAG locale & Mémoire</h5>
-                                <p className="text-xs text-text-secondary leading-relaxed">
-                                    Un système de mémoire vectorielle entièrement local permet à Cluely.fr de se souvenir des détails des réunions passées. Les embeddings et la recherche s'effectuent sur l'appareil via SQLite pour une confidentialité maximale.
-                                </p>
+                                <h5 className="text-sm font-bold text-text-primary mb-1">{t('about_rag_title')}</h5>
+                                <p className="text-xs text-text-secondary leading-relaxed">{t('about_rag_desc')}</p>
                             </div>
                         </div>
                     </div>
@@ -95,24 +93,20 @@ export const AboutSection: React.FC<AboutSectionProps> = () => {
 
             {/* Privacy Section */}
             <div>
-                <h4 className="text-xs font-bold text-text-tertiary uppercase tracking-wider mb-2 px-1">Confidentialité & Données</h4>
+                <h4 className="text-xs font-bold text-text-tertiary uppercase tracking-wider mb-2 px-1">{t('about_privacy')}</h4>
                 <div className="bg-bg-item-surface rounded-xl border border-border-subtle p-5 space-y-4">
                     <div className="flex items-start gap-3">
                         <Shield size={16} className="text-green-400 mt-0.5" />
                         <div>
-                            <h5 className="text-sm font-medium text-text-primary">Discrétion & Contrôle</h5>
-                            <p className="text-xs text-text-secondary mt-1 leading-relaxed">
-                                Le "Mode indétectable" permet de masquer l'app du dock, et le "Masquage" de la déguiser en application système. Vous contrôlez exactement quelles données quittent votre appareil.
-                            </p>
+                            <h5 className="text-sm font-medium text-text-primary">{t('about_stealth_title')}</h5>
+                            <p className="text-xs text-text-secondary mt-1 leading-relaxed">{t('about_stealth_desc')}</p>
                         </div>
                     </div>
                     <div className="flex items-start gap-3">
                         <MicOff size={16} className="text-red-500 mt-0.5" />
                         <div>
-                            <h5 className="text-sm font-medium text-text-primary">Pas d'enregistrement</h5>
-                            <p className="text-xs text-text-secondary mt-1 leading-relaxed">
-                                Cluely.fr écoute uniquement lorsqu'il est actif. Il n'enregistre pas de vidéo, ne prend pas de captures d'écran sans commande explicite, et n'effectue aucune surveillance en arrière-plan.
-                            </p>
+                            <h5 className="text-sm font-medium text-text-primary">{t('about_no_record_title')}</h5>
+                            <p className="text-xs text-text-secondary mt-1 leading-relaxed">{t('about_no_record_desc')}</p>
                         </div>
                     </div>
                 </div>
@@ -124,7 +118,7 @@ export const AboutSection: React.FC<AboutSectionProps> = () => {
 
             {/* Communauté Section */}
             <div>
-                <h4 className="text-xs font-bold text-text-tertiary uppercase tracking-wider mb-2 px-1">Communauté</h4>
+                <h4 className="text-xs font-bold text-text-tertiary uppercase tracking-wider mb-2 px-1">{t('about_community')}</h4>
                 <div className="space-y-4">
                     {/* 0. Dépôt GitHub */}
                     <div className="bg-bg-item-surface rounded-xl border border-border-subtle p-5 flex flex-col md:flex-row items-center justify-between gap-4">
@@ -133,7 +127,7 @@ export const AboutSection: React.FC<AboutSectionProps> = () => {
                                 <Github size={18} className="opacity-80" />
                             </div>
                             <div>
-                                <h5 className="text-sm font-bold text-text-primary">Dépôt GitHub</h5>
+                                <h5 className="text-sm font-bold text-text-primary">{t('about_repo')}</h5>
                                 <p className="text-xs text-text-secondary mt-0.5">github.com/GuillaumeBld/Cluely_fr</p>
                             </div>
                         </div>
@@ -143,7 +137,7 @@ export const AboutSection: React.FC<AboutSectionProps> = () => {
                             className="whitespace-nowrap px-4 py-2 bg-text-primary hover:bg-white/90 text-bg-main text-xs font-bold rounded-lg transition-all shadow hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 flex items-center gap-2"
                         >
                             <Github size={14} />
-                            Voir le projet
+                            {t('about_view_project')}
                         </a>
                     </div>
 
@@ -157,13 +151,9 @@ export const AboutSection: React.FC<AboutSectionProps> = () => {
                                 <div className="pt-0.5">
                                     <div className="flex items-center gap-2 mb-1">
                                         <h5 className="text-sm font-bold text-text-primary">GuillaumeBld</h5>
-                                        <span className="text-[10px] font-medium px-1.5 py-[1px] rounded-full bg-yellow-400/10 text-yellow-200 border border-yellow-400/5">Créateur</span>
+                                        <span className="text-[10px] font-medium px-1.5 py-[1px] rounded-full bg-yellow-400/10 text-yellow-200 border border-yellow-400/5">{t('about_creator')}</span>
                                     </div>
-                                    <p className="text-xs text-text-secondary leading-relaxed max-w-lg">
-                                        Je construis des logiciels qui restent discrets.
-                                        <br />
-                                        <span className="font-bold text-text-primary">Cluely.fr</span> est conçu pour être rapide, discret et respectueux de votre vie privée.
-                                    </p>
+                                    <p className="text-xs text-text-secondary leading-relaxed max-w-lg">{t('about_creator_desc')}</p>
                                 </div>
                             </div>
                             <div className="flex items-center gap-4 pl-[60px]">
@@ -198,8 +188,8 @@ export const AboutSection: React.FC<AboutSectionProps> = () => {
                                 <Star size={20} className="transition-all group-hover:fill-current" />
                             </div>
                             <div>
-                                <h5 className="text-sm font-bold text-text-primary">Étoile sur GitHub</h5>
-                                <p className="text-xs text-text-secondary mt-0.5">Vous aimez Cluely.fr ? Soutenez-nous en mettant une étoile.</p>
+                                <h5 className="text-sm font-bold text-text-primary">{t('about_star')}</h5>
+                                <p className="text-xs text-text-secondary mt-0.5">{t('about_star_desc')}</p>
                             </div>
                         </a>
 
@@ -212,8 +202,8 @@ export const AboutSection: React.FC<AboutSectionProps> = () => {
                                 <Bug size={20} />
                             </div>
                             <div>
-                                <h5 className="text-sm font-bold text-text-primary">Signaler un problème</h5>
-                                <p className="text-xs text-text-secondary mt-0.5">Vous avez trouvé un bug ? Signalez-le sur GitHub.</p>
+                                <h5 className="text-sm font-bold text-text-primary">{t('about_bug')}</h5>
+                                <p className="text-xs text-text-secondary mt-0.5">{t('about_bug_desc')}</p>
                             </div>
                         </a>
                     </div>
@@ -225,8 +215,8 @@ export const AboutSection: React.FC<AboutSectionProps> = () => {
                                 <Mail size={18} className="opacity-80" />
                             </div>
                             <div>
-                                <h5 className="text-sm font-bold text-text-primary">Nous contacter</h5>
-                                <p className="text-xs text-text-secondary mt-0.5">Ouvert aux collaborations professionnelles.</p>
+                                <h5 className="text-sm font-bold text-text-primary">{t('about_contact')}</h5>
+                                <p className="text-xs text-text-secondary mt-0.5">{t('about_contact_desc')}</p>
                             </div>
                         </div>
                         <a
@@ -235,7 +225,7 @@ export const AboutSection: React.FC<AboutSectionProps> = () => {
                             className="whitespace-nowrap px-4 py-2 bg-text-primary hover:bg-white/90 text-bg-main text-xs font-bold rounded-lg transition-all shadow hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 flex items-center gap-2"
                         >
                             <Mail size={14} />
-                            Me contacter
+                            {t('about_contact_btn')}
                         </a>
                     </div>
 
@@ -246,8 +236,8 @@ export const AboutSection: React.FC<AboutSectionProps> = () => {
                                 <Heart size={18} fill="currentColor" className="opacity-80" />
                             </div>
                             <div>
-                                <h5 className="text-sm font-bold text-text-primary">Soutenir le développement</h5>
-                                <p className="text-xs text-text-secondary mt-0.5">Cluely.fr est un logiciel open-source indépendant.</p>
+                                <h5 className="text-sm font-bold text-text-primary">{t('about_support_title')}</h5>
+                                <p className="text-xs text-text-secondary mt-0.5">{t('about_support_desc')}</p>
                             </div>
                         </div>
                         <a
@@ -255,7 +245,7 @@ export const AboutSection: React.FC<AboutSectionProps> = () => {
                             onClick={(e) => handleOpenLink(e, "https://github.com/GuillaumeBld/Cluely_fr")}
                             className="whitespace-nowrap px-4 py-2 bg-text-primary hover:bg-white/90 text-bg-main text-xs font-bold rounded-lg transition-all shadow hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0"
                         >
-                            Soutenir le projet
+                            {t('about_support_btn')}
                         </a>
                     </div>
                 </div>
@@ -264,7 +254,7 @@ export const AboutSection: React.FC<AboutSectionProps> = () => {
             {/* Credits */}
             <div className="pt-4 border-t border-border-subtle">
                 <div>
-                    <h4 className="text-xs font-bold text-text-tertiary uppercase tracking-wider mb-3">Technologies utilisées</h4>
+                    <h4 className="text-xs font-bold text-text-tertiary uppercase tracking-wider mb-3">{t('about_tech')}</h4>
                     <div className="flex flex-wrap gap-2">
                         {['Groq', 'Gemini', 'OpenAI', 'Deepgram', 'ElevenLabs', 'Electron', 'React', 'Rust', 'Sharp', 'TypeScript', 'Tailwind CSS', 'Vite', 'Google Cloud', 'SQLite'].map(tech => (
                             <span key={tech} className="px-2.5 py-1 rounded-md bg-bg-input border border-border-subtle text-[11px] font-medium text-text-secondary">

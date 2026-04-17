@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { MessageSquare, Link, Camera, Zap, Heart } from 'lucide-react';
 import { useShortcuts } from '../hooks/useShortcuts';
+import { useT } from '../i18n';
 
 const SettingsPopup = () => {
+    const { t } = useT();
     const { shortcuts } = useShortcuts();
     const [isUndetectable, setIsUndetectable] = useState(false);
     const [useGroqFastText, setUseGroqFastText] = useState(() => {
@@ -224,7 +226,7 @@ const SettingsPopup = () => {
                 >
                     <div className="flex items-center gap-3">
                         <Heart className="w-3.5 h-3.5 text-pink-400 group-hover:fill-pink-400 transition-all duration-300" />
-                        <span className="text-[12px] text-slate-400 group-hover:text-pink-100 transition-colors">Soutenir</span>
+                        <span className="text-[12px] text-slate-400 group-hover:text-pink-100 transition-colors">{t('popup_donate')}</span>
                     </div>
                     <div className="opacity-60 group-hover:opacity-100 transition-opacity">
                         <Link className="w-3 h-3 text-slate-500 group-hover:text-pink-400" />

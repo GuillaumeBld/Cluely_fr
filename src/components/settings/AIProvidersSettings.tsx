@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Trash2, Edit2, AlertCircle, CheckCircle, Save, ChevronDown, Check, RefreshCw, ExternalLink, Loader2 } from 'lucide-react';
 import { validateCurl } from '../../lib/curl-validator';
+import { useT } from '../../i18n';
 
 interface CustomProvider {
     id: string;
@@ -76,6 +77,7 @@ const ModelSelect: React.FC<ModelSelectProps> = ({ value, options, onChange, pla
 };
 
 export const AIProvidersSettings: React.FC = () => {
+    const { t } = useT();
     // --- Standard Providers ---
     const [apiKey, setApiKey] = useState('');
     const [groqApiKey, setGroqApiKey] = useState('');
@@ -902,7 +904,7 @@ export const AIProvidersSettings: React.FC = () => {
                                     type="text"
                                     value={customName}
                                     onChange={(e) => setCustomName(e.target.value)}
-                                    placeholder="Mon LLM personnalisé"
+                                    placeholder={t('custom_llm_name')}
                                     className="w-full bg-bg-input border border-border-subtle rounded-lg px-4 py-2.5 text-xs text-text-primary focus:outline-none focus:border-accent-primary transition-colors"
                                 />
                             </div>
@@ -927,7 +929,7 @@ export const AIProvidersSettings: React.FC = () => {
                                     type="text"
                                     value={customResponsePath}
                                     onChange={(e) => setCustomResponsePath(e.target.value)}
-                                    placeholder="ex. choices[0].message.content"
+                                    placeholder={t('custom_response_path')}
                                     className="w-full bg-bg-input border border-border-subtle rounded-lg px-4 py-2.5 text-xs text-text-primary focus:outline-none focus:border-accent-primary transition-colors font-mono"
                                 />
                                 <p className="text-[10px] text-text-secondary mt-1">

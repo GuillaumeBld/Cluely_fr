@@ -224,7 +224,7 @@ interface SettingsOverlayProps {
 
 const SettingsOverlay: React.FC<SettingsOverlayProps> = ({ isOpen, onClose }) => {
     const [activeTab, setActiveTab] = useState('general');
-    const { lang, setLang } = useT();
+    const { lang, setLang, t } = useT();
     const { shortcuts, updateShortcut, resetShortcuts } = useShortcuts();
     const [isUndetectable, setIsUndetectable] = useState(false);
     const [disguiseMode, setDisguiseMode] = useState<'terminal' | 'settings' | 'activity' | 'none'>('none');
@@ -986,7 +986,7 @@ const SettingsOverlay: React.FC<SettingsOverlayProps> = ({ isOpen, onClose }) =>
 
                                         <div>
                                             <h3 className="text-lg font-bold text-text-primary mb-1">General settings</h3>
-                                            <p className="text-xs text-text-secondary mb-2">Personnalisez le fonctionnement de Cluely.fr</p>
+                                            <p className="text-xs text-text-secondary mb-2">{t('settings_general_desc')}</p>
 
                                             <div className="space-y-4">
                                                 {/* Open at Login */}
@@ -996,8 +996,8 @@ const SettingsOverlay: React.FC<SettingsOverlayProps> = ({ isOpen, onClose }) =>
                                                             <Power size={20} />
                                                         </div>
                                                         <div>
-                                                            <h3 className="text-sm font-bold text-text-primary">Ouvrir Cluely.fr au démarrage</h3>
-                                                            <p className="text-xs text-text-secondary mt-0.5">Cluely.fr s'ouvrira automatiquement à la connexion</p>
+                                                            <h3 className="text-sm font-bold text-text-primary">{t('settings_open_login')}</h3>
+                                                            <p className="text-xs text-text-secondary mt-0.5">{t('settings_open_login_desc')}</p>
                                                         </div>
                                                     </div>
                                                     <div
@@ -1045,7 +1045,7 @@ const SettingsOverlay: React.FC<SettingsOverlayProps> = ({ isOpen, onClose }) =>
                                                         </div>
                                                         <div>
                                                             <h3 className="text-sm font-bold text-text-primary">Theme</h3>
-                                                            <p className="text-xs text-text-secondary mt-0.5">Personnalisez l'apparence de Cluely.fr</p>
+                                                            <p className="text-xs text-text-secondary mt-0.5">{t('settings_theme_desc')}</p>
                                                         </div>
                                                     </div>
 
@@ -1099,7 +1099,7 @@ const SettingsOverlay: React.FC<SettingsOverlayProps> = ({ isOpen, onClose }) =>
                                                         <div>
                                                             <h3 className="text-sm font-bold text-text-primary">Version</h3>
                                                             <p className="text-xs text-text-secondary mt-0.5">
-                                                                Vous utilisez Cluely.fr version {packageJson.version}
+                                                                {t('settings_version')} {packageJson.version}
                                                             </p>
                                                         </div>
                                                     </div>
@@ -1167,9 +1167,9 @@ const SettingsOverlay: React.FC<SettingsOverlayProps> = ({ isOpen, onClose }) =>
                                                 <h3 className="text-lg font-bold text-text-primary">Process Disguise</h3>
                                             </div>
                                             <p className="text-xs text-text-secondary">
-                                                Déguisez Cluely.fr en une autre application pour éviter la détection lors du partage d'écran.
+                                                {t('settings_disguise_desc')}
                                                 <span className="block mt-1 text-text-tertiary">
-                                                    Choisissez un déguisement appliqué automatiquement en mode Indétectable.
+                                                    {t('settings_disguise_auto')}
                                                 </span>
                                             </p>
                                         </div>
@@ -1216,7 +1216,7 @@ const SettingsOverlay: React.FC<SettingsOverlayProps> = ({ isOpen, onClose }) =>
                                     <div className="flex items-start justify-between">
                                         <div>
                                             <h3 className="text-lg font-bold text-text-primary mb-1">Keyboard shortcuts</h3>
-                                            <p className="text-xs text-text-secondary">Cluely.fr fonctionne avec ces raccourcis faciles à mémoriser.</p>
+                                            <p className="text-xs text-text-secondary">{t('settings_shortcuts_desc')}</p>
                                         </div>
                                         <button
                                             onClick={resetShortcuts}
@@ -1528,7 +1528,7 @@ const SettingsOverlay: React.FC<SettingsOverlayProps> = ({ isOpen, onClose }) =>
                                                                     type="text"
                                                                     value={sttAzureRegion}
                                                                     onChange={(e) => setSttAzureRegion(e.target.value)}
-                                                                    placeholder="ex. eastus"
+                                                                    placeholder={t('settings_azure_region')}
                                                                     className="flex-1 bg-bg-input border border-border-subtle rounded-lg px-3 py-2 text-sm text-text-primary placeholder-text-tertiary focus:outline-none focus:border-accent-primary transition-colors"
                                                                 />
                                                                 <button
@@ -1542,10 +1542,10 @@ const SettingsOverlay: React.FC<SettingsOverlayProps> = ({ isOpen, onClose }) =>
                                                                     disabled={!sttAzureRegion.trim()}
                                                                     className="px-5 py-2.5 rounded-lg text-xs font-medium bg-bg-input hover:bg-bg-input/80 border border-border-subtle text-text-primary disabled:opacity-50 transition-colors"
                                                                 >
-                                                                    Sauvegarder
+                                                                    {t('settings_save')}
                                                                 </button>
                                                             </div>
-                                                            <p className="text-[10px] text-text-tertiary">ex. eastus, westeurope, westus2</p>
+                                                            <p className="text-[10px] text-text-tertiary">{t('settings_azure_hint')}</p>
                                                         </div>
                                                     )}
 
@@ -1597,7 +1597,7 @@ const SettingsOverlay: React.FC<SettingsOverlayProps> = ({ isOpen, onClose }) =>
                                                 value={recognitionLanguage}
                                                 options={languageOptions}
                                                 onChange={handleLanguageChange}
-                                                placeholder="Choisir un accent"
+                                                placeholder={t('settings_accent')}
                                             />
                                             <div className="flex gap-2 items-center -mt-2 px-1">
                                                 <Info size={14} className="text-text-secondary shrink-0" />
@@ -1625,7 +1625,7 @@ const SettingsOverlay: React.FC<SettingsOverlayProps> = ({ isOpen, onClose }) =>
                                                     setSelectedInput(id);
                                                     localStorage.setItem('preferredInputDeviceId', id);
                                                 }}
-                                                placeholder="Microphone par défaut"
+                                                placeholder={t('settings_microphone')}
                                             />
 
                                             <div>
@@ -1651,7 +1651,7 @@ const SettingsOverlay: React.FC<SettingsOverlayProps> = ({ isOpen, onClose }) =>
                                                     setSelectedOutput(id);
                                                     localStorage.setItem('preferredOutputDeviceId', id);
                                                 }}
-                                                placeholder="Haut-parleurs par défaut"
+                                                placeholder={t('settings_speakers')}
                                             />
 
                                             <div className="flex justify-end">

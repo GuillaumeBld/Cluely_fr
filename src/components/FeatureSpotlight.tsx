@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowRight, Check, Bell, Sparkles, Heart, Rocket } from 'lucide-react';
 import mainui from "../UI_comp/mainui.png";
+import { useT } from '../i18n';
 
 // --- Types ---
 // ... (rest of imports and types unchanged)
@@ -18,35 +19,30 @@ interface FeatureSlide {
     footer?: string;
 }
 
-// --- Data ---
-
-const FEATURES: FeatureSlide[] = [
-    {
-        id: 'tailored_answers',
-        headline: 'Fonctionnalités à venir',
-        subtitle: 'Des réponses adaptées à vous',
-        bullets: ['Explications contextuelles du dépôt', 'Réponses ancrées dans votre CV'],
-        footer: 'Conçu pour fonctionner discrètement lors d\'entretiens en direct.',
-        type: 'premium',
-    },
-
-    {
-        id: 'support_natively',
-        headline: 'Soutenir le développement',
-        subtitle: 'Construit ouvertement, soutenu par les utilisateurs',
-        bullets: [
-            'Développement guidé par les vrais utilisateurs',
-            'Itération plus rapide sur les fonctionnalités importantes',
-        ],
-        type: 'support',
-        actionLabel: 'Contribuer au projet',
-        url: 'https://github.com/GuillaumeBld/Cluely_fr'
-    }
-];
-
 // --- Component ---
 
 export const FeatureSpotlight: React.FC = () => {
+    const { t } = useT();
+    const FEATURES: FeatureSlide[] = [
+        {
+            id: 'tailored_answers',
+            headline: t('feature_upcoming_headline'),
+            subtitle: t('feature_upcoming_subtitle'),
+            bullets: [t('feature_upcoming_bullet1'), t('feature_upcoming_bullet2')],
+            footer: t('feature_upcoming_footer'),
+            type: 'premium',
+        },
+        {
+            id: 'support_natively',
+            headline: t('feature_support_headline'),
+            subtitle: t('feature_support_subtitle'),
+            bullets: [t('feature_support_bullet1'), t('feature_support_bullet2')],
+            type: 'support',
+            actionLabel: t('feature_support_action'),
+            url: 'https://github.com/GuillaumeBld/Cluely_fr'
+        }
+    ];
+
     const [currentIndex, setCurrentIndex] = useState(0);
     const [isPaused, setIsPaused] = useState(false);
 
@@ -321,13 +317,13 @@ export const FeatureSpotlight: React.FC = () => {
                                             >
                                                 <span>
                                                     {isInterested && !isSupport
-                                                        ? 'Intéressé'
+                                                        ? t('feature_interested')
                                                         : (isSupport ? (
                                                             <span className="flex items-center gap-2">
                                                                 <Rocket size={14} className="text-[#1C1C1E]" strokeWidth={2.5} />
-                                                                Contribuer au projet
+                                                                {t('feature_contribute')}
                                                             </span>
-                                                        ) : (currentFeature.actionLabel || 'M\'intéresse'))
+                                                        ) : (currentFeature.actionLabel || t('feature_mark_interest')))
                                                     }
                                                 </span>
 
