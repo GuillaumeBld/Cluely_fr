@@ -74,7 +74,7 @@ const formatEventDate = (iso: string) => {
 const minutesUntil = (iso: string) => Math.ceil((new Date(iso).getTime() - Date.now()) / 60000);
 
 // Mini calendar component
-const MiniCalendar: React.FC<{ events: any[]; onEventClick: (e: any) => void }> = ({ events, onEventClick }) => {
+const MiniCalendar: React.FC<{ events: any[]; onEventClick: (e: any) => void }> = ({ events, onEventClick: _onEventClick }) => {
     const now = new Date();
     const [viewDate, setViewDate] = useState(now);
 

@@ -176,11 +176,11 @@ export const SupportToaster: React.FC<SupportToasterProps> = ({ className }) => 
                             <div className="flex flex-col items-center text-center">
                                 {/* Headline */}
                                 <h3 className="text-[26px] font-[600] leading-[1.2] text-[#F3F3F3] tracking-[-0.01em] mb-[12px] antialiased whitespace-pre-line">
-                                    {t(‘support_headline’)}
+                                    {t('support_headline')}
                                 </h3>
                                 {/* Body */}
                                 <p className="text-[14px] leading-[1.6] text-white/60 max-w-[480px] font-medium antialiased whitespace-pre-line">
-                                    {t(‘support_body’)}
+                                    {t('support_body')}
                                 </p>
                             </div>
                         </div>

@@ -116,6 +116,30 @@ export interface ElectronAPI {
   onModelChanged: (callback: (modelId: string) => void) => () => void;
 
   onMeetingsUpdated: (callback: () => void) => () => void
+  onKbContext: (callback: (context: string) => void) => () => void
+  onZoomMeetingDetected: (callback: () => void) => () => void
+  captureMeetingScreenshot: () => Promise<{ path: string; preview: string }>
+  onMeetingScreenshotTaken: (callback: (data: { path: string; preview: string }) => void) => () => void
+  analyzeImageFile: (path: string) => Promise<void>
+
+  // Multica
+  multicaGetWorkspaces: () => Promise<any>
+  multicaCreateWorkspace: (name: string, slug: string) => Promise<any>
+  multicaUpdateToken: (token: string) => Promise<any>
+  multicaGetIssues: (workspaceId: string) => Promise<any>
+  multicaCreateIssue: (opts: { workspaceId: string; title: string; description?: string; priority?: string }) => Promise<any>
+  multicaIsReady: () => Promise<{ ready: boolean }>
+  onMulticaStatusChange: (callback: (data: { status: 'ready' | 'failed'; error?: string }) => void) => () => void
+  onMulticaIssuesPushed: (callback: (data: { count: number; workspaceName: string }) => void) => () => void
+
+  // API Key Management
+  setGeminiApiKey: (apiKey: string) => Promise<{ success: boolean; error?: string }>
+  setGroqApiKey: (apiKey: string) => Promise<{ success: boolean; error?: string }>
+  setOpenaiApiKey: (apiKey: string) => Promise<{ success: boolean; error?: string }>
+  setClaudeApiKey: (apiKey: string) => Promise<{ success: boolean; error?: string }>
+  setOpenRouterApiKey: (apiKey: string) => Promise<{ success: boolean; error?: string }>
+  setOpenRouterModel: (model: string) => Promise<{ success: boolean; error?: string }>
+  getStoredCredentials: () => Promise<{ hasGeminiKey: boolean; hasGroqKey: boolean; hasOpenaiKey: boolean; hasClaudeKey: boolean; googleServiceAccountPath: string | null; sttProvider: string; groqSttModel: string; hasSttGroqKey: boolean; hasSttOpenaiKey: boolean; hasDeepgramKey: boolean; hasElevenLabsKey: boolean; hasAzureKey: boolean; azureRegion: string; hasIbmWatsonKey: boolean; ibmWatsonRegion: string; hasOpenRouterKey: boolean; openrouterModel: string }>
 
   // Theme API
   getThemeMode: () => Promise<{ mode: 'system' | 'light' | 'dark', resolved: 'light' | 'dark' }>
