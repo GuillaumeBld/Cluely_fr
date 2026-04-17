@@ -4,6 +4,7 @@ import http from 'http';
 import url from 'url';
 import fs from 'fs';
 import path from 'path';
+import { execFile } from 'child_process';
 import { EventEmitter } from 'events';
 
 // Configuration
@@ -34,6 +35,9 @@ export class CalendarManager extends EventEmitter {
     private expiryDate: number | null = null;
     private isConnected: boolean = false;
     private updateInterval: NodeJS.Timeout | null = null;
+    private cachedEvents: CalendarEvent[] | null = null;
+    private cacheExpiry: number = 0;
+    private static CACHE_TTL_MS = 60_000; // re-run osascript at most once per minute
 
     private constructor() {
         super();
@@ -49,6 +53,12 @@ export class CalendarManager extends EventEmitter {
 
     public init() {
         this.loadTokens();
+        // On macOS, system calendar is always available — mark as ready so UI shows events
+        if (this.isSystemCalendarAvailable() && !this.isConnected) {
+            this.isConnected = true; // System calendar needs no auth
+            this.emit('connection-changed', true);
+            this.fetchUpcomingEvents();
+        }
     }
 
     // =========================================================================
@@ -323,16 +333,42 @@ export class CalendarManager extends EventEmitter {
     // =========================================================================
 
     public async getUpcomingEvents(force: boolean = false): Promise<CalendarEvent[]> {
-        if (!this.isConnected || !this.accessToken) return [];
-
-        // Check expiry
-        if (this.expiryDate && Date.now() >= this.expiryDate - 60000) {
-            await this.refreshAccessToken();
+        if (!force && this.cachedEvents && Date.now() < this.cacheExpiry) {
+            return this.cachedEvents;
         }
 
-        const events = await this.fetchEventsInternal();
-        this.scheduleReminders(events);
-        return events;
+        const results: CalendarEvent[] = [];
+
+        // Source 1: macOS system calendar (Outlook, Gmail, iCloud — whatever's synced)
+        if (this.isSystemCalendarAvailable()) {
+            const sysEvents = await this.getSystemCalendarEvents(7);
+            results.push(...sysEvents);
+        }
+
+        // Source 2: Google Calendar via OAuth (if connected and credentials configured)
+        if (this.isConnected && this.accessToken) {
+            if (this.expiryDate && Date.now() >= this.expiryDate - 60000) {
+                await this.refreshAccessToken();
+            }
+            const googleEvents = await this.fetchEventsInternal();
+            // Deduplicate: skip Google events already present from system calendar (same title + start)
+            for (const ge of googleEvents) {
+                const duplicate = results.some(e =>
+                    e.title === ge.title &&
+                    Math.abs(new Date(e.startTime).getTime() - new Date(ge.startTime).getTime()) < 60000
+                );
+                if (!duplicate) results.push(ge);
+            }
+        }
+
+        // Sort merged results
+        results.sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
+
+        this.cachedEvents = results;
+        this.cacheExpiry = Date.now() + CalendarManager.CACHE_TTL_MS;
+
+        this.scheduleReminders(results);
+        return results;
     }
 
     private async fetchEventsInternal(): Promise<CalendarEvent[]> {
@@ -415,7 +451,113 @@ export class CalendarManager extends EventEmitter {
 
     // Background fetcher could go here if needed
     public async fetchUpcomingEvents() {
-        // wrapper to just cache or trigger updates
         return this.getUpcomingEvents();
+    }
+
+    // =========================================================================
+    // macOS System Calendar (reads all synced accounts: Outlook, Gmail, iCloud)
+    // No OAuth needed — uses whatever the user has set up in Calendar.app
+    // =========================================================================
+
+    public isSystemCalendarAvailable(): boolean {
+        return process.platform === 'darwin';
+    }
+
+    public async getSystemCalendarEvents(daysAhead: number = 7): Promise<CalendarEvent[]> {
+        if (!this.isSystemCalendarAvailable()) return [];
+
+        // AppleScript that queries all calendars and returns JSON-like lines
+        // Format: title|||startISO|||endISO|||calendarName|||location
+        const script = `
+set startDate to current date
+set endDate to startDate + (${daysAhead} * days)
+set output to ""
+tell application "Calendar"
+  repeat with cal in calendars
+    try
+      set evts to (every event of cal whose start date >= startDate and start date <= endDate)
+      repeat with e in evts
+        try
+          set evtTitle to summary of e
+          set evtStart to start date of e
+          set evtEnd to end date of e
+          set evtCal to name of cal
+          set evtLoc to ""
+          try
+            set evtLoc to location of e
+          end try
+          if evtLoc is missing value then set evtLoc to ""
+          set output to output & evtTitle & "|||" & (evtStart as string) & "|||" & (evtEnd as string) & "|||" & evtCal & "|||" & evtLoc & "\n"
+        end try
+      end repeat
+    end try
+  end repeat
+end tell
+return output
+        `.trim();
+
+        return new Promise((resolve) => {
+            execFile('osascript', ['-e', script], { timeout: 10000 }, (err, stdout, stderr) => {
+                if (err) {
+                    console.error('[CalendarManager] osascript failed:', err.message);
+                    resolve([]);
+                    return;
+                }
+
+                const lines = stdout.trim().split('\n').filter(l => l.includes('|||'));
+                const events: CalendarEvent[] = [];
+
+                for (const line of lines) {
+                    try {
+                        const parts = line.split('|||');
+                        if (parts.length < 4) continue;
+
+                        const [title, startStr, endStr, calName, location] = parts;
+                        const startTime = this.parseAppleScriptDate(startStr.trim());
+                        const endTime = this.parseAppleScriptDate(endStr.trim());
+
+                        if (!startTime || !endTime) continue;
+
+                        // Skip all-day events (duration >= 23h and starts at midnight)
+                        const durationMs = new Date(endTime).getTime() - new Date(startTime).getTime();
+                        if (durationMs >= 23 * 60 * 60 * 1000) continue;
+
+                        // Skip very short events (< 5 min)
+                        if (durationMs < 5 * 60 * 1000) continue;
+
+                        const meetingLink = location ? this.extractMeetingLink(location) : undefined;
+
+                        events.push({
+                            id: `sys-${title}-${startTime}`,
+                            title: title.trim() || '(Sans titre)',
+                            startTime,
+                            endTime,
+                            link: meetingLink,
+                            source: 'google' // reuse type — calName could be added if CalendarEvent is extended
+                        });
+                    } catch {}
+                }
+
+                // Sort by start time
+                events.sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
+                console.log(`[CalendarManager] System calendar returned ${events.length} events`);
+                resolve(events);
+            });
+        });
+    }
+
+    private parseAppleScriptDate(dateStr: string): string | null {
+        // AppleScript date format: "Wednesday, April 15, 2026 at 12:00:00 PM"
+        // or locale variant. We parse it as a JS date.
+        try {
+            const d = new Date(dateStr
+                .replace(' at ', ' ')          // remove "at"
+                .replace(/(\d)(AM|PM)/i, '$1 $2') // ensure space before AM/PM
+            );
+            if (isNaN(d.getTime())) return null;
+            return d.toISOString();
+        } catch {
+            return null;
+        }
     }
 }
