@@ -1656,7 +1656,8 @@ async function initializeApp() {
         appState.startMeeting({
           title: event.title,
           calendarEventId: event.id,
-          source: 'calendar'
+          source: 'calendar',
+          attendees: event.attendees,
         });
       });
 

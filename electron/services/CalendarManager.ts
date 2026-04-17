@@ -26,6 +26,7 @@ export interface CalendarEvent {
     endTime: string; // ISO
     link?: string;
     source: 'google';
+    attendees?: string[]; // email addresses
 }
 
 export class CalendarManager extends EventEmitter {
@@ -467,7 +468,7 @@ export class CalendarManager extends EventEmitter {
         if (!this.isSystemCalendarAvailable()) return [];
 
         // AppleScript that queries all calendars and returns JSON-like lines
-        // Format: title|||startISO|||endISO|||calendarName|||location
+        // Format: title|||startISO|||endISO|||calendarName|||location|||attendees(comma-sep emails)
         const script = `
 set startDate to current date
 set endDate to startDate + (${daysAhead} * days)
@@ -487,7 +488,23 @@ tell application "Calendar"
             set evtLoc to location of e
           end try
           if evtLoc is missing value then set evtLoc to ""
-          set output to output & evtTitle & "|||" & (evtStart as string) & "|||" & (evtEnd as string) & "|||" & evtCal & "|||" & evtLoc & "\n"
+          set evtAttendees to ""
+          try
+            set atts to attendees of e
+            repeat with a in atts
+              try
+                set aEmail to email of a
+                if aEmail is not missing value and aEmail is not "" then
+                  if evtAttendees is "" then
+                    set evtAttendees to aEmail
+                  else
+                    set evtAttendees to evtAttendees & "," & aEmail
+                  end if
+                end if
+              end try
+            end repeat
+          end try
+          set output to output & evtTitle & "|||" & (evtStart as string) & "|||" & (evtEnd as string) & "|||" & evtCal & "|||" & evtLoc & "|||" & evtAttendees & "\n"
         end try
       end repeat
     end try
@@ -512,7 +529,7 @@ return output
                         const parts = line.split('|||');
                         if (parts.length < 4) continue;
 
-                        const [title, startStr, endStr, calName, location] = parts;
+                        const [title, startStr, endStr, calName, location, attendeesStr] = parts;
                         const startTime = this.parseAppleScriptDate(startStr.trim());
                         const endTime = this.parseAppleScriptDate(endStr.trim());
 
@@ -527,13 +544,18 @@ return output
 
                         const meetingLink = location ? this.extractMeetingLink(location) : undefined;
 
+                        const attendees = attendeesStr
+                            ? attendeesStr.split(',').map(e => e.trim().toLowerCase()).filter(e => e.includes('@'))
+                            : [];
+
                         events.push({
                             id: `sys-${title}-${startTime}`,
                             title: title.trim() || '(Sans titre)',
                             startTime,
                             endTime,
                             link: meetingLink,
-                            source: 'google' // reuse type — calName could be added if CalendarEvent is extended
+                            source: 'google', // reuse type — calName could be added if CalendarEvent is extended
+                            attendees: attendees.length > 0 ? attendees : undefined,
                         });
                     } catch {}
                 }
