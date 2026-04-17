@@ -1338,6 +1338,11 @@ export function initializeIpcHandlers(appState: AppState): void {
     }
   });
 
+  safeHandle("open-path", async (_event, filePath: string) => {
+    if (typeof filePath !== 'string' || !filePath) return;
+    await shell.openPath(filePath);
+  });
+
   // ==========================================
   // Intelligence Mode Handlers
   // ==========================================
