@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { X, Mail, RotateCcw, ExternalLink, Loader2, Paperclip } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useT } from '../i18n';
 
 interface Meeting {
     id: string;
@@ -27,6 +28,7 @@ interface FollowUpEmailModalProps {
 }
 
 const FollowUpEmailModal: React.FC<FollowUpEmailModalProps> = ({ isOpen, onClose, meeting }) => {
+    const { t } = useT();
     const [recipientEmail, setRecipientEmail] = useState('');
     const [senderName, setSenderName] = useState('');
     const [recipientName, setRecipientName] = useState('');
@@ -49,7 +51,7 @@ const FollowUpEmailModal: React.FC<FollowUpEmailModalProps> = ({ isOpen, onClose
     const initializeFields = async () => {
         // 1. Set Subject
         const cleanTitle = meeting.title.replace(/["\*]/g, '').trim();
-        setSubject(`Suivi - ${cleanTitle}`); // Default subject
+        setSubject(`${t('email_subject_prefix')}${cleanTitle}`);
 
         // 2. Load Sender Name
         const storedName = localStorage.getItem('natively_user_name');
@@ -197,7 +199,7 @@ const FollowUpEmailModal: React.FC<FollowUpEmailModalProps> = ({ isOpen, onClose
                                                 type="email"
                                                 value={recipientEmail}
                                                 onChange={(e) => setRecipientEmail(e.target.value)}
-                                                placeholder="Email du destinataire"
+                                                placeholder={t('email_recipient_placeholder')}
                                                 className="w-full bg-transparent text-[#E9E9E9] placeholder-[#525255] focus:outline-none text-[14px]"
                                                 autoFocus
                                             />
@@ -214,7 +216,7 @@ const FollowUpEmailModal: React.FC<FollowUpEmailModalProps> = ({ isOpen, onClose
                                             value={subject}
                                             onChange={(e) => setSubject(e.target.value)}
                                             className="w-full bg-transparent text-[#E9E9E9] focus:outline-none text-[14px] font-medium placeholder-[#525255]"
-                                            placeholder="Objet du message"
+                                            placeholder={t('email_subject_placeholder')}
                                         />
                                     </div>
                                 </div>
@@ -239,7 +241,7 @@ const FollowUpEmailModal: React.FC<FollowUpEmailModalProps> = ({ isOpen, onClose
                                         value={emailBody}
                                         onChange={(e) => setEmailBody(e.target.value)}
                                         className="w-full h-full bg-transparent text-[#D4D4D8] text-[15px] leading-7 focus:outline-none resize-none placeholder-[#3F3F46] font-normal"
-                                        placeholder="Rédigez votre e-mail..."
+                                        placeholder={t('email_body_placeholder')}
                                         spellCheck={false}
                                     />
                                 )}
