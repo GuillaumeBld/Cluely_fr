@@ -785,6 +785,29 @@ export class AppState {
       }).catch(err => console.error('[Main] KB pre-call query failed:', err));
     }
 
+    // Query Mail.app for recent messages with attendees (non-blocking)
+    const attendeeEmails: string[] = Array.isArray(metadata?.attendees)
+      ? metadata.attendees.filter((a: any) => typeof a === 'string' && a.includes('@'))
+      : [];
+    if (attendeeEmails.length > 0) {
+      try {
+        const { EmailManager } = require('./services/EmailManager');
+        const em = EmailManager.getInstance();
+        if (em.isAvailable()) {
+          em.getMessagesFromSenders(attendeeEmails).then((byEmail: Map<string, any[]>) => {
+            if (byEmail.size === 0) return;
+            const payload = Object.fromEntries(byEmail);
+            console.log(`[Main] Email pre-call context ready for ${byEmail.size} attendee(s).`);
+            this.getWindowHelper().getOverlayWindow()?.webContents.send('email-context', payload);
+            this.getWindowHelper().getLauncherWindow()?.webContents.send('email-context', payload);
+            this.intelligenceManager.setEmailContext(payload);
+          }).catch((err: any) => console.error('[Main] Email pre-call query failed:', err));
+        }
+      } catch (e) {
+        console.error('[Main] EmailManager not available:', e);
+      }
+    }
+
     // Emit session reset to clear UI state
     this.getWindowHelper().getOverlayWindow()?.webContents.send('session-reset');
     this.getWindowHelper().getLauncherWindow()?.webContents.send('session-reset');

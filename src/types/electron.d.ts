@@ -117,6 +117,7 @@ export interface ElectronAPI {
 
   onMeetingsUpdated: (callback: () => void) => () => void
   onKbContext: (callback: (context: string) => void) => () => void
+  onEmailContext: (callback: (payload: Record<string, Array<{ subject: string; sender: string; date: string; snippet: string; mailbox: string }>>) => void) => () => void
   onZoomMeetingDetected: (callback: () => void) => () => void
   captureMeetingScreenshot: () => Promise<{ path: string; preview: string }>
   onMeetingScreenshotTaken: (callback: (data: { path: string; preview: string }) => void) => () => void

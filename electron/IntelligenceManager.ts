@@ -115,6 +115,20 @@ export class IntelligenceManager extends EventEmitter {
     // Screenshots captured during the current meeting
     private meetingScreenshots: Array<{ path: string; timestamp: number; label?: string }> = [];
 
+    // Email context from Mail.app keyed by sender email (populated on meeting start)
+    private emailContext: Record<string, Array<{ subject: string; sender: string; date: string; snippet: string; mailbox: string }>> = {};
+
+    public setEmailContext(ctx: Record<string, Array<{ subject: string; sender: string; date: string; snippet: string; mailbox: string }>>): void {
+        this.emailContext = ctx || {};
+        const senderCount = Object.keys(this.emailContext).length;
+        const msgCount = Object.values(this.emailContext).reduce((sum, msgs) => sum + msgs.length, 0);
+        console.log(`[IntelligenceManager] Email context set: ${senderCount} sender(s), ${msgCount} message(s)`);
+    }
+
+    public getEmailContext() {
+        return this.emailContext;
+    }
+
     public setMeetingMetadata(metadata: any) {
         this.currentMeetingMetadata = metadata;
     }
@@ -1124,6 +1138,8 @@ export class IntelligenceManager extends EventEmitter {
 
             // Clear metadata
             this.currentMeetingMetadata = null;
+            this.emailContext = {};
+            this.meetingScreenshots = [];
 
             // Notify Frontend to refresh list
             const wins = require('electron').BrowserWindow.getAllWindows();

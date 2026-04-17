@@ -100,6 +100,7 @@ interface ElectronAPI {
   updateMeetingSummary: (id: string, updates: { overview?: string, actionItems?: string[], keyPoints?: string[], actionItemsTitle?: string, keyPointsTitle?: string }) => Promise<boolean>
   onMeetingsUpdated: (callback: () => void) => () => void
   onKbContext: (callback: (context: string) => void) => () => void
+  onEmailContext: (callback: (payload: Record<string, Array<{ subject: string; sender: string; date: string; snippet: string; mailbox: string }>>) => void) => () => void
   onZoomMeetingDetected: (callback: () => void) => () => void
   captureMeetingScreenshot: () => Promise<{ path: string; preview: string }>
   onMeetingScreenshotTaken: (callback: (data: { path: string; preview: string }) => void) => () => void
@@ -592,6 +593,13 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.on("kb-context", subscription)
     return () => {
       ipcRenderer.removeListener("kb-context", subscription)
+    }
+  },
+  onEmailContext: (callback: (payload: any) => void) => {
+    const subscription = (_: any, payload: any) => callback(payload)
+    ipcRenderer.on("email-context", subscription)
+    return () => {
+      ipcRenderer.removeListener("email-context", subscription)
     }
   },
   onZoomMeetingDetected: (callback: () => void) => {
