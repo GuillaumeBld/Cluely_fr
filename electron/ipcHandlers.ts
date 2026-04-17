@@ -1,6 +1,7 @@
 // ipcHandlers.ts
 
 import { app, ipcMain, shell, dialog, desktopCapturer, systemPreferences, BrowserWindow, screen } from "electron"
+import { MulticaManager } from "./services/MulticaManager"
 import { AppState } from "./main"
 import { GEMINI_FLASH_MODEL } from "./IntelligenceManager"
 import { DatabaseManager } from "./db/DatabaseManager"; // Import Database Manager
@@ -101,6 +102,80 @@ export function initializeIpcHandlers(appState: AppState): void {
       throw error
     }
   })
+
+  // Capture a screenshot specifically for the current meeting (stored per-meeting)
+  safeHandle("capture-meeting-screenshot", async () => {
+    try {
+      const screenshotPath = await appState.takeScreenshot();
+      const preview = await appState.getImagePreview(screenshotPath);
+      appState.getIntelligenceManager().addMeetingScreenshot(screenshotPath);
+      // Notify overlay to show the thumbnail flash
+      const overlayWin = appState.getWindowHelper().getOverlayWindow();
+      if (overlayWin && !overlayWin.isDestroyed()) {
+        overlayWin.webContents.send('meeting-screenshot-taken', { path: screenshotPath, preview });
+      }
+      return { path: screenshotPath, preview };
+    } catch (error) {
+      throw error;
+    }
+  })
+
+  // ── Multica IPC (via MulticaManager) ──
+  const multica = MulticaManager.getInstance();
+
+  const withMultica = async <T>(fn: () => Promise<T>): Promise<T | { error: string }> => {
+    try {
+      await multica.waitUntilReady();
+      return await fn();
+    } catch (err: any) {
+      return { error: err.message || 'Multica unavailable' };
+    }
+  };
+
+  safeHandle("multica-update-token", async (_event, token: unknown) => {
+    if (typeof token !== 'string' || !token.startsWith('mul_') || token.length > 512) {
+      return { error: 'invalid token' };
+    }
+    await multica.updateToken(token);
+    return { ok: true };
+  });
+
+  safeHandle("multica-get-workspaces", () =>
+    withMultica(() => multica.getWorkspaces())
+  );
+
+  safeHandle("multica-create-workspace", (_event, payload: unknown) =>
+    withMultica(() => {
+      const { name, slug } = (payload || {}) as any;
+      if (typeof name !== 'string' || !name.trim()) return Promise.resolve({ error: 'name required' });
+      if (typeof slug !== 'string' || !slug.trim()) return Promise.resolve({ error: 'slug required' });
+      return multica.createWorkspace(name.trim(), slug.trim());
+    })
+  );
+
+  safeHandle("multica-get-issues", (_event, workspaceId: unknown) =>
+    withMultica(() => {
+      if (typeof workspaceId !== 'string' || !workspaceId) return Promise.resolve([]);
+      return multica.getIssues(workspaceId);
+    })
+  );
+
+  safeHandle("multica-create-issue", (_event, opts: unknown) =>
+    withMultica(() => {
+      const o = (opts || {}) as any;
+      if (typeof o.workspaceId !== 'string' || !o.workspaceId) return Promise.resolve({ error: 'workspaceId required' });
+      if (typeof o.title !== 'string' || !o.title.trim()) return Promise.resolve({ error: 'title required' });
+      return multica.createIssue({
+        workspaceId: o.workspaceId,
+        title: o.title.trim().slice(0, 500),
+        description: typeof o.description === 'string' ? o.description.slice(0, 5000) : '',
+        priority: ['urgent', 'high', 'medium', 'low'].includes(o.priority) ? o.priority : 'medium',
+      });
+    })
+  );
+
+  safeHandle("multica-is-ready", async () => ({ ready: multica.isReady() }));
+  // ── End Multica IPC ──
 
   safeHandle("get-screenshots", async () => {
     // console.log({ view: appState.getView() })
@@ -535,6 +610,35 @@ export function initializeIpcHandlers(appState: AppState): void {
     }
   });
 
+  safeHandle("set-openrouter-api-key", async (_, apiKey: string) => {
+    try {
+      const { CredentialsManager } = require('./services/CredentialsManager');
+      const cm = CredentialsManager.getInstance();
+      cm.setOpenRouterApiKey(apiKey);
+      const model = cm.getAllCredentials().openrouterModel || 'google/gemini-flash-1.5';
+      const llmHelper = appState.processingHelper.getLLMHelper();
+      llmHelper.setOpenRouterApiKey(apiKey, model);
+      appState.getIntelligenceManager().initializeLLMs();
+      return { success: true };
+    } catch (error: any) {
+      console.error("Error saving OpenRouter API key:", error);
+      return { success: false, error: error.message };
+    }
+  });
+
+  safeHandle("set-openrouter-model", async (_, model: string) => {
+    try {
+      const { CredentialsManager } = require('./services/CredentialsManager');
+      CredentialsManager.getInstance().setOpenRouterModel(model);
+      const llmHelper = appState.processingHelper.getLLMHelper();
+      llmHelper.setOpenRouterModel(model);
+      return { success: true };
+    } catch (error: any) {
+      console.error("Error saving OpenRouter model:", error);
+      return { success: false, error: error.message };
+    }
+  });
+
   // Custom Provider Handlers
   safeHandle("get-custom-providers", async () => {
     try {
@@ -667,6 +771,8 @@ export function initializeIpcHandlers(appState: AppState): void {
         hasGroqKey: hasKey(creds.groqApiKey),
         hasOpenaiKey: hasKey(creds.openaiApiKey),
         hasClaudeKey: hasKey(creds.claudeApiKey),
+        hasOpenRouterKey: hasKey(creds.openrouterApiKey),
+        openrouterModel: creds.openrouterModel || 'google/gemini-flash-1.5',
         googleServiceAccountPath: creds.googleServiceAccountPath || null,
         sttProvider: creds.sttProvider || 'google',
         groqSttModel: creds.groqSttModel || 'whisper-large-v3-turbo',
@@ -680,7 +786,7 @@ export function initializeIpcHandlers(appState: AppState): void {
         ibmWatsonRegion: creds.ibmWatsonRegion || 'us-south',
       };
     } catch (error: any) {
-      return { hasGeminiKey: false, hasGroqKey: false, hasOpenaiKey: false, hasClaudeKey: false, googleServiceAccountPath: null, sttProvider: 'google', groqSttModel: 'whisper-large-v3-turbo', hasSttGroqKey: false, hasSttOpenaiKey: false, hasDeepgramKey: false, hasElevenLabsKey: false, hasAzureKey: false, azureRegion: 'eastus', hasIbmWatsonKey: false, ibmWatsonRegion: 'us-south' };
+      return { hasGeminiKey: false, hasGroqKey: false, hasOpenaiKey: false, hasClaudeKey: false, googleServiceAccountPath: null, sttProvider: 'google', groqSttModel: 'whisper-large-v3-turbo', hasSttGroqKey: false, hasSttOpenaiKey: false, hasDeepgramKey: false, hasElevenLabsKey: false, hasAzureKey: false, azureRegion: 'eastus', hasIbmWatsonKey: false, ibmWatsonRegion: 'us-south', hasOpenRouterKey: false, openrouterModel: 'google/gemini-flash-1.5' };
     }
   });
 

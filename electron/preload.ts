@@ -97,6 +97,17 @@ interface ElectronAPI {
   updateMeetingTitle: (id: string, title: string) => Promise<boolean>
   updateMeetingSummary: (id: string, updates: { overview?: string, actionItems?: string[], keyPoints?: string[], actionItemsTitle?: string, keyPointsTitle?: string }) => Promise<boolean>
   onMeetingsUpdated: (callback: () => void) => () => void
+  onKbContext: (callback: (context: string) => void) => () => void
+  onZoomMeetingDetected: (callback: () => void) => () => void
+  captureMeetingScreenshot: () => Promise<{ path: string; preview: string }>
+  onMeetingScreenshotTaken: (callback: (data: { path: string; preview: string }) => void) => () => void
+  multicaGetWorkspaces: () => Promise<any>
+  multicaCreateWorkspace: (name: string, slug: string) => Promise<any>
+  multicaUpdateToken: (token: string) => Promise<any>
+  multicaGetIssues: (workspaceId: string) => Promise<any>
+  multicaCreateIssue: (opts: { workspaceId: string; title: string; description?: string; priority?: string }) => Promise<any>
+  multicaIsReady: () => Promise<{ ready: boolean }>
+  onMulticaStatusChange: (callback: (data: { status: 'ready' | 'failed'; error?: string }) => void) => () => void
 
   // Intelligence Mode Events
   onIntelligenceAssistUpdate: (callback: (data: { insight: string }) => void) => () => void
@@ -566,7 +577,39 @@ contextBridge.exposeInMainWorld("electronAPI", {
       ipcRenderer.removeListener("session-reset", subscription)
     }
   },
-
+  onKbContext: (callback: (context: string) => void) => {
+    const subscription = (_: any, context: string) => callback(context)
+    ipcRenderer.on("kb-context", subscription)
+    return () => {
+      ipcRenderer.removeListener("kb-context", subscription)
+    }
+  },
+  onZoomMeetingDetected: (callback: () => void) => {
+    const subscription = () => callback()
+    ipcRenderer.on("zoom-meeting-detected", subscription)
+    return () => {
+      ipcRenderer.removeListener("zoom-meeting-detected", subscription)
+    }
+  },
+  captureMeetingScreenshot: () => ipcRenderer.invoke("capture-meeting-screenshot"),
+  onMeetingScreenshotTaken: (callback: (data: { path: string; preview: string }) => void) => {
+    const subscription = (_: any, data: { path: string; preview: string }) => callback(data)
+    ipcRenderer.on("meeting-screenshot-taken", subscription)
+    return () => {
+      ipcRenderer.removeListener("meeting-screenshot-taken", subscription)
+    }
+  },
+  multicaGetWorkspaces: () => ipcRenderer.invoke("multica-get-workspaces"),
+  multicaCreateWorkspace: (name: string, slug: string) => ipcRenderer.invoke("multica-create-workspace", { name, slug }),
+  multicaUpdateToken: (token: string) => ipcRenderer.invoke("multica-update-token", token),
+  multicaGetIssues: (workspaceId: string) => ipcRenderer.invoke("multica-get-issues", workspaceId),
+  multicaCreateIssue: (opts: { workspaceId: string; title: string; description?: string; priority?: string }) => ipcRenderer.invoke("multica-create-issue", opts),
+  multicaIsReady: () => ipcRenderer.invoke("multica-is-ready"),
+  onMulticaStatusChange: (callback: (data: { status: 'ready' | 'failed'; error?: string }) => void) => {
+    const sub = (_: any, data: { status: 'ready' | 'failed'; error?: string }) => callback(data);
+    ipcRenderer.on('multica-status-change', sub);
+    return () => ipcRenderer.removeListener('multica-status-change', sub);
+  },
 
   // Streaming Chat
   streamGeminiChat: (message: string, imagePath?: string, context?: string, options?: { skipSystemPrompt?: boolean }) => ipcRenderer.invoke("gemini-chat-stream", message, imagePath, context, options),

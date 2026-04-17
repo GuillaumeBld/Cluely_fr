@@ -71,6 +71,9 @@ import { KeybindManager } from "./services/KeybindManager"
 import { ProcessingHelper } from "./ProcessingHelper"
 
 import { IntelligenceManager } from "./IntelligenceManager"
+import { KBManager } from "./services/KBManager"
+import { ZoomWatcher } from "./services/ZoomWatcher"
+import { MulticaManager } from "./services/MulticaManager"
 import { SystemAudioCapture } from "./audio/SystemAudioCapture"
 import { MicrophoneCapture } from "./audio/MicrophoneCapture"
 import { GoogleSTT } from "./audio/GoogleSTT"
@@ -765,6 +768,21 @@ export class AppState {
       if (metadata.audio) {
         await this.reconfigureAudio(metadata.audio.inputDeviceId, metadata.audio.outputDeviceId);
       }
+    }
+
+    // Query KB for pre-call context (non-blocking — fires and sends to overlay when ready)
+    const kb = KBManager.getInstance();
+    if (kb.isAvailable()) {
+      kb.getPreCallContext({
+        title: metadata?.title,
+        attendees: metadata?.attendees,
+      }).then(context => {
+        if (context) {
+          console.log('[Main] KB pre-call context ready, sending to overlay.');
+          this.getWindowHelper().getOverlayWindow()?.webContents.send('kb-context', context);
+          this.getWindowHelper().getLauncherWindow()?.webContents.send('kb-context', context);
+        }
+      }).catch(err => console.error('[Main] KB pre-call query failed:', err));
     }
 
     // Emit session reset to clear UI state
@@ -1633,6 +1651,31 @@ async function initializeApp() {
       console.error('[Main] Failed to recover unprocessed meetings:', err);
     });
 
+    // Start Multica server and bootstrap auth
+    const launcherWin = appState.getWindowHelper().getLauncherWindow();
+    if (launcherWin) MulticaManager.getInstance().setLauncherWindow(launcherWin);
+    MulticaManager.getInstance().start().catch(err => {
+      console.error('[Main] MulticaManager failed to start:', err);
+    });
+
+    // Start Zoom watcher — show Cluely + workspace selector when Zoom opens
+    try {
+      const zoomWatcher = ZoomWatcher.getInstance();
+      zoomWatcher.on('zoom-meeting-started', () => {
+        console.log('[Main] Zoom meeting detected — showing Cluely');
+        appState.centerAndShowWindow();
+        // Notify renderer to open workspace selector
+        const launcher = appState.getWindowHelper().getLauncherWindow();
+        if (launcher && !launcher.isDestroyed()) {
+          launcher.webContents.send('zoom-meeting-detected');
+        }
+      });
+      zoomWatcher.start();
+      console.log('[Main] ZoomWatcher started');
+    } catch (e) {
+      console.error('[Main] Failed to start ZoomWatcher:', e);
+    }
+
 
     // Note: We do NOT force dock show here anymore, respecting stealth mode.
   })
@@ -1654,6 +1697,11 @@ async function initializeApp() {
 
   // Scrub API keys from memory on quit to minimize exposure window
   app.on("before-quit", () => {
+    try {
+      MulticaManager.getInstance().stop();
+    } catch (e) {
+      console.error('[Main] Failed to stop MulticaManager:', e);
+    }
     try {
       const { CredentialsManager } = require('./services/CredentialsManager');
       CredentialsManager.getInstance().scrubMemory();
