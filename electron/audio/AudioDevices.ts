@@ -5,7 +5,7 @@ let NativeModule: any = null;
 try {
     NativeModule = require('natively-audio');
 } catch (e) {
-    console.error('[AudioDevices] Failed to load native module:', e);
+    console.warn('[AudioDevices] Native audio module not available (dev mode):', e);
 }
 
 const { getInputDevices, getOutputDevices } = NativeModule || {};
