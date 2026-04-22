@@ -154,6 +154,40 @@ describe('HandlerRegistry', () => {
     expect(registry.getHandlers('hermes:meeting-started')).toEqual([])
   })
 
+  it('ignores duplicate handler registration with same ID', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const fn1 = vi.fn()
+    const fn2 = vi.fn()
+
+    registry.register({ id: 'dup', event: 'hermes:meeting-started', handle: fn1 })
+    registry.register({ id: 'dup', event: 'hermes:meeting-started', handle: fn2 })
+
+    await registry.dispatch('hermes:meeting-started', {
+      meetingId: '1',
+      title: 'X',
+      source: 'manual',
+    })
+
+    // Only the first handler should have been called
+    expect(fn1).toHaveBeenCalledOnce()
+    expect(fn2).not.toHaveBeenCalled()
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining('already registered'),
+    )
+    warnSpy.mockRestore()
+  })
+
+  it('allows same handler ID on different events', () => {
+    const fn1 = vi.fn()
+    const fn2 = vi.fn()
+
+    registry.register({ id: 'shared-id', event: 'hermes:meeting-started', handle: fn1 })
+    registry.register({ id: 'shared-id', event: 'hermes:meeting-ended', handle: fn2 })
+
+    expect(registry.getHandlers('hermes:meeting-started')).toEqual(['shared-id'])
+    expect(registry.getHandlers('hermes:meeting-ended')).toEqual(['shared-id'])
+  })
+
   it('dispatch is a no-op for events with no handlers', async () => {
     // Should not throw
     await registry.dispatch('hermes:meeting-started', {

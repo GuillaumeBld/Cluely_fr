@@ -16,6 +16,10 @@ export class HandlerRegistry {
    */
   register<E extends HermesEventName>(descriptor: HandlerDescriptor<E>): () => void {
     const list = this.handlers.get(descriptor.event) ?? []
+    if (list.some((h) => h.id === descriptor.id)) {
+      console.warn(`[Hermes] Handler "${descriptor.id}" already registered for "${descriptor.event}" — ignoring duplicate`)
+      return () => { this.unregister(descriptor.event, descriptor.id) }
+    }
     // Safe: the generic constraint ensures E matches, but the map stores heterogeneous entries
     list.push(descriptor as unknown as HandlerDescriptor)
     this.handlers.set(descriptor.event, list)
