@@ -45,7 +45,13 @@ export async function extractRelations(
   llmFn: LLMFn,
   memoryManager: MemoryManager,
 ): Promise<TripleProposal[]> {
-  const raw = await llmFn(EXTRACTION_SYSTEM_PROMPT, text);
+  let raw: string;
+  try {
+    raw = await llmFn(EXTRACTION_SYSTEM_PROMPT, text);
+  } catch (err) {
+    console.error('[RelationExtractor] LLM call failed:', err);
+    return [];
+  }
 
   let proposals: TripleProposal[];
   try {
@@ -53,8 +59,8 @@ export async function extractRelations(
     if (!Array.isArray(proposals)) {
       proposals = [];
     }
-  } catch {
-    console.error('[RelationExtractor] Failed to parse LLM response:', raw.slice(0, 200));
+  } catch (err) {
+    console.error('[RelationExtractor] Failed to parse LLM response:', raw.slice(0, 200), err);
     return [];
   }
 
