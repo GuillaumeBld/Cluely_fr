@@ -29,10 +29,15 @@ export class MemoryManager {
     } else {
       const dbPath = dbOrPath ?? path.join(app.getPath('userData'), 'memory.db');
       const dir = path.dirname(dbPath);
-      if (!fs.existsSync(dir)) {
-        fs.mkdirSync(dir, { recursive: true });
+      try {
+        if (!fs.existsSync(dir)) {
+          fs.mkdirSync(dir, { recursive: true });
+        }
+        this.db = new Database(dbPath);
+      } catch (err) {
+        console.error('[MemoryManager] Failed to open memory.db, falling back to in-memory:', err);
+        this.db = new Database(':memory:');
       }
-      this.db = new Database(dbPath);
     }
     runMigration(this.db);
   }
@@ -40,6 +45,8 @@ export class MemoryManager {
   public static getInstance(dbOrPath?: Database.Database | string): MemoryManager {
     if (!MemoryManager.instance) {
       MemoryManager.instance = new MemoryManager(dbOrPath);
+    } else if (dbOrPath !== undefined) {
+      console.warn('[MemoryManager] getInstance called with arguments but instance already exists -- arguments ignored.');
     }
     return MemoryManager.instance;
   }
@@ -64,7 +71,7 @@ export class MemoryManager {
       this.db.prepare(
         "UPDATE memory_nodes SET metadata = ?, updated_at = datetime('now') WHERE id = ?"
       ).run(JSON.stringify(metadata), existing.id);
-      return { ...existing, metadata: JSON.stringify(metadata) };
+      return this.db.prepare('SELECT * FROM memory_nodes WHERE id = ?').get(existing.id) as MemoryNode;
     }
 
     const id = crypto.randomUUID();
@@ -193,6 +200,10 @@ export class MemoryManager {
     this.db.transaction(() => {
       for (const fact of facts) {
         const updatedAt = new Date(fact.updated_at + 'Z').getTime(); // SQLite datetimes are UTC
+        if (isNaN(updatedAt)) {
+          console.warn('[MemoryManager] Skipping fact with invalid updated_at:', fact.id, fact.updated_at);
+          continue;
+        }
         const daysSinceUpdate = (now - updatedAt) / (1000 * 60 * 60 * 24);
         if (daysSinceUpdate <= 0) continue;
 
@@ -213,11 +224,13 @@ export class MemoryManager {
     ).all() as PendingReview[];
   }
 
-  public resolveReview(id: number, approved: boolean): void {
+  public resolveReview(id: number, approved: boolean): { resolved: boolean } {
     const status = approved ? 'approved' : 'rejected';
-    this.db.prepare(
-      "UPDATE pending_review SET status = ?, resolved_at = datetime('now') WHERE id = ?"
+    const info = this.db.prepare(
+      "UPDATE pending_review SET status = ?, resolved_at = datetime('now') WHERE id = ? AND status = 'pending'"
     ).run(status, id);
+
+    if (info.changes === 0) return { resolved: false };
 
     if (approved) {
       const review = this.db.prepare('SELECT * FROM pending_review WHERE id = ?').get(id) as PendingReview;
@@ -228,5 +241,6 @@ export class MemoryManager {
         ).run(review.source_id, review.target_id, review.predicate, review.confidence, review.meeting_id);
       }
     }
+    return { resolved: true };
   }
 }
