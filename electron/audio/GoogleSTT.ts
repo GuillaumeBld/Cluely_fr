@@ -84,6 +84,7 @@ export class GoogleSTT extends EventEmitter {
             const config = ENGLISH_VARIANTS[key];
             if (!config) {
                 console.warn(`[GoogleSTT] Unknown language key: ${key}`);
+                this.pendingLanguageChange = undefined;
                 return;
             }
 
