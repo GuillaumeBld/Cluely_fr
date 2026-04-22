@@ -61,6 +61,7 @@ export class DeepgramStreamingSTT extends EventEmitter {
             const config = ENGLISH_VARIANTS[key];
             if (!config) {
                 console.warn(`[DeepgramStreaming] Unknown language key: ${key}`);
+                this.pendingLanguageChange = undefined;
                 return;
             }
 
