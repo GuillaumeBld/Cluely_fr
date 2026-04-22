@@ -1670,6 +1670,16 @@ async function initializeApp() {
       console.error('[Main] Failed to initialize CalendarManager:', e);
     }
 
+    // Initialize Hermes orchestrator (Interpretation A — Inner Cluely Operator)
+    try {
+      const { HermesCore } = require('./hermes');
+      const hermes = HermesCore.getInstance();
+      hermes.start();
+      console.log('[Main] Hermes initialized');
+    } catch (e) {
+      console.error('[Main] Failed to initialize Hermes:', e);
+    }
+
     // Recover unprocessed meetings (persistence check)
     appState.getIntelligenceManager().recoverUnprocessedMeetings().catch(err => {
       console.error('[Main] Failed to recover unprocessed meetings:', err);
@@ -1729,6 +1739,12 @@ async function initializeApp() {
 
   // Scrub API keys from memory on quit to minimize exposure window
   app.on("before-quit", () => {
+    try {
+      const { HermesCore } = require('./hermes');
+      HermesCore.getInstance().stop();
+    } catch (e) {
+      console.error('[Main] Failed to stop Hermes:', e);
+    }
     try {
       MulticaManager.getInstance().stop();
     } catch (e) {
