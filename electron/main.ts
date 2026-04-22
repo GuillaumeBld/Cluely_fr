@@ -1670,6 +1670,16 @@ async function initializeApp() {
       console.error('[Main] Failed to initialize CalendarManager:', e);
     }
 
+    // Initialize Hermes orchestrator (Interpretation A — Inner Cluely Operator)
+    try {
+      const { HermesCore } = require('../src/hermes');
+      const hermes = HermesCore.getInstance();
+      hermes.start();
+      console.log('[Main] Hermes initialized');
+    } catch (e) {
+      console.error('[Main] Failed to initialize Hermes:', e);
+    }
+
     // Recover unprocessed meetings (persistence check)
     appState.getIntelligenceManager().recoverUnprocessedMeetings().catch(err => {
       console.error('[Main] Failed to recover unprocessed meetings:', err);
