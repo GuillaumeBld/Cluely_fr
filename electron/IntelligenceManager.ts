@@ -26,6 +26,7 @@ import { desktopCapturer } from 'electron';
 import { DatabaseManager, Meeting } from './db/DatabaseManager';
 const crypto = require('crypto');
 import { app } from 'electron';
+import { taskGeneratorBuffer } from './services/TaskGeneratorBuffer';
 
 
 export const GEMINI_FLASH_MODEL = "gemini-3-flash-preview";
@@ -1037,6 +1038,9 @@ export class IntelligenceManager extends EventEmitter {
                 if (generatedTitle) title = generatedTitle.replace(/["*]/g, '').trim();
             }
 
+            // Inject mid-call decision hints into context for better action item extraction
+            const decisionHints = this.buildDecisionHintsBlock();
+
             // Generate Structured Summary
             // Only generate if we have sufficient context/transcript
             if (this.recapLLM && data.transcript.length > 2) {
@@ -1063,7 +1067,10 @@ export class IntelligenceManager extends EventEmitter {
                 const groqSummaryPrompt = GROQ_SUMMARY_JSON_PROMPT; // Context is now removed from the template
 
                 // Use the new robust summary generation method
-                const generatedSummary = await this.llmHelper.generateMeetingSummary(summaryPrompt, data.context.substring(0, 10000), groqSummaryPrompt);
+                const contextWithHints = decisionHints
+                  ? data.context.substring(0, 10000) + decisionHints
+                  : data.context.substring(0, 10000);
+                const generatedSummary = await this.llmHelper.generateMeetingSummary(summaryPrompt, contextWithHints, groqSummaryPrompt);
 
                 if (generatedSummary) {
                     // Try to extract JSON - handle both raw JSON and markdown-wrapped
@@ -1215,6 +1222,27 @@ export class IntelligenceManager extends EventEmitter {
         if (this.assistCancellationToken) {
             this.assistCancellationToken.abort();
             this.assistCancellationToken = null;
+        }
+    }
+
+    /**
+     * Build a decision hints block from the TaskGeneratorBuffer for post-meeting prompt enrichment.
+     * Returns empty string if no decisions were captured.
+     */
+    private buildDecisionHintsBlock(): string {
+        try {
+            const hints = taskGeneratorBuffer.flush();
+            taskGeneratorBuffer.clear();
+            if (hints.length === 0) return "";
+            const lines = hints
+                .map(
+                    (h) =>
+                        `- [${h.type}] ${h.speaker} @ ${new Date(h.timestamp).toISOString()}: "${h.text_excerpt}" (confidence: ${h.confidence})`
+                )
+                .join("\n");
+            return `\n\n## Pre-annotated decision hints\nThe following commitments were detected mid-call. Use them to improve action item extraction:\n${lines}\n`;
+        } catch {
+            return "";
         }
     }
 

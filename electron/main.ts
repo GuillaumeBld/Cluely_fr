@@ -85,6 +85,11 @@ import { DatabaseManager } from "./db/DatabaseManager"
 import { CredentialsManager } from "./services/CredentialsManager"
 import { ReleaseNotesManager } from "./update/ReleaseNotesManager"
 import { MemoryManager } from "./memory"
+import { IpcEventBus } from "./services/IpcEventBus"
+import { LunrIndexer } from "./services/LunrIndexer"
+import { SlidingWindowAnalyzer } from "./services/SlidingWindowAnalyzer"
+import { taskGeneratorBuffer } from "./services/TaskGeneratorBuffer"
+import { MemoryGraphWriter } from "./services/MemoryGraphWriter"
 
 export class AppState {
   private static instance: AppState | null = null
@@ -102,6 +107,11 @@ export class AppState {
   private tray: Tray | null = null
   private updateAvailable: boolean = false
   private disguiseMode: 'terminal' | 'settings' | 'activity' | 'none' = 'terminal'
+
+  // Mid-call decision capture services
+  private lunrIndexer: LunrIndexer = new LunrIndexer()
+  private slidingWindowAnalyzer: SlidingWindowAnalyzer = new SlidingWindowAnalyzer(this.lunrIndexer)
+  private memoryGraphWriter: MemoryGraphWriter = new MemoryGraphWriter()
 
   // View management
   private view: "queue" | "solutions" = "queue"
@@ -474,6 +484,17 @@ export class AppState {
             confidence: segment.confidence
           });
 
+          // Feed final transcripts to decision capture indexer
+          if (segment.isFinal && segment.text.trim()) {
+            this.lunrIndexer.addTurn({
+              turn_id: `interviewer_${Date.now()}`,
+              speaker: 'interviewer',
+              text: segment.text,
+              timestamp: Date.now(),
+              meeting_id: 'active',
+            });
+          }
+
           const helper = this.getWindowHelper();
           const payload = {
             speaker: 'interviewer',
@@ -550,6 +571,17 @@ export class AppState {
             final: segment.isFinal,
             confidence: segment.confidence
           });
+
+          // Feed final transcripts to decision capture indexer
+          if (segment.isFinal && segment.text.trim()) {
+            this.lunrIndexer.addTurn({
+              turn_id: `user_${Date.now()}`,
+              speaker: 'user',
+              text: segment.text,
+              timestamp: Date.now(),
+              meeting_id: 'active',
+            });
+          }
 
           // Forward User transcript to UI too
           const helper = this.getWindowHelper();
@@ -826,6 +858,11 @@ export class AppState {
     // 4. Start Microphone
     this.microphoneCapture?.start();
     this.googleSTT_User?.start();
+
+    // 5. Start mid-call decision capture
+    const meetingId = metadata?.calendarEventId || `meeting_${Date.now()}`;
+    this.slidingWindowAnalyzer.start(meetingId);
+    IpcEventBus.emitTyped("meeting:started", { meeting_id: meetingId });
   }
 
   public async endMeeting(): Promise<void> {
@@ -840,7 +877,12 @@ export class AppState {
     this.microphoneCapture?.stop();
     this.googleSTT_User?.stop();
 
-    // 4. Reset Intelligence Context & Save
+    // 5. Stop mid-call decision capture (flush happens in IntelligenceManager.processAndSaveMeeting)
+    this.slidingWindowAnalyzer.stop();
+    this.lunrIndexer.clear();
+    IpcEventBus.emitTyped("meeting:ended", { meeting_id: "active" });
+
+    // 6. Reset Intelligence Context & Save
     await this.intelligenceManager.stopMeeting();
 
     // 5. Revert to Default Model (One-Way Sync Revert)
