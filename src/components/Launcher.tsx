@@ -11,6 +11,7 @@ import MulticaPanel from './MulticaPanel';
 import { motion, AnimatePresence } from 'framer-motion';
 import { analytics } from '../lib/analytics/analytics.service';
 import { useShortcuts } from '../hooks/useShortcuts';
+import { PreBriefBanner } from './PreBriefBanner';
 
 interface Meeting {
     id: string;
@@ -457,6 +458,9 @@ const Launcher: React.FC<LauncherProps> = ({ onStartMeeting, onOpenSettings }) =
                                             </motion.div>
                                         )}
                                     </AnimatePresence>
+
+                                    {/* Pre-meeting brief banner */}
+                                    <PreBriefBanner />
 
                                     {/* Active workspace badge */}
                                     {activeWorkspace && (

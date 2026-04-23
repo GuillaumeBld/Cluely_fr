@@ -190,6 +190,12 @@ interface ElectronAPI {
   getDonationStatus: () => Promise<{ shouldShow: boolean; hasDonated: boolean; lifetimeShows: number }>;
   markDonationToastShown: () => Promise<{ success: boolean }>;
   setDonationComplete: () => Promise<{ success: boolean }>;
+
+  // Pre-Meeting Brief API
+  preMeeting: {
+    onBriefReady: (cb: (brief: any) => void) => () => void;
+    getLastBrief: () => Promise<any>;
+  };
 }
 
 export const PROCESSING_EVENTS = {
@@ -810,4 +816,14 @@ contextBridge.exposeInMainWorld("electronAPI", {
   getDonationStatus: () => ipcRenderer.invoke("get-donation-status"),
   markDonationToastShown: () => ipcRenderer.invoke("mark-donation-toast-shown"),
   setDonationComplete: () => ipcRenderer.invoke('set-donation-complete'),
+
+  // Pre-Meeting Brief API
+  preMeeting: {
+    onBriefReady: (cb: (brief: any) => void) => {
+      const subscription = (_: any, b: any) => cb(b);
+      ipcRenderer.on('pre-meeting:brief-ready', subscription);
+      return () => ipcRenderer.removeListener('pre-meeting:brief-ready', subscription);
+    },
+    getLastBrief: () => ipcRenderer.invoke('pre-meeting:get-last-brief'),
+  },
 } as ElectronAPI)

@@ -1716,6 +1716,22 @@ async function initializeApp() {
       console.error('[Main] Failed to start ZoomWatcher:', e);
     }
 
+    // Initialize PreMeetingOrchestrator — zero-touch pre-meeting context loader
+    try {
+      const { PreMeetingOrchestrator } = require('./services/PreMeetingOrchestrator');
+      const orchestrator = PreMeetingOrchestrator.getInstance();
+      orchestrator.on('pre-meeting:brief-ready', (brief: any) => {
+        BrowserWindow.getAllWindows().forEach(win => {
+          if (!win.isDestroyed()) {
+            win.webContents.send('pre-meeting:brief-ready', brief);
+          }
+        });
+      });
+      orchestrator.start();
+      console.log('[Main] PreMeetingOrchestrator started');
+    } catch (e) {
+      console.error('[Main] Failed to start PreMeetingOrchestrator:', e);
+    }
 
     // Note: We do NOT force dock show here anymore, respecting stealth mode.
   })
