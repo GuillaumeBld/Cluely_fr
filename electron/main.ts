@@ -90,6 +90,9 @@ import { LunrIndexer } from "./services/LunrIndexer"
 import { SlidingWindowAnalyzer } from "./services/SlidingWindowAnalyzer"
 import { taskGeneratorBuffer } from "./services/TaskGeneratorBuffer"
 import { MemoryGraphWriter } from "./services/MemoryGraphWriter"
+import { CorpusWatcher } from "./corpus/CorpusWatcher"
+import { CorpusIndexer } from "./corpus/CorpusIndexer"
+import { loadCorpusConfig } from "./corpus/corpus.config"
 
 export class AppState {
   private static instance: AppState | null = null
@@ -104,6 +107,7 @@ export class AppState {
   private themeManager: ThemeManager
   private ragManager: RAGManager | null = null
   private memoryManager: MemoryManager
+  private corpusWatcher: CorpusWatcher | null = null
   private tray: Tray | null = null
   private updateAvailable: boolean = false
   private disguiseMode: 'terminal' | 'settings' | 'activity' | 'none' = 'terminal'
@@ -189,6 +193,9 @@ export class AppState {
     // Initialize MemoryManager (separate memory.db for graph + facts)
     this.memoryManager = MemoryManager.getInstance()
 
+    // Initialize Corpus Watcher (local corpus RAG indexing)
+    this.initializeCorpusWatcher()
+
     this.setupIntelligenceEvents()
 
     // Setup Ollama IPC
@@ -224,6 +231,28 @@ export class AppState {
       }
     } catch (error) {
       console.error('[AppState] Failed to initialize RAGManager:', error);
+    }
+  }
+
+  private initializeCorpusWatcher(): void {
+    try {
+      const corpusConfig = loadCorpusConfig();
+      if (corpusConfig.projects.length === 0) {
+        console.log('[AppState] No corpus projects configured, skipping watcher');
+        return;
+      }
+
+      const db = DatabaseManager.getInstance();
+      // @ts-ignore - accessing private db for CorpusIndexer
+      const sqliteDb = db['db'];
+      if (!sqliteDb) return;
+
+      const indexer = new CorpusIndexer(sqliteDb);
+      this.corpusWatcher = new CorpusWatcher(corpusConfig.projects, indexer);
+      this.corpusWatcher.start();
+      console.log('[AppState] CorpusWatcher initialized');
+    } catch (error) {
+      console.error('[AppState] Failed to initialize CorpusWatcher:', error);
     }
   }
 
