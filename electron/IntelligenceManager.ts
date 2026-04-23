@@ -23,7 +23,8 @@ export interface SuggestionTrigger {
 
 import { AnswerLLM, AssistLLM, FollowUpLLM, RecapLLM, FollowUpQuestionsLLM, WhatToAnswerLLM, prepareTranscriptForWhatToAnswer, GROQ_TITLE_PROMPT, GROQ_SUMMARY_JSON_PROMPT, buildTemporalContext, AssistantResponse, classifyIntent } from './llm';
 import { desktopCapturer } from 'electron';
-import { DatabaseManager, Meeting } from './db/DatabaseManager';
+import { DatabaseManager, Meeting, ActionItem } from './db/DatabaseManager';
+import { GoalAligner } from './memory/GoalAligner';
 const crypto = require('crypto');
 import { app } from 'electron';
 
@@ -158,6 +159,9 @@ export class IntelligenceManager extends EventEmitter {
     private followUpQuestionsLLM: FollowUpQuestionsLLM | null = null;
     private whatToAnswerLLM: WhatToAnswerLLM | null = null;
 
+    // Goal alignment (optional — set via setGoalAligner)
+    private goalAligner: GoalAligner | null = null;
+
     // Keep reference to LLMHelper for client access
     private llmHelper: LLMHelper;
 
@@ -173,7 +177,10 @@ export class IntelligenceManager extends EventEmitter {
         super();
         this.llmHelper = llmHelper;
         this.initializeLLMs();
+    }
 
+    public setGoalAligner(aligner: GoalAligner): void {
+        this.goalAligner = aligner;
     }
 
 
@@ -1016,7 +1023,7 @@ export class IntelligenceManager extends EventEmitter {
      */
     private async processAndSaveMeeting(data: { transcript: TranscriptSegment[], usage: any[], startTime: number, durationMs: number, context: string, screenshots?: Array<{ path: string; timestamp: number; label?: string }> }, meetingId: string): Promise<void> {
         let title = "Untitled Session";
-        let summaryData: { actionItems: string[], keyPoints: string[] } = { actionItems: [], keyPoints: [] };
+        let summaryData: { actionItems: (string | import('./db/DatabaseManager').ActionItem)[], keyPoints: string[] } = { actionItems: [], keyPoints: [] };
         let calendarEventId: string | undefined;
         let source: 'manual' | 'calendar' = 'manual';
 
@@ -1087,13 +1094,37 @@ export class IntelligenceManager extends EventEmitter {
             const seconds = ((data.durationMs % 60000) / 1000).toFixed(0);
             const durationStr = `${minutes}:${Number(seconds) < 10 ? '0' : ''}${seconds}`;
 
+            // Normalize actionItems to ActionItem[] format
+            let normalizedItems: ActionItem[] = (summaryData.actionItems || []).map(
+                (item) => typeof item === 'string' ? { text: item, goal_id: null, goal_confidence: null } : item
+            );
+
+            // Auto-tag action items with matching goals (if GoalAligner available)
+            if (this.goalAligner && normalizedItems.length > 0) {
+                try {
+                    const tagged = await this.goalAligner.alignActionItems(
+                        normalizedItems.map(i => i.text),
+                        meetingId
+                    );
+                    normalizedItems = tagged.map(t => ({
+                        text: t.text,
+                        goal_id: t.goal_id,
+                        goal_confidence: t.goal_confidence,
+                    }));
+                } catch (err) {
+                    console.error('[IntelligenceManager] GoalAligner failed, keeping untagged items:', err);
+                }
+            }
+
+            const normalizedSummary = { ...summaryData, actionItems: normalizedItems };
+
             const meetingData: Meeting = {
                 id: meetingId,
                 title: title,
                 date: new Date().toISOString(),
                 duration: durationStr,
                 summary: "See detailed summary",
-                detailedSummary: summaryData,
+                detailedSummary: normalizedSummary,
                 transcript: data.transcript,
                 usage: data.usage,
                 calendarEventId: calendarEventId,
@@ -1105,6 +1136,9 @@ export class IntelligenceManager extends EventEmitter {
             // Save to SQLite
             DatabaseManager.getInstance().saveMeeting(meetingData, data.startTime, data.durationMs);
 
+            // Extract text strings for KB/Multica (they expect string[])
+            const actionItemTexts = normalizedItems.map(a => a.text);
+
             // Sync to KB + NotebookLM (non-blocking)
             const kb = KBManager.getInstance();
             if (kb.isAvailable()) {
@@ -1114,7 +1148,7 @@ export class IntelligenceManager extends EventEmitter {
                 kb.onMeetingEnd({
                     title,
                     transcript: transcriptText,
-                    actionItems: summaryData.actionItems || [],
+                    actionItems: actionItemTexts,
                     screenshots: data.screenshots || [],
                 }).catch(err => console.error('[IntelligenceManager] KB sync failed:', err));
             }
@@ -1122,15 +1156,15 @@ export class IntelligenceManager extends EventEmitter {
             // Push action items as issues to Multica workspace (if one was selected)
             const workspaceId = this.currentMeetingMetadata?.multicaWorkspaceId;
             const multicaWorkspaceName = this.currentMeetingMetadata?.multicaWorkspaceName;
-            if (workspaceId && summaryData.actionItems?.length) {
+            if (workspaceId && actionItemTexts.length) {
                 kb.pushIssuesToMultica({
                     workspaceId,
-                    actionItems: summaryData.actionItems,
+                    actionItems: actionItemTexts,
                     meetingTitle: title,
                 }).then(() => {
                     const wins = require('electron').BrowserWindow.getAllWindows();
                     wins.forEach((w: any) => w.webContents.send('multica-issues-pushed', {
-                        count: summaryData.actionItems!.length,
+                        count: actionItemTexts.length,
                         workspaceName: multicaWorkspaceName || workspaceId,
                     }));
                 }).catch(err => console.error('[IntelligenceManager] Multica push failed:', err));

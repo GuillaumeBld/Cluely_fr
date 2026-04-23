@@ -85,6 +85,7 @@ import { DatabaseManager } from "./db/DatabaseManager"
 import { CredentialsManager } from "./services/CredentialsManager"
 import { ReleaseNotesManager } from "./update/ReleaseNotesManager"
 import { MemoryManager } from "./memory"
+import { GoalAligner } from "./memory/GoalAligner"
 
 export class AppState {
   private static instance: AppState | null = null
@@ -176,6 +177,15 @@ export class AppState {
 
     // Initialize MemoryManager (separate memory.db for graph + facts)
     this.memoryManager = MemoryManager.getInstance()
+
+    // Wire GoalAligner into IntelligenceManager (if RAG embeddings available)
+    if (this.ragManager) {
+      const goalAligner = new GoalAligner(
+        this.memoryManager.getDb(),
+        this.ragManager.getEmbeddingPipeline()
+      );
+      this.intelligenceManager.setGoalAligner(goalAligner);
+    }
 
     this.setupIntelligenceEvents()
 

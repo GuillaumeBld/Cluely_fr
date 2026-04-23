@@ -4,6 +4,25 @@ import path from 'path';
 import { app } from 'electron';
 import fs from 'fs';
 
+export interface ActionItem {
+    text: string;
+    goal_id?: string | null;
+    goal_confidence?: number | null;
+    speaker?: string;
+    timestamp?: number;
+    completed_at?: number | null;
+}
+
+/**
+ * Normalize a raw action item entry (string or ActionItem object) to ActionItem.
+ */
+export function normalizeActionItem(item: string | ActionItem): ActionItem {
+    if (typeof item === 'string') {
+        return { text: item, goal_id: null, goal_confidence: null };
+    }
+    return item;
+}
+
 // Interfaces for our data objects
 export interface Meeting {
     id: string;
@@ -13,7 +32,7 @@ export interface Meeting {
     summary: string;
     detailedSummary?: {
         overview?: string;
-        actionItems: string[];
+        actionItems: ActionItem[];
         keyPoints: string[];
     };
     transcript?: Array<{
@@ -199,7 +218,37 @@ export class DatabaseManager {
             this.db.exec("ALTER TABLE meetings ADD COLUMN is_processed INTEGER DEFAULT 1"); // Default to 1 (true) for existing records
         } catch (e) { /* Column likely exists */ }
 
+        // Data migration: convert actionItems from string[] to ActionItem[]
+        this.migrateActionItemsFormat();
+
         console.log('[DatabaseManager] Migrations completed.');
+    }
+
+    /**
+     * One-time data migration: convert actionItems from string[] to ActionItem[].
+     * Idempotent — skips rows already in ActionItem format.
+     */
+    private migrateActionItemsFormat(): void {
+        if (!this.db) return;
+        const rows = this.db.prepare('SELECT id, summary_json FROM meetings WHERE summary_json IS NOT NULL').all() as { id: string; summary_json: string }[];
+        const update = this.db.prepare('UPDATE meetings SET summary_json = ? WHERE id = ?');
+
+        this.db.transaction(() => {
+            for (const row of rows) {
+                try {
+                    const data = JSON.parse(row.summary_json);
+                    const items = data?.detailedSummary?.actionItems;
+                    if (!Array.isArray(items) || items.length === 0) continue;
+                    // Check if already migrated (first item is an object with 'text')
+                    if (typeof items[0] === 'object' && items[0] !== null && 'text' in items[0]) continue;
+                    // Convert string[] → ActionItem[]
+                    data.detailedSummary.actionItems = items.map((item: string | ActionItem) => normalizeActionItem(item));
+                    update.run(JSON.stringify(data), row.id);
+                } catch {
+                    // Skip malformed rows
+                }
+            }
+        })();
     }
 
     // ============================================
@@ -311,7 +360,7 @@ export class DatabaseManager {
         }
     }
 
-    public updateMeetingSummary(id: string, updates: { overview?: string, actionItems?: string[], keyPoints?: string[], actionItemsTitle?: string, keyPointsTitle?: string }): boolean {
+    public updateMeetingSummary(id: string, updates: { overview?: string, actionItems?: (string | ActionItem)[], keyPoints?: string[], actionItemsTitle?: string, keyPointsTitle?: string }): boolean {
         if (!this.db) return false;
 
         try {
@@ -504,6 +553,37 @@ export class DatabaseManager {
                 usage: [] as any[]
             };
         });
+    }
+
+    /**
+     * Get open (uncompleted) action items tagged with a specific goal.
+     */
+    public getOpenActionItemsByGoal(goalId: string): { text: string; meeting_id: string; goal_id: string; meeting_date: string }[] {
+        if (!this.db) return [];
+        const rows = this.db.prepare(
+            'SELECT id, summary_json, created_at FROM meetings ORDER BY created_at DESC'
+        ).all() as { id: string; summary_json: string; created_at: string }[];
+
+        const results: { text: string; meeting_id: string; goal_id: string; meeting_date: string }[] = [];
+        for (const row of rows) {
+            try {
+                const data = JSON.parse(row.summary_json || '{}');
+                const items: ActionItem[] = data?.detailedSummary?.actionItems || [];
+                for (const item of items) {
+                    if (typeof item === 'object' && item.goal_id === goalId && !item.completed_at) {
+                        results.push({
+                            text: item.text,
+                            meeting_id: row.id,
+                            goal_id: goalId,
+                            meeting_date: row.created_at,
+                        });
+                    }
+                }
+            } catch {
+                // Skip malformed rows
+            }
+        }
+        return results;
     }
 
     public clearAllData(): boolean {

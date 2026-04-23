@@ -5,7 +5,7 @@
  * Node kinds allowed in the memory graph.
  * Extensible: add new literal members as needed.
  */
-export type NodeKind = 'person' | 'topic' | 'organization' | 'project' | 'meeting' | 'decision';
+export type NodeKind = 'person' | 'topic' | 'organization' | 'project' | 'meeting' | 'decision' | 'goal';
 
 /**
  * Predicate labels for typed edges between nodes.
@@ -135,6 +135,22 @@ CREATE TABLE IF NOT EXISTS pending_review (
 );
 `;
 
+export const DDL_GOALS = `
+CREATE TABLE IF NOT EXISTS goals (
+  id TEXT PRIMARY KEY,
+  title TEXT NOT NULL,
+  description TEXT DEFAULT '',
+  embedding BLOB,
+  parent_id TEXT REFERENCES goals(id),
+  created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+  completed_at INTEGER
+);
+`;
+
+export const DDL_GOALS_INDEX = `
+CREATE INDEX IF NOT EXISTS idx_goals_parent ON goals(parent_id);
+`;
+
 export const DDL_SCHEMA_VERSION = `
 CREATE TABLE IF NOT EXISTS memory_schema_version (
   version INTEGER NOT NULL
@@ -149,5 +165,7 @@ export const ALL_DDL = [
   DDL_FACTS,
   DDL_FACTS_INDEX,
   DDL_PENDING_REVIEW,
+  DDL_GOALS,
+  DDL_GOALS_INDEX,
   DDL_SCHEMA_VERSION,
 ] as const;
