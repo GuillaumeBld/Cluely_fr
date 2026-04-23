@@ -84,6 +84,10 @@ import { RAGManager } from "./rag/RAGManager"
 import { DatabaseManager } from "./db/DatabaseManager"
 import { CredentialsManager } from "./services/CredentialsManager"
 import { ReleaseNotesManager } from "./update/ReleaseNotesManager"
+import { MemoryManager } from "./memory"
+import { CorpusWatcher } from "./corpus/CorpusWatcher"
+import { CorpusIndexer } from "./corpus/CorpusIndexer"
+import { loadCorpusConfig } from "./corpus/corpus.config"
 
 export class AppState {
   private static instance: AppState | null = null
@@ -97,6 +101,8 @@ export class AppState {
   private intelligenceManager: IntelligenceManager
   private themeManager: ThemeManager
   private ragManager: RAGManager | null = null
+  private memoryManager: MemoryManager
+  private corpusWatcher: CorpusWatcher | null = null
   private tray: Tray | null = null
   private updateAvailable: boolean = false
   private disguiseMode: 'terminal' | 'settings' | 'activity' | 'none' = 'terminal'
@@ -172,6 +178,11 @@ export class AppState {
     // Initialize RAGManager (requires database to be ready)
     this.initializeRAGManager()
 
+    // Initialize MemoryManager (separate memory.db for graph + facts)
+    this.memoryManager = MemoryManager.getInstance()
+
+    // Initialize Corpus Watcher (local corpus RAG indexing)
+    this.initializeCorpusWatcher()
 
     this.setupIntelligenceEvents()
 
@@ -208,6 +219,28 @@ export class AppState {
       }
     } catch (error) {
       console.error('[AppState] Failed to initialize RAGManager:', error);
+    }
+  }
+
+  private initializeCorpusWatcher(): void {
+    try {
+      const corpusConfig = loadCorpusConfig();
+      if (corpusConfig.projects.length === 0) {
+        console.log('[AppState] No corpus projects configured, skipping watcher');
+        return;
+      }
+
+      const db = DatabaseManager.getInstance();
+      // @ts-ignore - accessing private db for CorpusIndexer
+      const sqliteDb = db['db'];
+      if (!sqliteDb) return;
+
+      const indexer = new CorpusIndexer(sqliteDb);
+      this.corpusWatcher = new CorpusWatcher(corpusConfig.projects, indexer);
+      this.corpusWatcher.start();
+      console.log('[AppState] CorpusWatcher initialized');
+    } catch (error) {
+      console.error('[AppState] Failed to initialize CorpusWatcher:', error);
     }
   }
 
@@ -1052,6 +1085,10 @@ export class AppState {
 
   public getRAGManager(): RAGManager | null {
     return this.ragManager;
+  }
+
+  public getMemoryManager(): MemoryManager {
+    return this.memoryManager;
   }
 
   public getView(): "queue" | "solutions" {

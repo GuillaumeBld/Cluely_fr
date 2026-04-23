@@ -186,6 +186,24 @@ export class DatabaseManager {
             this.db.exec("CREATE INDEX IF NOT EXISTS idx_chunks_meeting ON chunks(meeting_id)");
         } catch (e) { /* Index may exist */ }
 
+        // Corpus RAG: Local project corpus chunks (git + docs + code)
+        const createCorpusChunksTable = `
+            CREATE TABLE IF NOT EXISTS corpus_chunks (
+                id TEXT PRIMARY KEY,
+                project_id TEXT NOT NULL,
+                source_path TEXT NOT NULL,
+                chunk_text TEXT NOT NULL,
+                embedding BLOB,
+                commit_hash TEXT,
+                indexed_at INTEGER NOT NULL
+            );
+        `;
+        this.db.exec(createCorpusChunksTable);
+
+        try {
+            this.db.exec("CREATE INDEX IF NOT EXISTS idx_corpus_chunks_project ON corpus_chunks(project_id)");
+        } catch (e) { /* Index may exist */ }
+
         // Migration for existing tables
         try {
             this.db.exec("ALTER TABLE meetings ADD COLUMN calendar_event_id TEXT");
@@ -511,6 +529,7 @@ export class DatabaseManager {
 
         try {
             // Clear all tables (order matters due to foreign keys, but SQLite handles with ON DELETE CASCADE)
+            this.db.exec('DELETE FROM corpus_chunks');
             this.db.exec('DELETE FROM embedding_queue');
             this.db.exec('DELETE FROM chunk_summaries');
             this.db.exec('DELETE FROM chunks');
