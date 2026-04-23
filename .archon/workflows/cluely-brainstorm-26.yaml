@@ -1,0 +1,392 @@
+name: cluely-brainstorm-26
+description: |
+  Brainstorm across all 26 open Cluely_fr GitHub issues against Guillaume's stated
+  goal ("full automation of working workflow: Zoom meetings + calendar + email + KB
+  → validated tasks dispatched from the app"). Evaluates each issue at the same
+  depth, cross-synthesizes to surface composite features, then generates full
+  specs + implementation plans per superpowers format. Emergent ideas queue into
+  a single "proposals" GitHub issue for review.
+
+  Rubric (workflow defaults; per-issue override allowed):
+    - 20% time-to-task  (meeting-end → dispatched job)
+    - 40% context fidelity (in-meeting grounding, KB citations, anti-hallucination)
+    - 40% decision capture (implicit → explicit auditable actions)
+
+provider: claude
+model: sonnet
+
+nodes:
+  # ───────────────────────────────────────────────────────
+  # Layer 0 — gather inputs in parallel
+  # ───────────────────────────────────────────────────────
+  - id: fetch-issues
+    bash: |
+      set -euo pipefail
+      ART="$ARTIFACTS_DIR"
+      mkdir -p "$ART/issues"
+      gh issue list --state open --limit 100 \
+        --json number,title,body,labels,url \
+        > "$ART/issues/all.json"
+      # Split into per-issue files keyed by number for downstream fan-out.
+      ART="$ART" node -e '
+        const fs = require("fs");
+        const path = require("path");
+        const art = process.env.ART;
+        const arr = JSON.parse(fs.readFileSync(path.join(art, "issues", "all.json"), "utf8"));
+        const live = arr.filter(i => !(i.labels || []).some(l => l.name === "wontfix"));
+        for (const i of live) {
+          fs.writeFileSync(
+            path.join(art, "issues", i.number + ".json"),
+            JSON.stringify(i, null, 2)
+          );
+        }
+        fs.writeFileSync(
+          path.join(art, "issues", "INDEX.json"),
+          JSON.stringify(live.map(i => ({number: i.number, title: i.title})), null, 2)
+        );
+        console.log("Live issues: " + live.length);
+      '
+      ls "$ART/issues/" | head -40
+      echo "---FETCHED---"
+    timeout: 60000
+
+  - id: goal-anchor
+    prompt: |
+      You are anchoring the brainstorm. Do NOT evaluate issues. Just produce
+      the rubric that every downstream evaluator will use.
+
+      USER GOAL (verbatim, do not paraphrase away):
+        "Full automation of my working workflow taking zoom meetings as input
+        with calendar, email and knowledge base about my projects as context
+        to design tasks that I can validate and run from the same app. This
+        is the primitive idea but we need to make it robust; add features
+        (hence the brainstorming session)."
+
+      RUBRIC (default weights — override per-issue only when the issue is
+      clearly one-dimensional):
+        - time_to_task: 20%  — meeting-end → dispatched Archon job
+        - context_fidelity: 40% — in-meeting grounding, KB citations,
+                                  anti-hallucination
+        - decision_capture: 40% — implicit decisions → explicit, auditable
+                                  action items
+
+      INFERRED CONSTRAINTS from Guillaume's environment (from memory/CLAUDE.md):
+        - Mac-only desktop app (Electron), Claude Max OAuth subscription
+          (not billed API)
+        - Archon CLI installed + available, runs in worktrees
+        - Multi-tier KB: raw files → wiki → NotebookLM notebook (semantic)
+        - Calendar/email/Zoom integration not yet built
+        - User wants autonomous execution, not more chat UI
+
+      Write $ARTIFACTS_DIR/goal.md with:
+        1. The verbatim goal
+        2. The rubric (weights + definition of each dim)
+        3. 5-10 "success signals" — concrete observable outcomes that, if
+           true at end-of-quarter, would mean the goal is reached
+        4. 3-5 "anti-goals" — things that look like progress but aren't
+
+      End your output with the literal string: GOAL_ANCHORED
+    allowed_tools: [Read, Write, Bash]
+    idle_timeout: 600000
+
+  # ───────────────────────────────────────────────────────
+  # Layer 1 — per-issue evaluation (loop, all 26 at same depth)
+  # ───────────────────────────────────────────────────────
+  - id: evaluate-issues
+    depends_on: [fetch-issues, goal-anchor]
+    idle_timeout: 1200000
+    loop:
+      prompt: |
+        You are the per-issue evaluator for the Cluely-brainstorm-26 workflow.
+
+        FRESH session — no memory of prior iterations. Read state from disk.
+
+        STATE FILES:
+          - $ARTIFACTS_DIR/goal.md                    (rubric + goal)
+          - $ARTIFACTS_DIR/issues/INDEX.json          (list of live issues)
+          - $ARTIFACTS_DIR/issues/<N>.json            (full issue payload)
+          - $ARTIFACTS_DIR/evals/<N>.json             (written when done)
+          - $ARTIFACTS_DIR/evals/.progress            (tracks next issue)
+
+        ALGORITHM:
+          1. Read INDEX.json → get list of issue numbers (ordered).
+          2. Read .progress (or treat as 0 if missing) → next_idx.
+          3. If next_idx >= total: write <promise>ALL_EVALUATED</promise> and stop.
+          4. Otherwise: take issue number = INDEX[next_idx].
+          5. Read $ARTIFACTS_DIR/issues/<N>.json (full issue).
+          6. Read $ARTIFACTS_DIR/goal.md (rubric).
+          7. Evaluate the issue against the rubric. Produce JSON:
+             {
+               "number": <N>,
+               "title": "...",
+               "verdict": "keep" | "reshape" | "drop",
+               "reasoning": "2-4 sentences",
+               "scores": {
+                 "time_to_task": 0-10,
+                 "context_fidelity": 0-10,
+                 "decision_capture": 0-10
+               },
+               "weighted_score": <computed>,
+               "rubric_weights_used": {"time_to_task": 0.2, "context_fidelity": 0.4, "decision_capture": 0.4},
+               "dependencies": [<other issue numbers this depends on>],
+               "enables": [<other issue numbers this unlocks>],
+               "composite_candidates": [<issue numbers that would be stronger if merged>],
+               "emergent_ideas": [
+                 {"title": "...", "one_liner": "...", "why_it_beats_existing": "..."}
+               ],
+               "risk_notes": "anything that could make this fail or backfire"
+             }
+          8. Write to $ARTIFACTS_DIR/evals/<N>.json.
+          9. Write (next_idx + 1) to $ARTIFACTS_DIR/evals/.progress.
+          10. End your turn with the literal string: EVAL_DONE_<N>
+              (replace <N> with the actual issue number).
+
+        RULES:
+          - One issue per iteration. Do not evaluate multiple.
+          - Use Read/Write/Bash only. No web fetches.
+          - Do not file GitHub issues from this loop — emergent_ideas are
+            collected into the JSON for later consolidation.
+          - If the issue is labeled 'wontfix', skip it: write an eval with
+            verdict "drop" and reasoning "labeled wontfix", advance progress.
+
+      until: ALL_EVALUATED
+      max_iterations: 30
+      fresh_context: true
+
+  # ───────────────────────────────────────────────────────
+  # Layer 2 — cross-synthesis
+  # ───────────────────────────────────────────────────────
+  - id: cross-synthesize
+    depends_on: [evaluate-issues]
+    idle_timeout: 900000
+    prompt: |
+      You are the cross-synthesizer. All 26 issues have been evaluated
+      individually. Your job is to find the composites — pairs or trios
+      that together produce stronger features than either alone.
+
+      LOAD:
+        - $ARTIFACTS_DIR/goal.md
+        - $ARTIFACTS_DIR/evals/*.json  (all per-issue evaluations)
+
+      PRODUCE $ARTIFACTS_DIR/synthesis.md with these sections:
+
+      ## Ranked roadmap (top-down by weighted_score × strategic fit)
+        - Table: issue # | title | verdict | weighted_score | rationale
+
+      ## Composite features (NEW — not in original 26)
+        For each composite:
+          - Name
+          - Source issues (2-4 numbers)
+          - Why the fusion beats the parts (1 paragraph)
+          - Rough spec outline (3-5 bullets)
+          - Priority signal (high/med/low) against the rubric
+        Find at least 3 composites. Look for:
+          - issues where `composite_candidates` overlap
+          - issues whose `dependencies`/`enables` chain together
+          - issues that all serve the same rubric dimension weakly but
+            together serve it strongly
+
+      ## Emergent ideas (NEW features surfaced during evaluation)
+        Deduplicate emergent_ideas across all 26 evals. Group similar ideas.
+        Output a list: title | one_liner | source_issue_numbers | fit_score (1-10).
+
+      ## Drop list
+        Issues with verdict=drop — keep short (1 line each, with reason).
+
+      ## Execution sequencing
+        Given dependencies + enables from the evals, propose an order for
+        the keep+reshape set. Group into tranches:
+          - Tranche 1 (unlocks everything else)
+          - Tranche 2 (builds on T1)
+          - Tranche 3 (polish / optional)
+        Each tranche: list of issue#s + composite names.
+
+      End your output with: SYNTHESIS_DONE
+    allowed_tools: [Read, Write, Bash, Glob]
+
+  # ───────────────────────────────────────────────────────
+  # Layer 3 — spec + plan per keep/reshape issue (parallel via loop)
+  # ───────────────────────────────────────────────────────
+  - id: spec-plan-generator
+    depends_on: [cross-synthesize]
+    idle_timeout: 1800000
+    loop:
+      prompt: |
+        You are the spec+plan generator. FRESH session — read state from disk.
+
+        LOAD:
+          - $ARTIFACTS_DIR/goal.md
+          - $ARTIFACTS_DIR/synthesis.md
+          - $ARTIFACTS_DIR/evals/*.json
+          - $ARTIFACTS_DIR/specs/.queue        (list of targets, built on first iteration)
+          - $ARTIFACTS_DIR/specs/.progress     (next index)
+
+        FIRST ITERATION ONLY: build the queue.
+          mkdir -p $ARTIFACTS_DIR/specs
+          If $ARTIFACTS_DIR/specs/.queue doesn't exist:
+            - Parse $ARTIFACTS_DIR/evals/*.json for verdict in {keep, reshape}.
+            - Parse $ARTIFACTS_DIR/synthesis.md for composite features.
+            - Write .queue as JSON array of {type: "issue"|"composite", id: <N>|<name>, title}.
+            - Write .progress = 0.
+
+        EACH ITERATION:
+          1. Read .queue and .progress.
+          2. If progress >= queue length: <promise>ALL_SPECS_DONE</promise>.
+          3. Take queue[progress] → target.
+          4. Produce TWO files for this target:
+             a) $ARTIFACTS_DIR/specs/<slug>-spec.md
+                Structure (scaled to complexity):
+                  # <Title>
+                  ## Problem & goal
+                  ## User story
+                  ## Architecture (2-3 sentences)
+                  ## Components (per-file responsibilities)
+                  ## Data flow
+                  ## Error handling
+                  ## Testing approach
+                  ## Success criteria (measurable, tied to rubric)
+             b) $ARTIFACTS_DIR/specs/<slug>-plan.md
+                Follow superpowers:writing-plans format:
+                  > **For agentic workers:** use superpowers:subagent-driven-development or superpowers:executing-plans
+                  **Goal:** ...
+                  **Architecture:** ...
+                  **Tech Stack:** ...
+                  ### Task N: ...
+                    **Files:** Create/Modify/Test (exact paths)
+                    - [ ] Step 1: Write failing test
+                    - [ ] Step 2: Run test to verify fail
+                    - [ ] Step 3: Minimal impl
+                    - [ ] Step 4: Run test to verify pass
+                    - [ ] Step 5: Commit
+                NO placeholders. Every step has real code or real commands.
+          5. Increment .progress.
+          6. End with: SPEC_DONE_<slug>
+
+        RULES:
+          - Slug format: issue-<N> for GitHub issues, composite-<kebab-name> for composites.
+          - Keep specs bounded: 200-800 words. Plans 500-2500 words. Don't over-engineer.
+          - If target is a composite, spec must reference the source issue numbers.
+          - Use Read/Write/Bash/Glob only.
+
+      until: ALL_SPECS_DONE
+      max_iterations: 35
+      fresh_context: true
+
+  # ───────────────────────────────────────────────────────
+  # Layer 4a — emergent-issue consolidation (parallel with spec gen? no — after synth is enough)
+  # ───────────────────────────────────────────────────────
+  - id: emergent-collector
+    depends_on: [cross-synthesize]
+    idle_timeout: 600000
+    prompt: |
+      You are the emergent-issue collector. Build ONE consolidated GitHub
+      issue body that queues all novel ideas for Guillaume to review and
+      cherry-pick.
+
+      LOAD:
+        - $ARTIFACTS_DIR/goal.md
+        - $ARTIFACTS_DIR/synthesis.md
+        - $ARTIFACTS_DIR/evals/*.json
+
+      PRODUCE $ARTIFACTS_DIR/emergent-proposals.md — the full GitHub issue body:
+
+        # Emergent Proposals from cluely-brainstorm-26
+
+        **Workflow run:** $WORKFLOW_ID
+        **Generated:** <date>
+
+        ## How to use this
+        Each proposal below is a candidate feature/composite not already
+        in the 26-issue backlog. Review, and for each one either:
+          - File as its own issue (copy the block, add labels)
+          - Reject (just ignore)
+          - Merge into an existing issue (comment on that issue with the
+            link to this one)
+
+        ## Composites (from synthesis.md)
+        [One section per composite, with: name, source issues, one-paragraph
+         rationale, 3-5 bullet spec sketch, fit_score against rubric]
+
+        ## Emergent ideas (novel, not in any of the 26)
+        [One section per deduplicated emergent idea, with: title, one-liner,
+         which issue(s) surfaced it, why it matters for the goal, rough
+         complexity estimate (S/M/L)]
+
+        ## What was NOT proposed
+        [Short list of ideas that came up but were rejected, with 1-line reason
+         each. Keeps the signal honest.]
+
+      End with: PROPOSALS_READY
+    allowed_tools: [Read, Write, Bash, Glob]
+
+  - id: file-emergent-issue
+    depends_on: [emergent-collector]
+    bash: |
+      set -euo pipefail
+      BODY_FILE="$ARTIFACTS_DIR/emergent-proposals.md"
+      if [ ! -s "$BODY_FILE" ]; then
+        echo "No emergent proposals file; skipping." >&2
+        exit 0
+      fi
+      URL=$(gh issue create \
+        --title "Emergent proposals from cluely-brainstorm-26 ($WORKFLOW_ID)" \
+        --label "enhancement,meta,emergent" \
+        --body-file "$BODY_FILE")
+      echo "$URL" > "$ARTIFACTS_DIR/.emergent-issue-url"
+      echo "FILED: $URL"
+    timeout: 60000
+
+  # ───────────────────────────────────────────────────────
+  # Layer 5 — final report
+  # ───────────────────────────────────────────────────────
+  - id: final-report
+    depends_on: [spec-plan-generator, file-emergent-issue]
+    trigger_rule: none_failed_min_one_success
+    idle_timeout: 600000
+    prompt: |
+      You are writing the final report for Guillaume.
+
+      LOAD everything:
+        - $ARTIFACTS_DIR/goal.md
+        - $ARTIFACTS_DIR/synthesis.md
+        - $ARTIFACTS_DIR/evals/*.json
+        - $ARTIFACTS_DIR/specs/*.md
+        - $ARTIFACTS_DIR/.emergent-issue-url (may not exist if that step was skipped)
+
+      PRODUCE $ARTIFACTS_DIR/FINAL_REPORT.md — top-level deliverable:
+
+        # cluely-brainstorm-26 — Final Report
+
+        ## Workflow goal
+        [1 paragraph restatement + rubric]
+
+        ## Executive summary
+        [3-5 bullets: what should Guillaume do first, what's the biggest
+         surprise, what's the hidden blocker]
+
+        ## Ranked roadmap
+        [Table: rank | issue# or composite | title | weighted_score |
+         tranche | est. effort | spec path]
+
+        ## Tranches (execution order)
+        ### Tranche 1: Foundations (unlocks everything)
+        ### Tranche 2: Core workflow
+        ### Tranche 3: Polish
+        [Per tranche: issue list + 1-line why]
+
+        ## Composites (new features)
+        [Short table: name | source issues | priority]
+
+        ## Emergent proposals issue
+        [Link to the GitHub issue that was filed, if any]
+
+        ## Dropped
+        [Short table: issue# | title | reason]
+
+        ## What the workflow could not answer
+        [2-5 bullets: questions that need Guillaume's judgment, not more
+         AI reasoning]
+
+      Print the full final report to stdout at the end so it appears in
+      the workflow output. Then end with: REPORT_COMPLETE
+    allowed_tools: [Read, Write, Bash, Glob]
