@@ -1745,4 +1745,55 @@ export function initializeIpcHandlers(appState: AppState): void {
     await ragManager.retryPendingEmbeddings();
     return { success: true };
   });
+
+  // ─── Conflict Resolution ────────────────────────────────────────
+
+  safeHandle("conflict:resolve", async (_event: any, payload: {
+    factId: number;
+    action: 'update' | 'ignore' | 'flag';
+    newValue: string;
+    meetingId: string | null;
+    pendingConflictId?: number;
+  }) => {
+    try {
+      const mm = appState.getMemoryManager();
+      const resolution = mm.updateFactValue(
+        payload.factId,
+        payload.newValue,
+        payload.action,
+        payload.meetingId,
+      );
+
+      if (payload.pendingConflictId) {
+        mm.resolvePendingConflict(payload.pendingConflictId);
+      }
+
+      return { success: true, resolution };
+    } catch (err: any) {
+      console.error('[IPC] conflict:resolve failed:', err);
+      return { success: false, error: err.message };
+    }
+  });
+
+  safeHandle("conflict:get-pending", async (_event: any, meetingId?: string) => {
+    try {
+      const mm = appState.getMemoryManager();
+      const pending = mm.getPendingConflicts(meetingId);
+      return { success: true, conflicts: pending };
+    } catch (err: any) {
+      console.error('[IPC] conflict:get-pending failed:', err);
+      return { success: false, error: err.message };
+    }
+  });
+
+  safeHandle("conflict:get-resolutions", async (_event: any, meetingId: string) => {
+    try {
+      const mm = appState.getMemoryManager();
+      const resolutions = mm.getConflictResolutions(meetingId);
+      return { success: true, resolutions };
+    } catch (err: any) {
+      console.error('[IPC] conflict:get-resolutions failed:', err);
+      return { success: false, error: err.message };
+    }
+  });
 }

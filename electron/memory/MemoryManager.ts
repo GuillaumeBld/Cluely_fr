@@ -11,6 +11,8 @@ import {
   MemoryEdge,
   MemoryFact,
   PendingReview,
+  PendingConflict,
+  ConflictResolution,
 } from './schema';
 
 /** Confidence threshold — proposals below this go to pending_review instead of edges. */
@@ -242,5 +244,102 @@ export class MemoryManager {
       }
     }
     return { resolved: true };
+  }
+
+  // ─── Conflict Detection Queries ─────────────────────────────────
+
+  /**
+   * Query all facts for entities matching the given label.
+   * Returns facts joined with node info for conflict comparison.
+   */
+  public queryEntityFacts(entityLabel: string): (MemoryFact & { node_label: string; node_kind: NodeKind })[] {
+    const sql = `
+      SELECT f.*, n.label AS node_label, n.kind AS node_kind
+      FROM memory_facts f
+      JOIN memory_nodes n ON n.id = f.node_id
+      WHERE n.label = ?
+      ORDER BY f.updated_at DESC
+    `;
+    return this.db.prepare(sql).all(entityLabel) as (MemoryFact & { node_label: string; node_kind: NodeKind })[];
+  }
+
+  /**
+   * Update a fact's value and record the change as a conflict resolution.
+   * Uses a transaction to ensure atomicity.
+   */
+  public updateFactValue(
+    factId: number,
+    newValue: string,
+    action: 'update' | 'ignore' | 'flag',
+    meetingId: string | null = null,
+  ): ConflictResolution {
+    return this.db.transaction(() => {
+      const fact = this.db.prepare('SELECT * FROM memory_facts WHERE id = ?').get(factId) as MemoryFact | undefined;
+      if (!fact) {
+        throw new Error(`Fact ${factId} not found`);
+      }
+
+      const oldValue = fact.value;
+
+      if (action === 'update') {
+        this.db.prepare(
+          "UPDATE memory_facts SET value = ?, updated_at = datetime('now') WHERE id = ?"
+        ).run(newValue, factId);
+      }
+
+      const info = this.db.prepare(
+        `INSERT INTO conflict_resolutions (node_id, fact_key, old_value, new_value, action, meeting_id)
+         VALUES (?, ?, ?, ?, ?, ?)`
+      ).run(fact.node_id, fact.key, oldValue, newValue, action, meetingId);
+
+      return this.db.prepare('SELECT * FROM conflict_resolutions WHERE id = ?')
+        .get(Number(info.lastInsertRowid)) as ConflictResolution;
+    })();
+  }
+
+  // ─── Pending Conflicts Queue ────────────────────────────────────
+
+  public enqueuePendingConflict(
+    meetingId: string,
+    entity: string,
+    relation: string,
+    oldValue: string,
+    newValue: string,
+    speaker: string | null = null,
+    timestamp: string | null = null,
+  ): PendingConflict {
+    const info = this.db.prepare(
+      `INSERT INTO pending_conflicts (meeting_id, entity, relation, old_value, new_value, speaker, timestamp)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`
+    ).run(meetingId, entity, relation, oldValue, newValue, speaker, timestamp);
+
+    return this.db.prepare('SELECT * FROM pending_conflicts WHERE id = ?')
+      .get(Number(info.lastInsertRowid)) as PendingConflict;
+  }
+
+  public getPendingConflicts(meetingId?: string): PendingConflict[] {
+    if (meetingId) {
+      return this.db.prepare(
+        'SELECT * FROM pending_conflicts WHERE meeting_id = ? AND resolved_at IS NULL ORDER BY created_at DESC'
+      ).all(meetingId) as PendingConflict[];
+    }
+    return this.db.prepare(
+      'SELECT * FROM pending_conflicts WHERE resolved_at IS NULL ORDER BY created_at DESC'
+    ).all() as PendingConflict[];
+  }
+
+  public resolvePendingConflict(id: number): void {
+    this.db.prepare(
+      "UPDATE pending_conflicts SET resolved_at = datetime('now') WHERE id = ?"
+    ).run(id);
+  }
+
+  /**
+   * Get conflict resolutions for a meeting (used by recap digest).
+   */
+  public getConflictResolutions(meetingId: string): ConflictResolution[] {
+    return this.db.prepare(
+      'SELECT * FROM conflict_resolutions WHERE meeting_id = ? ORDER BY resolved_at DESC'
+    ).all(meetingId) as ConflictResolution[];
   }
 }

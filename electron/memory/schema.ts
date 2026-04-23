@@ -141,6 +141,60 @@ CREATE TABLE IF NOT EXISTS memory_schema_version (
 );
 `;
 
+export const DDL_PENDING_CONFLICTS = `
+CREATE TABLE IF NOT EXISTS pending_conflicts (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  meeting_id TEXT NOT NULL,
+  entity TEXT NOT NULL,
+  relation TEXT NOT NULL,
+  old_value TEXT NOT NULL,
+  new_value TEXT NOT NULL,
+  speaker TEXT,
+  timestamp TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  resolved_at TEXT
+);
+`;
+
+export const DDL_CONFLICT_RESOLUTIONS = `
+CREATE TABLE IF NOT EXISTS conflict_resolutions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  conflict_id INTEGER,
+  node_id TEXT,
+  fact_key TEXT,
+  old_value TEXT NOT NULL,
+  new_value TEXT NOT NULL,
+  action TEXT NOT NULL DEFAULT 'update',
+  meeting_id TEXT,
+  resolved_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+`;
+
+export interface PendingConflict {
+  id: number;
+  meeting_id: string;
+  entity: string;
+  relation: string;
+  old_value: string;
+  new_value: string;
+  speaker: string | null;
+  timestamp: string | null;
+  created_at: string;
+  resolved_at: string | null;
+}
+
+export interface ConflictResolution {
+  id: number;
+  conflict_id: number | null;
+  node_id: string | null;
+  fact_key: string | null;
+  old_value: string;
+  new_value: string;
+  action: string;
+  meeting_id: string | null;
+  resolved_at: string;
+}
+
 export const ALL_DDL = [
   DDL_NODES,
   DDL_EDGES,
@@ -150,4 +204,6 @@ export const ALL_DDL = [
   DDL_FACTS_INDEX,
   DDL_PENDING_REVIEW,
   DDL_SCHEMA_VERSION,
+  DDL_PENDING_CONFLICTS,
+  DDL_CONFLICT_RESOLUTIONS,
 ] as const;
