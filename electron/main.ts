@@ -93,6 +93,7 @@ import { MemoryGraphWriter } from "./services/MemoryGraphWriter"
 import { CorpusWatcher } from "./corpus/CorpusWatcher"
 import { CorpusIndexer } from "./corpus/CorpusIndexer"
 import { loadCorpusConfig } from "./corpus/corpus.config"
+import { GoalAligner } from "./memory/GoalAligner"
 
 export class AppState {
   private static instance: AppState | null = null
@@ -195,6 +196,15 @@ export class AppState {
 
     // Initialize Corpus Watcher (local corpus RAG indexing)
     this.initializeCorpusWatcher()
+
+    // Wire GoalAligner into IntelligenceManager (if RAG embeddings available)
+    if (this.ragManager) {
+      const goalAligner = new GoalAligner(
+        this.memoryManager.getDb(),
+        this.ragManager.getEmbeddingPipeline()
+      );
+      this.intelligenceManager.setGoalAligner(goalAligner);
+    }
 
     this.setupIntelligenceEvents()
 
