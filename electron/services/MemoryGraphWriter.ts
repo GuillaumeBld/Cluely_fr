@@ -19,8 +19,8 @@ export class MemoryGraphWriter {
       console.log(
         `[MemoryGraphWriter] Queued low-confidence relation: ${e.type} by ${e.speaker}`
       );
-    } catch {
-      // Silently fail — Composite C must not break if DB is unavailable
+    } catch (err) {
+      console.debug('[MemoryGraphWriter] write skipped (DB unavailable):', err);
     }
   }
 }
