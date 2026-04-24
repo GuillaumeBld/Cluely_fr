@@ -84,6 +84,18 @@ describe('goal IPC handlers (SQL logic)', () => {
     });
   });
 
+  describe('goal:create edge cases', () => {
+    it('creates goal without embedding when pipeline is unavailable', () => {
+      db.prepare(
+        'INSERT INTO goals (id, title, description, embedding, parent_id) VALUES (?, ?, ?, ?, ?)'
+      ).run('g1', 'Ship v2', '', null, null);
+
+      const row = db.prepare('SELECT * FROM goals WHERE id = ?').get('g1') as any;
+      expect(row.embedding).toBeNull();
+      expect(row.title).toBe('Ship v2');
+    });
+  });
+
   describe('goal:complete', () => {
     it('sets completed_at on a goal', () => {
       db.prepare("INSERT INTO goals (id, title) VALUES ('g1', 'Test')").run();
@@ -92,6 +104,12 @@ describe('goal IPC handlers (SQL logic)', () => {
       const row = db.prepare("SELECT completed_at FROM goals WHERE id = 'g1'").get() as any;
       expect(row.completed_at).not.toBeNull();
       expect(row.completed_at).toBeGreaterThan(0);
+    });
+
+    it('handles complete for non-existent id gracefully', () => {
+      const info = db.prepare('UPDATE goals SET completed_at = unixepoch() WHERE id = ?')
+        .run('nonexistent');
+      expect(info.changes).toBe(0);
     });
 
     it('does not affect other goals', () => {
