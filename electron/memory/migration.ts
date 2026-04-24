@@ -64,9 +64,14 @@ export function migrateLegacyIfNeeded(db: Database.Database): void {
     ).get() as { cnt: number };
     if (alreadyMigrated.cnt > 0) return; // Already done
 
+    const ALLOWED_LEGACY_TABLES = new Set(['memory_session', 'memory_profile', 'memory_semantic']);
+
     for (const table of existingTables) {
-      // Each legacy table has at least (key, value) or similar columns
-      // We'll read all rows generically
+      if (!ALLOWED_LEGACY_TABLES.has(table)) {
+        console.warn(`[migration] Skipping unknown legacy table: ${table}`);
+        continue;
+      }
+      // Legacy tables must have 'key' and 'value' columns; others are skipped with a warning
       const columns = (db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[]).map(c => c.name);
 
       if (columns.includes('key') && columns.includes('value')) {
