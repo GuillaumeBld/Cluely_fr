@@ -22,8 +22,9 @@ const CONFIDENCE_GATE = 0.7;
 const HALF_LIFE_DAYS = 30;
 
 export class MemoryManager {
-  private static instance: MemoryManager;
+  private static instance: MemoryManager | undefined;
   private db: Database.Database;
+  private degraded = false;
 
   private constructor(dbOrPath?: Database.Database | string) {
     if (dbOrPath instanceof Database) {
@@ -39,6 +40,7 @@ export class MemoryManager {
       } catch (err) {
         console.error('[MemoryManager] Failed to open memory.db, falling back to in-memory:', err);
         this.db = new Database(':memory:');
+        this.degraded = true;
       }
     }
     runMigration(this.db);
@@ -55,7 +57,12 @@ export class MemoryManager {
 
   /** Reset singleton (for tests). */
   public static resetInstance(): void {
-    MemoryManager.instance = undefined as unknown as MemoryManager;
+    MemoryManager.instance = undefined;
+  }
+
+  /** True when the on-disk database could not be opened and an in-memory fallback is in use. */
+  public isDegraded(): boolean {
+    return this.degraded;
   }
 
   public getDb(): Database.Database {
