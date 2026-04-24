@@ -1751,6 +1751,12 @@ export function initializeIpcHandlers(appState: AppState): void {
   // ==========================================
 
   safeHandle("goal:create", async (_, { title, description, parent_id }: { title: string; description?: string; parent_id?: string }) => {
+    // Input validation
+    if (typeof title !== 'string' || !title.trim()) return { error: 'title required' };
+    if (title.length > 500) return { error: 'title too long' };
+    if (description && typeof description !== 'string') return { error: 'invalid description' };
+    if (parent_id && typeof parent_id !== 'string') return { error: 'invalid parent_id' };
+
     try {
       const { MemoryManager } = require('./memory');
       const memoryManager = MemoryManager.getInstance();

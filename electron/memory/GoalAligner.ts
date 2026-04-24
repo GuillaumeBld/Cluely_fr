@@ -60,22 +60,26 @@ export class GoalAligner {
       vec: decodeBlobToVector(g.embedding!),
     }));
 
-    return Promise.all(items.map(async (text) => {
-      const itemEmbedding = await this.embeddingPipeline.getEmbedding(text);
+    return Promise.all(items.map(async (text): Promise<TaggedActionItem> => {
+      try {
+        const itemEmbedding = await this.embeddingPipeline.getEmbedding(text);
 
-      let bestId: string | null = null;
-      let bestScore = -1;
+        let bestId: string | null = null;
+        let bestScore = -1;
 
-      for (const goal of goalVectors) {
-        const score = cosineSimilarity(itemEmbedding, goal.vec);
-        if (score > bestScore) {
-          bestScore = score;
-          bestId = goal.id;
+        for (const goal of goalVectors) {
+          const score = cosineSimilarity(itemEmbedding, goal.vec);
+          if (score > bestScore) {
+            bestScore = score;
+            bestId = goal.id;
+          }
         }
-      }
 
-      if (bestScore >= GOAL_CONFIDENCE_THRESHOLD && bestId) {
-        return { text, goal_id: bestId, goal_confidence: bestScore };
+        if (bestScore >= GOAL_CONFIDENCE_THRESHOLD && bestId) {
+          return { text, goal_id: bestId, goal_confidence: bestScore };
+        }
+      } catch (err) {
+        console.warn('[GoalAligner] Embedding failed for item, skipping alignment:', text.slice(0, 50), err);
       }
       return { text, goal_id: null, goal_confidence: null };
     }));

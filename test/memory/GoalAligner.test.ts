@@ -107,6 +107,31 @@ describe('GoalAligner', () => {
       expect(mockPipeline.getEmbedding).not.toHaveBeenCalled();
     });
 
+    it('returns partial results when one embedding fails', async () => {
+      db.prepare("INSERT INTO goals (id, title, embedding) VALUES (?, ?, ?)").run(
+        'g1', 'Deploy RAG', encodeVector([0.9, 0.1, 0.0])
+      );
+
+      const mockPipeline = {
+        getEmbedding: vi.fn()
+          .mockResolvedValueOnce([0.95, 0.05, 0.0])  // succeeds → matches g1
+          .mockRejectedValueOnce(new Error('bad input'))  // fails
+          .mockResolvedValueOnce([0.95, 0.05, 0.0]),  // succeeds → matches g1
+      } as any;
+
+      const aligner = new GoalAligner(db, mockPipeline);
+      const result = await aligner.alignActionItems(
+        ['good item 1', 'bad item', 'good item 2'],
+        'meeting-1'
+      );
+
+      expect(result).toHaveLength(3);
+      expect(result[0].goal_id).toBe('g1');
+      expect(result[1].goal_id).toBeNull();
+      expect(result[1].goal_confidence).toBeNull();
+      expect(result[2].goal_id).toBe('g1');
+    });
+
     it('skips completed goals', async () => {
       db.prepare(
         "INSERT INTO goals (id, title, embedding, completed_at) VALUES (?, ?, ?, unixepoch())"

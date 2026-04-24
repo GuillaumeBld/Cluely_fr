@@ -907,7 +907,6 @@ export class AppState {
         ].join('. ');
       }
 
-      // I will delay this implementation until I see the file contenteting for RAG
       const result = await this.ragManager.processMeeting(meeting.id, segments, summary);
       console.log(`[AppState] RAG processed meeting ${meeting.id}: ${result.chunkCount} chunks`);
 

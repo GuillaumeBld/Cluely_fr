@@ -193,12 +193,6 @@ export class IntelligenceManager extends EventEmitter {
         console.log(`[IntelligenceManager] Initializing LLMs with LLMHelper`);
         this.answerLLM = new AnswerLLM(this.llmHelper);
         this.assistLLM = new AssistLLM(this.llmHelper);
-        // Wait, I missed AssistLLM in my refactoring list. 
-        // But the user plan said: "AnswerLLM", "RecapLLM", "FollowUpLLM", "WhatToAnswerLLM".
-        // It didn't mention AssistLLM explicitly but "Refactor feature specific LLM classes".
-        // I should probably check AssistLLM too. 
-        // For now I'll instantiate others with llmHelper.
-
         this.followUpLLM = new FollowUpLLM(this.llmHelper);
         this.recapLLM = new RecapLLM(this.llmHelper);
         this.followUpQuestionsLLM = new FollowUpQuestionsLLM(this.llmHelper);
