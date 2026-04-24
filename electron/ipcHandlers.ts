@@ -1225,16 +1225,8 @@ export function initializeIpcHandlers(appState: AppState): void {
     appState.modelSelectorWindowHelper.toggleWindow(coords.x, coords.y);
   });
 
-  safeHandle("test-llm-connection", async () => {
-    try {
-      const llmHelper = appState.processingHelper.getLLMHelper();
-      const result = await llmHelper.testConnection();
-      return result;
-    } catch (error: any) {
-      // console.error("Error testing LLM connection:", error);
-      return { success: false, error: error.message };
-    }
-  });
+  // Removed duplicate "test-llm-connection" registration — the provider-specific
+  // handler (line ~1039) already covers this channel with full API-key testing.
 
   // Native Audio Service Handlers
   // Native Audio handlers removed as part of migration to driverless architecture
