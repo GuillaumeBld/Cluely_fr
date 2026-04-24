@@ -3,7 +3,7 @@ import { CalendarManager, CalendarEvent } from './CalendarManager';
 import { ZoomWatcher } from './ZoomWatcher';
 import { projectResolver } from './ProjectResolver';
 import { templateClassifier } from './TemplateClassifier';
-import { AttendeeProfiler } from './AttendeeProfiler';
+import { AttendeeProfiler, AttendeeProfile } from './AttendeeProfiler';
 import { preBriefComposer, PreBrief } from './PreBriefComposer';
 import { EmailManager } from './EmailManager';
 
@@ -13,7 +13,7 @@ const POLL_INTERVAL_MS = 60_000;
 
 export class PreMeetingOrchestrator extends EventEmitter {
   private static instance: PreMeetingOrchestrator;
-  private firedEventIds = new Set<string>();
+  private firedEventIds = new Map<string, number>();
   private pollTimer: NodeJS.Timeout | null = null;
   private profiler: AttendeeProfiler;
   private lastBrief: PreBrief | null = null;
@@ -59,13 +59,22 @@ export class PreMeetingOrchestrator extends EventEmitter {
 
   async tick() {
     if (this.zoomWatcher.isZoomRunning()) return;
-    const events = await this.calendarManager.fetchUpcomingEvents().catch(() => [] as CalendarEvent[]);
+    const events = await this.calendarManager.fetchUpcomingEvents().catch((err) => {
+      console.warn('[PreMeetingOrchestrator] Failed to fetch upcoming events:', err);
+      return [] as CalendarEvent[];
+    });
     const now = Date.now();
+
+    // Prune entries older than 24h
+    for (const [id, ts] of this.firedEventIds) {
+      if (now - ts > 24 * 60 * 60 * 1000) this.firedEventIds.delete(id);
+    }
+
     for (const event of events) {
       const msUntil = new Date(event.startTime).getTime() - now;
       if (msUntil < LEAD_TIME_MS - WINDOW_MS || msUntil > LEAD_TIME_MS + WINDOW_MS) continue;
       if (this.firedEventIds.has(event.id)) continue;
-      this.firedEventIds.add(event.id);
+      this.firedEventIds.set(event.id, now);
       this.fire(event).catch(err => console.error('[PreMeetingOrchestrator] fire error', err));
     }
   }
@@ -73,7 +82,12 @@ export class PreMeetingOrchestrator extends EventEmitter {
   private async fire(event: CalendarEvent) {
     const { projectId } = projectResolver.resolve(event);
     const templateId = templateClassifier.classify(event.title, event.attendees?.length ?? 0);
-    const attendees = await this.profiler.profile(event.attendees ?? []);
+    let attendees: AttendeeProfile[] = [];
+    try {
+      attendees = await this.profiler.profile(event.attendees ?? []);
+    } catch (err) {
+      console.warn('[PreMeetingOrchestrator] Attendee profiling failed, proceeding with empty profiles:', err);
+    }
     const brief = preBriefComposer.compose(event, projectId, templateId, attendees);
     this.lastBrief = brief;
     this.emit('pre-meeting:brief-ready', brief);

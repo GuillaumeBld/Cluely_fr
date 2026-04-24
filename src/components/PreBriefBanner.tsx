@@ -28,7 +28,7 @@ export function PreBriefBanner() {
 
     api.preMeeting.getLastBrief().then((b: PreBrief | null) => {
       if (b) setBrief(b);
-    });
+    }).catch(() => { /* brief unavailable, banner stays hidden */ });
 
     const cleanup = api.preMeeting.onBriefReady((b: PreBrief) => setBrief(b));
     return cleanup;
