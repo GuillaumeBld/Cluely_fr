@@ -65,8 +65,7 @@ export function migrateLegacyIfNeeded(db: Database.Database): void {
     if (alreadyMigrated.cnt > 0) return; // Already done
 
     for (const table of existingTables) {
-      // Each legacy table has at least (key, value) or similar columns
-      // We'll read all rows generically
+      // SAFETY: `table` comes from the hardcoded `legacyTables` array above, never from user input
       const columns = (db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[]).map(c => c.name);
 
       if (columns.includes('key') && columns.includes('value')) {

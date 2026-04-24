@@ -41,24 +41,28 @@ export class SlidingWindowAnalyzer {
   }
 
   tick(): void {
-    const turns = this.indexer.getWindow(this.windowSeconds);
-    for (const turn of turns) {
-      if (this.seenTurnIds.has(turn.turn_id)) continue;
-      for (const { re, type } of COMMITMENT_PATTERNS) {
-        if (re.test(turn.text)) {
-          this.seenTurnIds.add(turn.turn_id);
-          IpcEventBus.emitTyped("decision:captured", {
-            type,
-            speaker: turn.speaker,
-            timestamp: turn.timestamp,
-            text_excerpt: turn.text.slice(0, 200),
-            confidence: 0.7,
-            meeting_id: this.meetingId,
-            turn_id: turn.turn_id,
-          });
-          break; // one event per turn
+    try {
+      const turns = this.indexer.getWindow(this.windowSeconds);
+      for (const turn of turns) {
+        if (this.seenTurnIds.has(turn.turn_id)) continue;
+        for (const { re, type } of COMMITMENT_PATTERNS) {
+          if (re.test(turn.text)) {
+            this.seenTurnIds.add(turn.turn_id);
+            IpcEventBus.emitTyped("decision:captured", {
+              type,
+              speaker: turn.speaker,
+              timestamp: turn.timestamp,
+              text_excerpt: turn.text.slice(0, 200),
+              confidence: 0.7,
+              meeting_id: this.meetingId,
+              turn_id: turn.turn_id,
+            });
+            break; // one event per turn
+          }
         }
       }
+    } catch (err) {
+      console.warn('[SlidingWindowAnalyzer] tick failed, will retry next interval:', err);
     }
   }
 }

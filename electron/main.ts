@@ -112,6 +112,8 @@ export class AppState {
   private lunrIndexer: LunrIndexer = new LunrIndexer()
   private slidingWindowAnalyzer: SlidingWindowAnalyzer = new SlidingWindowAnalyzer(this.lunrIndexer)
   private memoryGraphWriter: MemoryGraphWriter = new MemoryGraphWriter()
+  private activeMeetingId: string = ''
+  private turnCounter: number = 0
 
   // View management
   private view: "queue" | "solutions" = "queue"
@@ -487,11 +489,11 @@ export class AppState {
           // Feed final transcripts to decision capture indexer
           if (segment.isFinal && segment.text.trim()) {
             this.lunrIndexer.addTurn({
-              turn_id: `interviewer_${Date.now()}`,
+              turn_id: `interviewer_${++this.turnCounter}`,
               speaker: 'interviewer',
               text: segment.text,
               timestamp: Date.now(),
-              meeting_id: 'active',
+              meeting_id: this.activeMeetingId,
             });
           }
 
@@ -575,11 +577,11 @@ export class AppState {
           // Feed final transcripts to decision capture indexer
           if (segment.isFinal && segment.text.trim()) {
             this.lunrIndexer.addTurn({
-              turn_id: `user_${Date.now()}`,
+              turn_id: `user_${++this.turnCounter}`,
               speaker: 'user',
               text: segment.text,
               timestamp: Date.now(),
-              meeting_id: 'active',
+              meeting_id: this.activeMeetingId,
             });
           }
 
@@ -861,6 +863,8 @@ export class AppState {
 
     // 5. Start mid-call decision capture
     const meetingId = metadata?.calendarEventId || `meeting_${Date.now()}`;
+    this.activeMeetingId = meetingId;
+    this.turnCounter = 0;
     this.slidingWindowAnalyzer.start(meetingId);
     IpcEventBus.emitTyped("meeting:started", { meeting_id: meetingId });
   }
@@ -880,12 +884,12 @@ export class AppState {
     // 5. Stop mid-call decision capture (flush happens in IntelligenceManager.processAndSaveMeeting)
     this.slidingWindowAnalyzer.stop();
     this.lunrIndexer.clear();
-    IpcEventBus.emitTyped("meeting:ended", { meeting_id: "active" });
+    IpcEventBus.emitTyped("meeting:ended", { meeting_id: this.activeMeetingId });
 
     // 6. Reset Intelligence Context & Save
     await this.intelligenceManager.stopMeeting();
 
-    // 5. Revert to Default Model (One-Way Sync Revert)
+    // 7. Revert to Default Model (One-Way Sync Revert)
     // This ensures next meeting starts with default, not the temporary one used in this session
     try {
       const { CredentialsManager } = require('./services/CredentialsManager');
@@ -908,7 +912,7 @@ export class AppState {
       console.error("[Main] Failed to revert model:", e);
     }
 
-    // 6. Process meeting for RAG (embeddings)
+    // 8. Process meeting for RAG (embeddings)
     await this.processCompletedMeetingForRAG();
   }
 

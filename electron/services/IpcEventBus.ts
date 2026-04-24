@@ -23,7 +23,14 @@ class IpcEventBusClass extends EventEmitter {
     return this.instance;
   }
   emitTyped<K extends keyof BusEvents>(event: K, payload: BusEvents[K]): void {
-    this.emit(event, payload);
+    const listeners = this.listeners(event);
+    for (const listener of listeners) {
+      try {
+        (listener as (p: BusEvents[K]) => void)(payload);
+      } catch (err) {
+        console.warn(`[IpcEventBus] Listener error on "${event}":`, err);
+      }
+    }
   }
   onTyped<K extends keyof BusEvents>(event: K, handler: (payload: BusEvents[K]) => void): void {
     this.on(event, handler as (...args: any[]) => void);

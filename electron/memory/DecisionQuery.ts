@@ -19,6 +19,11 @@ export function getCommitmentsInRange(
   db: Database.Database,
   days: number,
 ): CommitmentRow[] {
+  const tableExists = db
+    .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='memory_edges'")
+    .get();
+  if (!tableExists) return [];
+
   const sql = `
     SELECT
       e.id AS edge_id,
