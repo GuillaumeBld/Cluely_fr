@@ -1745,4 +1745,72 @@ export function initializeIpcHandlers(appState: AppState): void {
     await ragManager.retryPendingEmbeddings();
     return { success: true };
   });
+
+  // ==========================================
+  // Goal Management Handlers
+  // ==========================================
+
+  safeHandle("goal:create", async (_, { title, description, parent_id }: { title: string; description?: string; parent_id?: string }) => {
+    // Input validation
+    if (typeof title !== 'string' || !title.trim()) return { error: 'title required' };
+    if (title.length > 500) return { error: 'title too long' };
+    if (description && typeof description !== 'string') return { error: 'invalid description' };
+    if (parent_id && typeof parent_id !== 'string') return { error: 'invalid parent_id' };
+
+    try {
+      const { MemoryManager } = require('./memory');
+      const memoryManager = MemoryManager.getInstance();
+      const db = memoryManager.getDb();
+      const id = require('crypto').randomUUID();
+
+      // Generate embedding for the goal (if RAG pipeline available)
+      let embeddingBuf: Buffer | null = null;
+      const ragManager = appState.getRAGManager();
+      if (ragManager) {
+        try {
+          const pipeline = ragManager.getEmbeddingPipeline();
+          if (pipeline.isReady()) {
+            const embedding = await pipeline.getEmbedding(`${title} ${description || ''}`);
+            embeddingBuf = Buffer.from(new Float32Array(embedding).buffer);
+          }
+        } catch (err) {
+          console.error('[IPC] goal:create embedding failed:', err);
+        }
+      }
+
+      db.prepare(
+        'INSERT INTO goals (id, title, description, embedding, parent_id) VALUES (?, ?, ?, ?, ?)'
+      ).run(id, title, description || '', embeddingBuf, parent_id || null);
+
+      return { id, title };
+    } catch (error: any) {
+      console.error('[IPC] goal:create failed:', error);
+      return { error: error.message };
+    }
+  });
+
+  safeHandle("goal:list", async () => {
+    try {
+      const { MemoryManager } = require('./memory');
+      const db = MemoryManager.getInstance().getDb();
+      return db.prepare(
+        'SELECT id, title, description, parent_id, created_at, completed_at FROM goals ORDER BY created_at'
+      ).all();
+    } catch (error: any) {
+      console.error('[IPC] goal:list failed:', error);
+      return [];
+    }
+  });
+
+  safeHandle("goal:complete", async (_, id: string) => {
+    try {
+      const { MemoryManager } = require('./memory');
+      const db = MemoryManager.getInstance().getDb();
+      db.prepare('UPDATE goals SET completed_at = unixepoch() WHERE id = ?').run(id);
+      return { success: true };
+    } catch (error: any) {
+      console.error('[IPC] goal:complete failed:', error);
+      return { success: false, error: error.message };
+    }
+  });
 }

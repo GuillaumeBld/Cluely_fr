@@ -84,6 +84,8 @@ import { RAGManager } from "./rag/RAGManager"
 import { DatabaseManager } from "./db/DatabaseManager"
 import { CredentialsManager } from "./services/CredentialsManager"
 import { ReleaseNotesManager } from "./update/ReleaseNotesManager"
+import { MemoryManager } from "./memory"
+import { GoalAligner } from "./memory/GoalAligner"
 
 export class AppState {
   private static instance: AppState | null = null
@@ -97,6 +99,7 @@ export class AppState {
   private intelligenceManager: IntelligenceManager
   private themeManager: ThemeManager
   private ragManager: RAGManager | null = null
+  private memoryManager: MemoryManager
   private tray: Tray | null = null
   private updateAvailable: boolean = false
   private disguiseMode: 'terminal' | 'settings' | 'activity' | 'none' = 'terminal'
@@ -172,6 +175,17 @@ export class AppState {
     // Initialize RAGManager (requires database to be ready)
     this.initializeRAGManager()
 
+    // Initialize MemoryManager (separate memory.db for graph + facts)
+    this.memoryManager = MemoryManager.getInstance()
+
+    // Wire GoalAligner into IntelligenceManager (if RAG embeddings available)
+    if (this.ragManager) {
+      const goalAligner = new GoalAligner(
+        this.memoryManager.getDb(),
+        this.ragManager.getEmbeddingPipeline()
+      );
+      this.intelligenceManager.setGoalAligner(goalAligner);
+    }
 
     this.setupIntelligenceEvents()
 
@@ -893,7 +907,6 @@ export class AppState {
         ].join('. ');
       }
 
-      // I will delay this implementation until I see the file contenteting for RAG
       const result = await this.ragManager.processMeeting(meeting.id, segments, summary);
       console.log(`[AppState] RAG processed meeting ${meeting.id}: ${result.chunkCount} chunks`);
 
@@ -1052,6 +1065,10 @@ export class AppState {
 
   public getRAGManager(): RAGManager | null {
     return this.ragManager;
+  }
+
+  public getMemoryManager(): MemoryManager {
+    return this.memoryManager;
   }
 
   public getView(): "queue" | "solutions" {

@@ -31,6 +31,10 @@ export class RAGManager {
     private retriever: RAGRetriever;
     private llmHelper: LLMHelper | null = null;
 
+    public getEmbeddingPipeline(): EmbeddingPipeline {
+        return this.embeddingPipeline;
+    }
+
     constructor(config: RAGManagerConfig) {
         this.db = config.db;
         this.vectorStore = new VectorStore(config.db);

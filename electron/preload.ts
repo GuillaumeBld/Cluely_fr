@@ -190,6 +190,11 @@ interface ElectronAPI {
   getDonationStatus: () => Promise<{ shouldShow: boolean; hasDonated: boolean; lifetimeShows: number }>;
   markDonationToastShown: () => Promise<{ success: boolean }>;
   setDonationComplete: () => Promise<{ success: boolean }>;
+
+  // Goal Management
+  goalCreate: (opts: { title: string; description?: string; parent_id?: string }) => Promise<{ id: string; title: string } | { error: string }>;
+  goalList: () => Promise<Array<{ id: string; title: string; description: string; parent_id: string | null; created_at: number; completed_at: number | null }>>;
+  goalComplete: (id: string) => Promise<{ success: boolean; error?: string }>;
 }
 
 export const PROCESSING_EVENTS = {
@@ -810,4 +815,9 @@ contextBridge.exposeInMainWorld("electronAPI", {
   getDonationStatus: () => ipcRenderer.invoke("get-donation-status"),
   markDonationToastShown: () => ipcRenderer.invoke("mark-donation-toast-shown"),
   setDonationComplete: () => ipcRenderer.invoke('set-donation-complete'),
+
+  // Goal Management API
+  goalCreate: (opts: { title: string; description?: string; parent_id?: string }) => ipcRenderer.invoke('goal:create', opts),
+  goalList: () => ipcRenderer.invoke('goal:list'),
+  goalComplete: (id: string) => ipcRenderer.invoke('goal:complete', id),
 } as ElectronAPI)
