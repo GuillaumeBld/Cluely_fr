@@ -84,6 +84,7 @@ import { RAGManager } from "./rag/RAGManager"
 import { DatabaseManager } from "./db/DatabaseManager"
 import { CredentialsManager } from "./services/CredentialsManager"
 import { ReleaseNotesManager } from "./update/ReleaseNotesManager"
+import { MemoryManager } from "./memory"
 
 export class AppState {
   private static instance: AppState | null = null
@@ -97,6 +98,7 @@ export class AppState {
   private intelligenceManager: IntelligenceManager
   private themeManager: ThemeManager
   private ragManager: RAGManager | null = null
+  private memoryManager: MemoryManager
   private tray: Tray | null = null
   private updateAvailable: boolean = false
   private disguiseMode: 'terminal' | 'settings' | 'activity' | 'none' = 'terminal'
@@ -172,6 +174,8 @@ export class AppState {
     // Initialize RAGManager (requires database to be ready)
     this.initializeRAGManager()
 
+    // Initialize MemoryManager (separate memory.db for graph + facts)
+    this.memoryManager = MemoryManager.getInstance()
 
     this.setupIntelligenceEvents()
 
@@ -1054,6 +1058,10 @@ export class AppState {
     return this.ragManager;
   }
 
+  public getMemoryManager(): MemoryManager {
+    return this.memoryManager;
+  }
+
   public getView(): "queue" | "solutions" {
     return this.view
   }
@@ -1708,6 +1716,22 @@ async function initializeApp() {
       console.error('[Main] Failed to start ZoomWatcher:', e);
     }
 
+    // Initialize PreMeetingOrchestrator — zero-touch pre-meeting context loader
+    try {
+      const { PreMeetingOrchestrator } = require('./services/PreMeetingOrchestrator');
+      const orchestrator = PreMeetingOrchestrator.getInstance();
+      orchestrator.on('pre-meeting:brief-ready', (brief: any) => {
+        BrowserWindow.getAllWindows().forEach(win => {
+          if (!win.isDestroyed()) {
+            win.webContents.send('pre-meeting:brief-ready', brief);
+          }
+        });
+      });
+      orchestrator.start();
+      console.log('[Main] PreMeetingOrchestrator started');
+    } catch (e) {
+      console.error('[Main] Failed to start PreMeetingOrchestrator:', e);
+    }
 
     // Note: We do NOT force dock show here anymore, respecting stealth mode.
   })
