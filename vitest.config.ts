@@ -4,7 +4,7 @@ import path from 'path';
 export default defineConfig({
   test: {
     root: path.resolve(__dirname),
-    include: ['test/**/*.test.ts'],
+    include: ['test/**/*.test.{ts,tsx}'],
     alias: {
       electron: path.resolve(__dirname, 'test/__mocks__/electron.ts'),
     },

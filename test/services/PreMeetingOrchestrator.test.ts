@@ -98,6 +98,26 @@ describe('PreMeetingOrchestrator', () => {
     expect(brief!.eventId).toBe('evt-test-1');
   });
 
+  it('emits brief with empty-email attendees when email fetch fails', async () => {
+    // Re-mock EmailManager to throw on getMessagesFromSenders
+    const { EmailManager } = await import('../../electron/services/EmailManager');
+    vi.mocked(EmailManager.getInstance().getMessagesFromSenders)
+      .mockRejectedValueOnce(new Error('IMAP connection failed'));
+
+    const briefPromise = new Promise<any>(resolve => {
+      orchestrator.on('pre-meeting:brief-ready', resolve);
+    });
+
+    await orchestrator.tick();
+    const brief = await briefPromise;
+
+    expect(brief.eventId).toBe('evt-test-1');
+    // AttendeeProfiler gracefully degrades: profiles exist but with empty email data
+    expect(brief.attendees).toHaveLength(1);
+    expect(brief.attendees[0].email).toBe('alice@example.com');
+    expect(brief.attendees[0].recentEmails).toEqual([]);
+  });
+
   it('does not emit for events outside the lead-time window', async () => {
     // Event starting 20 minutes from now (outside 5 ± 1 min)
     mockCalendarManager.fetchUpcomingEvents.mockResolvedValue([
