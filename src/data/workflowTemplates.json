@@ -1,0 +1,32 @@
+[
+  {
+    "id": "code-task",
+    "name": "Code Task",
+    "description": "A software development task involving writing, reviewing, or debugging code",
+    "embeddingSeed": "Write code implement feature fix bug debug test unit tests pull request review refactor"
+  },
+  {
+    "id": "research-task",
+    "name": "Research Task",
+    "description": "An investigation or research task to gather information or evaluate options",
+    "embeddingSeed": "Research investigate evaluate compare analyze look into study explore options assessment"
+  },
+  {
+    "id": "follow-up-email",
+    "name": "Follow-Up Email",
+    "description": "Send a follow-up email to a person or group after a meeting or discussion",
+    "embeddingSeed": "Send email follow up message reply respond write draft compose reach out contact"
+  },
+  {
+    "id": "meeting-schedule",
+    "name": "Meeting Schedule",
+    "description": "Schedule or organize a meeting, call, or sync with one or more people",
+    "embeddingSeed": "Schedule meeting set up call sync organize calendar invite book time arrange"
+  },
+  {
+    "id": "document-update",
+    "name": "Document Update",
+    "description": "Update, create, or revise a document, spec, wiki page, or documentation",
+    "embeddingSeed": "Update document write spec create wiki page revise documentation edit draft readme"
+  }
+]
