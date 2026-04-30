@@ -22,6 +22,7 @@ class IpcEventBusClass extends EventEmitter {
     if (!this.instance) this.instance = new IpcEventBusClass();
     return this.instance;
   }
+  /** Emit with per-listener isolation — one failing handler must not break others. Always use onTyped/offTyped, never .once(). */
   emitTyped<K extends keyof BusEvents>(event: K, payload: BusEvents[K]): void {
     const listeners = this.listeners(event);
     for (const listener of listeners) {

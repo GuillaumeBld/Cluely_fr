@@ -65,4 +65,27 @@ describe('IpcEventBus', () => {
 
     expect(handler).not.toHaveBeenCalled();
   });
+
+  it('isolates listener errors — a throwing listener does not block others', () => {
+    const throwingHandler = () => { throw new Error('boom'); };
+    const goodHandler = vi.fn();
+
+    IpcEventBus.onTyped('decision:captured', throwingHandler);
+    IpcEventBus.onTyped('decision:captured', goodHandler);
+
+    IpcEventBus.emitTyped('decision:captured', {
+      type: 'commitment',
+      speaker: 'Alice',
+      timestamp: Date.now(),
+      text_excerpt: 'test',
+      confidence: 0.7,
+      meeting_id: 'm1',
+      turn_id: 't1',
+    });
+
+    expect(goodHandler).toHaveBeenCalledOnce();
+
+    IpcEventBus.offTyped('decision:captured', throwingHandler);
+    IpcEventBus.offTyped('decision:captured', goodHandler);
+  });
 });

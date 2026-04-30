@@ -14,19 +14,26 @@ export class LunrIndexer {
   private dirty = true;
 
   addTurn(turn: SpeakerTurn): void {
+    if (!turn.turn_id || typeof turn.text !== 'string') return;
     this.turns.push(turn);
     this.dirty = true;
   }
 
   private rebuild(): void {
-    const turns = this.turns;
-    this.idx = lunr(function () {
-      this.ref("turn_id");
-      this.field("text");
-      this.field("speaker");
-      turns.forEach((t) => this.add(t));
-    });
-    this.dirty = false;
+    try {
+      const turns = this.turns;
+      this.idx = lunr(function () {
+        this.ref("turn_id");
+        this.field("text");
+        this.field("speaker");
+        turns.forEach((t) => this.add(t));
+      });
+      this.dirty = false;
+    } catch (err) {
+      console.warn('[LunrIndexer] Index rebuild failed:', err);
+      this.idx = null;
+      this.dirty = false;
+    }
   }
 
   search(query: string): SpeakerTurn[] {

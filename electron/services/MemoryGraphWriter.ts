@@ -2,8 +2,15 @@ import { IpcEventBus, DecisionCapturedEvent } from "./IpcEventBus";
 import { DatabaseManager } from "../db/DatabaseManager";
 
 export class MemoryGraphWriter {
+  private handler: (e: DecisionCapturedEvent) => void;
+
   constructor() {
-    IpcEventBus.onTyped("decision:captured", (e) => this.write(e));
+    this.handler = (e) => this.write(e);
+    IpcEventBus.onTyped("decision:captured", this.handler);
+  }
+
+  destroy(): void {
+    IpcEventBus.offTyped("decision:captured", this.handler);
   }
   private write(e: DecisionCapturedEvent): void {
     try {
@@ -20,7 +27,7 @@ export class MemoryGraphWriter {
         `[MemoryGraphWriter] Queued low-confidence relation: ${e.type} by ${e.speaker}`
       );
     } catch (err) {
-      console.debug('[MemoryGraphWriter] write skipped (DB unavailable):', err);
+      console.warn('[MemoryGraphWriter] write skipped (DB unavailable):', err);
     }
   }
 }
