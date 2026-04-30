@@ -1813,7 +1813,13 @@ async function initializeApp() {
     // Initialize PreMeetingOrchestrator — zero-touch pre-meeting context loader
     try {
       const { PreMeetingOrchestrator } = require('./services/PreMeetingOrchestrator');
+      const { HealthChunkWriter } = require('./services/HealthChunkWriter');
       const orchestrator = PreMeetingOrchestrator.getInstance();
+
+      // Wire health chunk writer to enable project health injection (issue #19)
+      const healthWriter = new HealthChunkWriter(appState.getMemoryManager().getDb());
+      orchestrator.setHealthChunkWriter(healthWriter);
+
       orchestrator.on('pre-meeting:brief-ready', (brief: any) => {
         BrowserWindow.getAllWindows().forEach(win => {
           if (!win.isDestroyed()) {

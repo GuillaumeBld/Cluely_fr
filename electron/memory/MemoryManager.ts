@@ -47,6 +47,7 @@ export class MemoryManager {
       runMigration(this.db);
     } catch (err) {
       console.error('[MemoryManager] Migration failed, falling back to in-memory:', err);
+      try { this.db.close(); } catch { /* best-effort close of failed DB */ }
       this.db = new Database(':memory:');
       this.degraded = true;
       runMigration(this.db);

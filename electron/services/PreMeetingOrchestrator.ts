@@ -96,7 +96,7 @@ export class PreMeetingOrchestrator extends EventEmitter {
     } catch (err) {
       console.warn('[PreMeetingOrchestrator] Attendee profiling failed, proceeding with empty profiles:', err);
     }
-    // Health injection: fetch project health and write to KB (never blocks pipeline)
+    // Health injection: fetch project health and write to KB (never fails pipeline, may add latency)
     if (projectId && this.healthChunkWriter) {
       try {
         const snapshot = await healthSnapshotFetcher.fetchForProject(projectId);

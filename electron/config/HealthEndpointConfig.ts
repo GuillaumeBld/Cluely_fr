@@ -30,7 +30,8 @@ function loadEndpoints(): EndpointMap {
     }
     cached = result;
     return result;
-  } catch {
+  } catch (err) {
+    console.warn('[HealthEndpointConfig] Failed to load endpoints:', err);
     cached = {};
     return {};
   }

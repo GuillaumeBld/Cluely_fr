@@ -22,8 +22,9 @@ export class HealthSnapshotFetcher {
       return endpoint.type === 'http'
         ? await this.fetchHttp(projectId, endpoint.url)
         : await this.fetchScript(projectId, endpoint.path);
-    } catch (err) {
-      console.warn(`[HealthSnapshotFetcher] Failed for ${projectId}:`, err);
+    } catch (err: any) {
+      const reason = err?.message ?? String(err);
+      console.warn(`[HealthSnapshotFetcher] Failed for ${projectId}: ${reason}`);
       return null;
     }
   }

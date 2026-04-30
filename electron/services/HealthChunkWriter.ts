@@ -32,6 +32,10 @@ export class HealthChunkWriter {
     `);
   }
 
+  /**
+   * Write a health chunk to the database.
+   * @throws {SqliteError} If the database is locked or corrupted.
+   */
   writeChunk(content: string, meta: { projectId: string; chunkType?: string; fetchedAt: string }): number {
     const stale = this.isStale(meta.fetchedAt) ? 1 : 0;
     const result = this.db.prepare(`
@@ -41,6 +45,10 @@ export class HealthChunkWriter {
     return result.lastInsertRowid as number;
   }
 
+  /**
+   * Query health chunks by project ID and optional chunk type.
+   * @throws {SqliteError} If the database is locked or corrupted.
+   */
   queryChunks(filter: { projectId: string; chunkType?: string }): HealthChunk[] {
     const type = filter.chunkType ?? 'health-snapshot';
     const rows = this.db.prepare(`
@@ -59,6 +67,10 @@ export class HealthChunkWriter {
     }));
   }
 
+  /**
+   * Get the most recent health snapshot chunk for a project.
+   * @throws {SqliteError} If the database is locked or corrupted.
+   */
   getLatestChunk(projectId: string): HealthChunk | null {
     const row = this.db.prepare(`
       SELECT * FROM health_chunks
