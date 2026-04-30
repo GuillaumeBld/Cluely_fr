@@ -130,4 +130,62 @@ describe('BackgroundAgent', () => {
     agent.setInterval(15_000);
     expect(agent.getIntervalMs()).toBe(15_000);
   });
+
+  it('swallows errors in _runCycle and does not throw', async () => {
+    (calendarSource.getUpcomingEvents as any).mockRejectedValue(new Error('network down'));
+    await expect(agent._runCycle()).resolves.toBeUndefined();
+  });
+
+  it('still runs staleness check when calendar scan fails', async () => {
+    (calendarSource.getUpcomingEvents as any).mockRejectedValue(new Error('network down'));
+    const staleCommitment: OpenCommitment = {
+      id: 'c2',
+      meetingId: 'm2',
+      text: "I'll review the PR",
+      speaker: 'Bob',
+      timestamp: Date.now() - 86_400_000,
+      dispatchedJobId: null,
+    };
+    const source: CommitmentQuerySource = {
+      queryOpenCommitments: () => [staleCommitment],
+    };
+    stalenessChecker = new CommitmentStalenessChecker(source);
+    agent = new BackgroundAgent(stateManager, auditLog, stalenessChecker, calendarSource);
+
+    await agent._runCycle();
+
+    expect(mockSend).toHaveBeenCalledWith('agent:stale-commitments', [staleCommitment]);
+  });
+
+  it('start() runs an immediate first cycle', async () => {
+    const inFourMinutes = new Date(Date.now() + 4 * 60 * 1000).toISOString();
+    (calendarSource.getUpcomingEvents as any).mockResolvedValue([
+      { id: 'evt-imm', title: 'Immediate', startTime: inFourMinutes, endTime: inFourMinutes, source: 'google' },
+    ]);
+
+    agent.start(60_000);
+
+    // Wait a tick for the async _runCycle to complete
+    await new Promise((r) => setTimeout(r, 50));
+
+    expect(mockSend).toHaveBeenCalledWith('agent:pre-brief-ready', expect.objectContaining({
+      meetingId: 'evt-imm',
+    }));
+  });
+
+  it('stop() prevents further cycles', () => {
+    agent.start(100);
+    agent.stop();
+    // After stop, the timer should be cleared
+    expect((agent as any).timer).toBeNull();
+  });
+
+  it('multiple start() calls do not leak timers', () => {
+    agent.start(100);
+    const firstTimer = (agent as any).timer;
+    agent.start(200);
+    const secondTimer = (agent as any).timer;
+    // First timer should have been cleared, new one set
+    expect(secondTimer).not.toBe(firstTimer);
+  });
 });

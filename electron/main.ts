@@ -1907,6 +1907,11 @@ async function initializeApp() {
       console.error('[Main] Failed to stop Hermes:', e);
     }
     try {
+      appState.getBackgroundAgent()?.stop();
+    } catch (e) {
+      console.error('[Main] Failed to stop BackgroundAgent:', e);
+    }
+    try {
       MulticaManager.getInstance().stop();
     } catch (e) {
       console.error('[Main] Failed to stop MulticaManager:', e);

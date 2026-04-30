@@ -27,6 +27,7 @@ export class BackgroundAgent {
   start(intervalMs?: number): void {
     if (intervalMs !== undefined) this._intervalMs = intervalMs;
     this.stop();
+    this._runCycle().catch(() => {});
     this.timer = setInterval(() => this._runCycle(), this._intervalMs);
   }
 
@@ -52,8 +53,8 @@ export class BackgroundAgent {
   async _runCycle(): Promise<void> {
     if (this.stateManager.isPaused()) return;
 
+    // 1. Calendar scan — look for events starting within 5 minutes
     try {
-      // 1. Calendar scan — look for events starting within 5 minutes
       this.auditLog.append({ dataType: 'calendar', purpose: 'pre-meeting-scan' });
       const events = await this.calendarSource.getUpcomingEvents(true);
       const now = Date.now();
@@ -70,15 +71,19 @@ export class BackgroundAgent {
           });
         }
       }
+    } catch (err) {
+      console.warn('[BackgroundAgent] calendar scan failed, will retry next interval:', err);
+    }
 
-      // 2. Staleness check
+    // 2. Staleness check
+    try {
       this.auditLog.append({ dataType: 'ledger', purpose: 'staleness-check' });
       const stale = this.stalenessChecker.check();
       if (stale.length > 0) {
         this.broadcast('agent:stale-commitments', stale);
       }
     } catch (err) {
-      console.warn('[BackgroundAgent] _runCycle failed, will retry next interval:', err);
+      console.warn('[BackgroundAgent] staleness check failed, will retry next interval:', err);
     }
   }
 
