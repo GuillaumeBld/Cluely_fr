@@ -41,7 +41,14 @@ export class MemoryManager {
         this._isInMemory = true;
       }
     }
-    runMigration(this.db);
+    try {
+      runMigration(this.db);
+    } catch (err) {
+      console.error('[MemoryManager] Migration failed, falling back to in-memory:', err);
+      this.db = new Database(':memory:');
+      this._isInMemory = true;
+      runMigration(this.db);
+    }
   }
 
   public static getInstance(dbOrPath?: Database.Database | string): MemoryManager {

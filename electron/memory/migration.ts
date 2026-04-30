@@ -72,9 +72,11 @@ export function migrateLegacyIfNeeded(db: Database.Database): void {
         continue;
       }
       // Legacy tables must have 'key' and 'value' columns; others are skipped with a warning
+      // SAFETY: table is guaranteed to be in ALLOWED_LEGACY_TABLES (line 67) — PRAGMA doesn't support parameterized table names
       const columns = (db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[]).map(c => c.name);
 
       if (columns.includes('key') && columns.includes('value')) {
+        // SAFETY: table is guaranteed to be in ALLOWED_LEGACY_TABLES (line 67)
         const rows = db.prepare(`SELECT key, value FROM ${table}`).all() as { key: string; value: string }[];
         for (const row of rows) {
           db.prepare(

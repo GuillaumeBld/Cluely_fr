@@ -16,12 +16,18 @@ export class AttendeeProfiler {
 
   async profile(attendeeEmails: string[]): Promise<AttendeeProfile[]> {
     if (!attendeeEmails.length) return [];
-    const emailMap = await this.emailManager.getMessagesFromSenders(attendeeEmails);
+    let emailMap: Map<string, EmailMessage[]>;
+    try {
+      emailMap = await this.emailManager.getMessagesFromSenders(attendeeEmails);
+    } catch (err) {
+      console.warn('[AttendeeProfiler] Email fetch failed, proceeding without email context:', err);
+      emailMap = new Map();
+    }
     return attendeeEmails.map(email => ({
       email,
       recentEmails: emailMap.get(email) ?? [],
-      openItems: [],      // TODO: query memory graph (Composite A)
-      priorDecisions: [], // TODO: query memory graph (Composite A)
+      openItems: [],      // TODO(#13): query memory graph (Composite A)
+      priorDecisions: [], // TODO(#13): query memory graph (Composite A)
     }));
   }
 }
