@@ -37,11 +37,12 @@ describe('TaskGeneratorBuffer', () => {
     expect(flushed).toHaveLength(3);
   });
 
-  it('flush returns a copy (not the internal buffer)', () => {
+  it('flush drains the buffer (returns events and clears)', () => {
+    emitDecision();
     emitDecision();
     const flushed = buffer.flush();
-    flushed.pop();
-    expect(buffer.flush()).toHaveLength(1); // internal buffer unaffected
+    expect(flushed).toHaveLength(2);
+    expect(buffer.flush()).toHaveLength(0); // buffer is now empty
   });
 
   it('clear empties the buffer', () => {

@@ -47,4 +47,13 @@ describe('ArchonDispatcher', () => {
 
     await expect(dispatcher.dispatch(makeDraft())).rejects.toThrow('Network error');
   });
+
+  it('throws when response is missing jobId', async () => {
+    const httpClient: HttpClient = {
+      post: vi.fn().mockResolvedValue({}),
+    };
+    const dispatcher = new ArchonDispatcher({ baseUrl: 'http://localhost:3000' }, httpClient);
+
+    await expect(dispatcher.dispatch(makeDraft())).rejects.toThrow('missing jobId');
+  });
 });

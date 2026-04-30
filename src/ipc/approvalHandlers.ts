@@ -19,9 +19,14 @@ export function registerApprovalHandlers(
     'approval:approve',
     async (_event: unknown, opts: unknown) => {
       const { draft, meetingId } = opts as { draft: WorkflowDraft; meetingId: string };
-      const { jobId } = await archonDispatcher.dispatch(draft);
-      await decisionLedger.appendDispatch({ meetingId, jobId, draftId: draft.id });
-      return { jobId };
+      try {
+        const { jobId } = await archonDispatcher.dispatch(draft);
+        await decisionLedger.appendDispatch({ meetingId, jobId, draftId: draft.id });
+        return { jobId };
+      } catch (err) {
+        console.error('[approvalHandlers] approval:approve failed:', err);
+        return { error: err instanceof Error ? err.message : 'Dispatch failed' };
+      }
     },
   );
 
@@ -33,8 +38,13 @@ export function registerApprovalHandlers(
         meetingId: string;
         reason: string;
       };
-      await decisionLedger.appendDismissal({ meetingId, draftId, reason });
-      return { success: true };
+      try {
+        await decisionLedger.appendDismissal({ meetingId, draftId, reason });
+        return { success: true };
+      } catch (err) {
+        console.error('[approvalHandlers] approval:dismiss failed:', err);
+        return { error: err instanceof Error ? err.message : 'Dismissal failed' };
+      }
     },
   );
 }

@@ -942,9 +942,6 @@ export class IntelligenceManager extends EventEmitter {
     }
 
     /**
-     * Save the current session to persistent storage
-     */
-    /**
      * Stops the meeting immediately, snapshots data, and triggers background processing.
      * Returns immediately so UI can switch.
      */

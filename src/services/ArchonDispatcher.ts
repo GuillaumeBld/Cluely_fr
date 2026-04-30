@@ -32,6 +32,9 @@ export class ArchonDispatcher {
     };
 
     const result = await this.httpClient.post(url, body);
+    if (!result?.jobId) {
+      throw new Error('[ArchonDispatcher] Invalid response: missing jobId');
+    }
     return { jobId: result.jobId };
   }
 }

@@ -10,7 +10,9 @@ export class TaskGeneratorBuffer {
   }
 
   flush(): DecisionCapturedEvent[] {
-    return [...this.buffer];
+    const copy = [...this.buffer];
+    this.buffer = [];
+    return copy;
   }
 
   clear(): void {

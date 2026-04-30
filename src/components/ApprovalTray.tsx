@@ -16,10 +16,12 @@ declare global {
 
 export function ApprovalTray() {
   const [drafts, setDrafts] = useState<WorkflowDraft[]>([]);
+  const [meetingId, setMeetingId] = useState<string>('');
 
   useEffect(() => {
-    const handler = (_event: unknown, payload: { drafts: WorkflowDraft[] }) => {
+    const handler = (_event: unknown, payload: { drafts: WorkflowDraft[]; meetingId: string }) => {
       setDrafts(payload.drafts);
+      setMeetingId(payload.meetingId);
     };
 
     window.electron?.ipcRenderer.on('approval:drafts-ready', handler as (...args: unknown[]) => void);
@@ -29,13 +31,14 @@ export function ApprovalTray() {
   }, []);
 
   const handleApprove = async (draft: WorkflowDraft) => {
-    await window.electron?.ipcRenderer.invoke('approval:approve', { draft });
+    await window.electron?.ipcRenderer.invoke('approval:approve', { draft, meetingId });
     setDrafts((prev) => prev.filter((d) => d.id !== draft.id));
   };
 
   const handleDismiss = async (draft: WorkflowDraft) => {
     await window.electron?.ipcRenderer.invoke('approval:dismiss', {
       draftId: draft.id,
+      meetingId,
       reason: 'user-dismissed',
     });
     setDrafts((prev) => prev.filter((d) => d.id !== draft.id));

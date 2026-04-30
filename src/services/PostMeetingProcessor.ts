@@ -87,7 +87,7 @@ export async function run(
     }
   }
 
-  deps.emitter.send('approval:drafts-ready', { drafts });
+  deps.emitter.send('approval:drafts-ready', { drafts, meetingId });
 
   // ── Macro learning (post-processing) ─────────────────────────────
   if (deps.macroLearner) {

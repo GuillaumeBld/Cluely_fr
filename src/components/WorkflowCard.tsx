@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { WorkflowDraft } from '../types/workflows';
 
 interface WorkflowCardProps {
@@ -10,13 +10,16 @@ interface WorkflowCardProps {
 
 export function WorkflowCard({ draft, onApprove, onDismiss, onEdit }: WorkflowCardProps) {
   const [confirming, setConfirming] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout>>();
 
   const isLowConfidence = draft.confidence < 0.5;
 
   const handleApprove = () => {
     setConfirming(true);
-    setTimeout(() => onApprove(), 3000);
+    timerRef.current = setTimeout(() => onApprove(), 3000);
   };
+
+  useEffect(() => () => clearTimeout(timerRef.current), []);
 
   return (
     <div className={`workflow-card ${isLowConfidence ? 'low-confidence' : ''}`}>

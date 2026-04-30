@@ -55,6 +55,7 @@ describe('PostMeetingProcessor', () => {
         expect.objectContaining({ payload: expect.objectContaining({ title: 'Write Unit Tests' }) }),
         expect.objectContaining({ payload: expect.objectContaining({ title: 'Send Follow Up Email' }) }),
       ]),
+      meetingId: 'meeting-1',
     });
   });
 
@@ -98,5 +99,87 @@ describe('PostMeetingProcessor', () => {
 
     // With mocked services, should complete in well under 1 second
     expect(elapsed).toBeLessThan(5000);
+  });
+
+  describe('macro path', () => {
+    function makeMacroDeps() {
+      const deps = makeDeps();
+      return {
+        ...deps,
+        meetingProjectId: 'proj-1',
+        meetingType: 'standup',
+        macroStore: {
+          getActiveMacro: vi.fn().mockReturnValue({
+            id: 1,
+            project_id: 'proj-1',
+            meeting_type: 'standup',
+            template_id: 'forced-template',
+            dispatch_target: 'slack',
+            prior_context_count: 3,
+            active: 1,
+          }),
+        },
+        macroRunner: {
+          run: vi.fn().mockReturnValue({
+            templateId: 'forced-template',
+            priorDecisions: [],
+            dispatchTarget: 'slack',
+            injectedMeetingIds: [],
+          }),
+        },
+      };
+    }
+
+    it('uses macro templateId when macro is active', async () => {
+      const deps = makeMacroDeps();
+      const drafts = await run('fixture transcript with action items', 'meeting-1', deps);
+
+      expect(deps.macroRunner!.run).toHaveBeenCalled();
+      expect(drafts).toHaveLength(2);
+      // All drafts should use the forced template
+      for (const d of drafts) {
+        expect(d.templateId).toBe('forced-template');
+      }
+    });
+
+    it('skips macro when meeting is overridden', async () => {
+      const deps = {
+        ...makeMacroDeps(),
+        overriddenMeetings: new Set(['meeting-1']),
+      };
+
+      const drafts = await run('fixture transcript with action items', 'meeting-1', deps);
+
+      expect(deps.macroRunner!.run).not.toHaveBeenCalled();
+      expect(drafts).toHaveLength(2);
+    });
+
+    it('emits macro:proposal when learner evaluates positively', async () => {
+      const proposal = { projectId: 'proj-1', meetingType: 'standup', templateId: 'code-task', dispatchTarget: 'slack' };
+      const deps = {
+        ...makeDeps(),
+        macroLearner: { evaluate: vi.fn().mockReturnValue(proposal) },
+      };
+
+      await run('fixture transcript with action items', 'meeting-1', deps);
+
+      expect(deps.macroLearner.evaluate).toHaveBeenCalledWith('meeting-1');
+      expect(deps.emitter.send).toHaveBeenCalledWith('macro:proposal', { proposal });
+    });
+
+    it('does not emit macro:proposal when learner returns null', async () => {
+      const deps = {
+        ...makeDeps(),
+        macroLearner: { evaluate: vi.fn().mockReturnValue(null) },
+      };
+
+      await run('fixture transcript with action items', 'meeting-1', deps);
+
+      expect(deps.macroLearner.evaluate).toHaveBeenCalledWith('meeting-1');
+      const proposalCalls = (deps.emitter.send as ReturnType<typeof vi.fn>).mock.calls.filter(
+        (c: unknown[]) => c[0] === 'macro:proposal',
+      );
+      expect(proposalCalls).toHaveLength(0);
+    });
   });
 });
