@@ -65,6 +65,17 @@ export interface PendingReview {
   resolved_at: string | null;
 }
 
+export interface DispatchMacro {
+  id: number;
+  project_id: string;
+  meeting_type: string;
+  template_id: string;
+  prior_context_count: number;
+  dispatch_target: string;
+  active: number;          // 0 | 1
+  created_at: string;
+}
+
 // ─── DDL statements ────────────────────────────────────────────────
 
 export const SCHEMA_VERSION = 1;
@@ -151,6 +162,20 @@ export const DDL_GOALS_INDEX = `
 CREATE INDEX IF NOT EXISTS idx_goals_parent ON goals(parent_id);
 `;
 
+export const DDL_DISPATCH_MACROS = `
+CREATE TABLE IF NOT EXISTS dispatch_macros (
+  id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+  project_id          TEXT NOT NULL,
+  meeting_type        TEXT NOT NULL,
+  template_id         TEXT NOT NULL,
+  prior_context_count INTEGER DEFAULT 3,
+  dispatch_target     TEXT NOT NULL,
+  active              INTEGER DEFAULT 1,
+  created_at          TEXT NOT NULL DEFAULT (datetime('now')),
+  UNIQUE(project_id, meeting_type)
+);
+`;
+
 export const DDL_SCHEMA_VERSION = `
 CREATE TABLE IF NOT EXISTS memory_schema_version (
   version INTEGER NOT NULL
@@ -221,6 +246,7 @@ export const ALL_DDL = [
   DDL_PENDING_REVIEW,
   DDL_GOALS,
   DDL_GOALS_INDEX,
+  DDL_DISPATCH_MACROS,
   DDL_SCHEMA_VERSION,
   DDL_PENDING_CONFLICTS,
   DDL_CONFLICT_RESOLUTIONS,
