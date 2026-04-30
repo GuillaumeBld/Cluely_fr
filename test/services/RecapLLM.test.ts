@@ -37,6 +37,18 @@ describe('RecapLLM', () => {
     expect(llm.chat).not.toHaveBeenCalled();
   });
 
+  it('returns empty array when LLM returns invalid JSON', async () => {
+    const llm = mockLLMClient('Sorry, I cannot parse this transcript.');
+    const items = await extractActionItems('some transcript', llm);
+    expect(items).toEqual([]);
+  });
+
+  it('returns empty array when LLM returns truncated JSON', async () => {
+    const llm = mockLLMClient('[{"text": "Do X", "speaker": "A"');
+    const items = await extractActionItems('some transcript', llm);
+    expect(items).toEqual([]);
+  });
+
   it('handles LLM response wrapped in markdown fences', async () => {
     const llm = mockLLMClient('```json\n[{"text":"Do X","speaker":"A","timestamp":"01:00","rawExcerpt":"A said do X"}]\n```');
     const items = await extractActionItems('some transcript', llm);

@@ -32,16 +32,20 @@ export async function run(
   const drafts: WorkflowDraft[] = [];
 
   for (const item of actionItems) {
-    const classification = await classify(item, deps.embeddingClient);
+    try {
+      const classification = await classify(item, deps.embeddingClient);
 
-    const workflowDraft = await draft(item, classification.templateId, {
-      llmClient: deps.llmClient,
-      kbService: deps.kbService,
-      goalAligner: deps.goalAligner,
-    });
+      const workflowDraft = await draft(item, classification.templateId, {
+        llmClient: deps.llmClient,
+        kbService: deps.kbService,
+        goalAligner: deps.goalAligner,
+      });
 
-    workflowDraft.confidence = classification.confidence;
-    drafts.push(workflowDraft);
+      workflowDraft.confidence = classification.confidence;
+      drafts.push(workflowDraft);
+    } catch (err) {
+      console.error('[PostMeetingProcessor] Failed to process action item, skipping:', item.text.slice(0, 80), err);
+    }
   }
 
   deps.emitter.send('approval:drafts-ready', { drafts });

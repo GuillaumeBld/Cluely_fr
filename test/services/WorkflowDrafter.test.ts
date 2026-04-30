@@ -62,6 +62,16 @@ describe('WorkflowDrafter', () => {
     expect(Array.isArray(result.kbCitations)).toBe(true);
   });
 
+  it('returns draft with fallback fields when LLM returns invalid JSON', async () => {
+    const deps = makeDeps(1);
+    (deps.llmClient.chat as ReturnType<typeof vi.fn>).mockResolvedValue('This is not JSON');
+    const result = await draft(makeItem(), 'code-task', deps);
+
+    expect(result.payload.title).toBe('Write unit tests for the auth service');
+    expect(result.payload.description).toBe('');
+    expect(result.payload.steps).toEqual([]);
+  });
+
   it('calls KB with the action item text', async () => {
     const deps = makeDeps(1);
     await draft(makeItem(), 'code-task', deps);

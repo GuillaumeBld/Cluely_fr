@@ -66,6 +66,30 @@ describe('PostMeetingProcessor', () => {
     expect(deps.emitter.send).not.toHaveBeenCalled();
   });
 
+  it('skips failed items and continues processing remaining', async () => {
+    const deps = makeDeps();
+    // Override: first extract call returns 2 items, then draft calls:
+    // first draft throws, second succeeds
+    (deps.llmClient.chat as ReturnType<typeof vi.fn>)
+      .mockReset()
+      .mockResolvedValueOnce(JSON.stringify([
+        { text: 'Task A', speaker: 'Alice', timestamp: '00:10', rawExcerpt: 'Alice: task A' },
+        { text: 'Task B', speaker: 'Bob', timestamp: '00:20', rawExcerpt: 'Bob: task B' },
+      ]))
+      .mockRejectedValueOnce(new Error('LLM timeout'))
+      .mockResolvedValueOnce(JSON.stringify({
+        title: 'Task B Draft',
+        description: 'Do task B',
+        steps: ['Step 1'],
+      }));
+
+    const drafts = await run('transcript', 'meeting-1', deps);
+
+    expect(drafts).toHaveLength(1);
+    expect(drafts[0].payload.title).toBe('Task B Draft');
+    expect(deps.emitter.send).toHaveBeenCalled();
+  });
+
   it('completes within reasonable time', async () => {
     const deps = makeDeps();
     const start = Date.now();

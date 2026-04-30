@@ -35,11 +35,12 @@ export async function draft(
   const response = await deps.llmClient.chat(prompt);
 
   const cleaned = response.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-  const parsed = JSON.parse(cleaned) as {
-    title?: string;
-    description?: string;
-    steps?: string[];
-  };
+  let parsed: { title?: string; description?: string; steps?: string[] } = {};
+  try {
+    parsed = JSON.parse(cleaned);
+  } catch (err) {
+    console.error('[WorkflowDrafter] Failed to parse LLM response:', cleaned.slice(0, 200), err);
+  }
 
   draftCounter += 1;
   const id = `draft-${Date.now()}-${draftCounter}`;

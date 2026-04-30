@@ -28,7 +28,13 @@ export async function extractActionItems(
   const response = await llmClient.chat(EXTRACTION_PROMPT + transcript);
 
   const cleaned = response.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-  const parsed: unknown = JSON.parse(cleaned);
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(cleaned);
+  } catch (err) {
+    console.error('[RecapLLM] Failed to parse LLM response:', cleaned.slice(0, 200), err);
+    return [];
+  }
 
   if (!Array.isArray(parsed)) {
     return [];
