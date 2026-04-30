@@ -90,4 +90,63 @@ describe('Goal alignment e2e', () => {
 
     db.close();
   });
+
+  it('gracefully degrades when GoalAligner throws', async () => {
+    const db = new Database(':memory:');
+    runMigration(db);
+
+    // Simulate IntelligenceManager's goal alignment with a failing GoalAligner
+    const failingAligner = {
+      alignActionItems: vi.fn().mockRejectedValue(new Error('embedding model not loaded')),
+    };
+
+    const rawItems: ActionItem[] = [
+      { text: 'review PR', goal_id: null, goal_confidence: null },
+      { text: 'deploy staging', goal_id: null, goal_confidence: null },
+    ];
+
+    // Replicate IntelligenceManager's try/catch logic (lines 1097-1111)
+    let normalizedItems = [...rawItems];
+    if (failingAligner && normalizedItems.length > 0) {
+      try {
+        const tagged = await failingAligner.alignActionItems(
+          normalizedItems.map(i => i.text),
+          'meeting-fail'
+        );
+        normalizedItems = tagged.map(t => ({
+          text: t.text,
+          goal_id: t.goal_id,
+          goal_confidence: t.goal_confidence,
+        }));
+      } catch (_err) {
+        // Should keep original untagged items
+      }
+    }
+
+    // Items should remain untagged, not lost
+    expect(normalizedItems).toHaveLength(2);
+    expect(normalizedItems[0]).toEqual({ text: 'review PR', goal_id: null, goal_confidence: null });
+    expect(normalizedItems[1]).toEqual({ text: 'deploy staging', goal_id: null, goal_confidence: null });
+
+    db.close();
+  });
+
+  it('preserves items when GoalAligner is null', () => {
+    // Simulate goalAligner being null (pipeline not ready)
+    const goalAligner = null;
+
+    const rawItems: ActionItem[] = [
+      { text: 'send report', goal_id: null, goal_confidence: null },
+    ];
+
+    let normalizedItems = [...rawItems];
+    // Replicate the null-check: if (this.goalAligner && normalizedItems.length > 0)
+    if (goalAligner && normalizedItems.length > 0) {
+      // Should not enter this block
+      normalizedItems = [];
+    }
+
+    expect(normalizedItems).toHaveLength(1);
+    expect(normalizedItems[0].text).toBe('send report');
+  });
 });

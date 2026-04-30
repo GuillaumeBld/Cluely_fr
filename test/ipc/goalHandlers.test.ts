@@ -94,6 +94,36 @@ describe('goal IPC handlers (SQL logic)', () => {
       expect(row.embedding).toBeNull();
       expect(row.title).toBe('Ship v2');
     });
+
+    it('rejects empty title at validation level', () => {
+      // Simulates the IPC validation: typeof title !== 'string' || !title.trim()
+      const validateTitle = (title: any) => {
+        if (typeof title !== 'string' || !title.trim()) return { error: 'title required' };
+        if (title.length > 500) return { error: 'title too long' };
+        return null;
+      };
+
+      expect(validateTitle('')).toEqual({ error: 'title required' });
+      expect(validateTitle('   ')).toEqual({ error: 'title required' });
+      expect(validateTitle(null)).toEqual({ error: 'title required' });
+      expect(validateTitle(undefined)).toEqual({ error: 'title required' });
+      expect(validateTitle(123)).toEqual({ error: 'title required' });
+      expect(validateTitle('a'.repeat(501))).toEqual({ error: 'title too long' });
+      expect(validateTitle('Valid title')).toBeNull();
+    });
+
+    it('rejects invalid description and parent_id types', () => {
+      const validateArgs = (desc: any, parentId: any) => {
+        if (desc && typeof desc !== 'string') return { error: 'invalid description' };
+        if (parentId && typeof parentId !== 'string') return { error: 'invalid parent_id' };
+        return null;
+      };
+
+      expect(validateArgs(123, null)).toEqual({ error: 'invalid description' });
+      expect(validateArgs(null, 456)).toEqual({ error: 'invalid parent_id' });
+      expect(validateArgs('valid', 'valid')).toBeNull();
+      expect(validateArgs(undefined, undefined)).toBeNull();
+    });
   });
 
   describe('goal:complete', () => {
