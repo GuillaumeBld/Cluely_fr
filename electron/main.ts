@@ -94,6 +94,11 @@ import { CorpusWatcher } from "./corpus/CorpusWatcher"
 import { CorpusIndexer } from "./corpus/CorpusIndexer"
 import { loadCorpusConfig } from "./corpus/corpus.config"
 import { GoalAligner } from "./memory/GoalAligner"
+import { AgentStateManager } from "./services/AgentStateManager"
+import { PermissionsAuditLog } from "./services/PermissionsAuditLog"
+import { CommitmentStalenessChecker, CommitmentQuerySource } from "./services/CommitmentStalenessChecker"
+import { BackgroundAgent } from "./services/BackgroundAgent"
+import { getAgentConfig, setAgentIntervalMs } from "./config/agentConfig"
 
 export class AppState {
   private static instance: AppState | null = null
@@ -117,6 +122,8 @@ export class AppState {
   private lunrIndexer: LunrIndexer = new LunrIndexer()
   private slidingWindowAnalyzer: SlidingWindowAnalyzer = new SlidingWindowAnalyzer(this.lunrIndexer)
   private memoryGraphWriter: MemoryGraphWriter = new MemoryGraphWriter()
+  private agentStateManager: AgentStateManager = new AgentStateManager()
+  private backgroundAgent: BackgroundAgent | null = null
   private activeMeetingId: string = ''
   private turnCounter: number = 0
 
@@ -1146,6 +1153,10 @@ export class AppState {
     return this.memoryManager;
   }
 
+  public getBackgroundAgent(): BackgroundAgent | null {
+    return this.backgroundAgent;
+  }
+
   public getView(): "queue" | "solutions" {
     return this.view
   }
@@ -1758,6 +1769,31 @@ async function initializeApp() {
       });
 
       console.log('[Main] CalendarManager initialized');
+
+      // Start BackgroundAgent with CalendarManager as source
+      try {
+        const db = DatabaseManager.getInstance().getDb();
+        if (db) {
+          const auditLog = new PermissionsAuditLog(db);
+          const commitmentSource: CommitmentQuerySource = {
+            queryOpenCommitments: () => [], // Placeholder — wired to real ledger in future composite
+          };
+          const stalenessChecker = new CommitmentStalenessChecker(commitmentSource);
+          const config = getAgentConfig();
+          const bgAgent = new BackgroundAgent(
+            appState['agentStateManager'],
+            auditLog,
+            stalenessChecker,
+            calMgr,
+            config.intervalMs,
+          );
+          appState['backgroundAgent'] = bgAgent;
+          bgAgent.start();
+          console.log(`[Main] BackgroundAgent started (interval: ${config.intervalMs}ms)`);
+        }
+      } catch (bgErr) {
+        console.error('[Main] Failed to start BackgroundAgent:', bgErr);
+      }
     } catch (e) {
       console.error('[Main] Failed to initialize CalendarManager:', e);
     }
@@ -1771,6 +1807,17 @@ async function initializeApp() {
     } catch (e) {
       console.error('[Main] Failed to initialize Hermes:', e);
     }
+
+    // IPC: agent:set-interval — reconfigure polling interval
+    ipcMain.handle('agent:set-interval', (_event, ms: number) => {
+      setAgentIntervalMs(ms);
+      const agent = appState.getBackgroundAgent();
+      if (agent) {
+        agent.setInterval(ms);
+        console.log(`[Main] BackgroundAgent interval updated to ${ms}ms`);
+      }
+      return { intervalMs: ms };
+    });
 
     // Recover unprocessed meetings (persistence check)
     appState.getIntelligenceManager().recoverUnprocessedMeetings().catch(err => {
