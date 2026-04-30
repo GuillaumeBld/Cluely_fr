@@ -52,19 +52,30 @@ export class PostMeetingProcessor {
    * Returns the number of decisions written.
    */
   public async run(meetingId: string, transcript: string): Promise<number> {
-    const decisions = await this.extractor.extractDecisions(transcript);
+    let decisions: ExtractedDecision[];
+    try {
+      decisions = await this.extractor.extractDecisions(transcript);
+    } catch (err) {
+      console.error('[PostMeetingProcessor] Decision extraction failed:', err);
+      return 0;
+    }
+
     let written = 0;
 
     for (const decision of decisions) {
-      const goalId = await this.aligner.align(decision.text);
-      const result = this.ledger.append({
-        meeting_id: meetingId,
-        timestamp: decision.timestamp,
-        speaker: decision.speaker,
-        text: decision.text,
-        goal_id: goalId,
-      });
-      if (result) written++;
+      try {
+        const goalId = await this.aligner.align(decision.text);
+        const result = this.ledger.append({
+          meeting_id: meetingId,
+          timestamp: decision.timestamp,
+          speaker: decision.speaker,
+          text: decision.text,
+          goal_id: goalId,
+        });
+        if (result) written++;
+      } catch (err) {
+        console.error('[PostMeetingProcessor] Failed to persist decision:', decision.text.slice(0, 80), err);
+      }
     }
 
     return written;
