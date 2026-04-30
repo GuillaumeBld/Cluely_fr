@@ -1,0 +1,5 @@
+{
+  "finbiz": { "type": "http", "url": "https://status.finbiz.internal/api/health" },
+  "qualiaai": { "type": "script", "path": "./scripts/qualiaai-health.sh" },
+  "ev0": { "type": "http", "url": "https://ev0.internal/health" }
+}
