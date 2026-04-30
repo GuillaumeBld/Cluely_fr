@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import Database from 'better-sqlite3';
 import { CorpusRetriever } from '../../electron/corpus/CorpusRetriever';
 
@@ -85,5 +85,40 @@ describe('CorpusRetriever', () => {
 
     expect(results).toHaveLength(1);
     expect(results[0].source_path).toBe('src/b.ts');
+  });
+
+  it('returns empty array when embedder throws on query', async () => {
+    const failingEmbedder = {
+      getEmbedding: async () => { throw new Error('embedding service down'); },
+    };
+
+    const retriever = new CorpusRetriever(db, failingEmbedder);
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const results = await retriever.query('anything', 'proj-1', 5);
+
+    expect(results).toHaveLength(0);
+    consoleSpy.mockRestore();
+  });
+
+  it('skips corrupt chunks without crashing', async () => {
+    const insert = db.prepare(`
+      INSERT INTO corpus_chunks (id, project_id, source_path, chunk_text, embedding, commit_hash, indexed_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    // Insert a chunk with a corrupt (too-short) embedding blob
+    insert.run('corrupt', 'proj-1', 'src/bad.ts', 'bad code', Buffer.from([0x00, 0x01]), null, Date.now());
+    insert.run('good', 'proj-1', 'src/good.ts', 'good code', embeddingToBlob([1, 0, 0]), null, Date.now());
+
+    const mockEmbedder = { getEmbedding: async () => [1, 0, 0] };
+    const retriever = new CorpusRetriever(db, mockEmbedder);
+
+    const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const results = await retriever.query('query', 'proj-1', 5);
+
+    // Should still return the good chunk
+    expect(results.length).toBeGreaterThanOrEqual(1);
+    expect(results.some(r => r.source_path === 'src/good.ts')).toBe(true);
+    consoleSpy.mockRestore();
   });
 });

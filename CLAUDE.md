@@ -13,3 +13,5 @@
 - `electron/main.ts` -- AppState singleton is the service registry
 - `electron/memory/` -- SQLite graph store (memory.db) for relationship/fact tracking
 - `electron/services/` -- mid-call decision capture layer (IpcEventBus, LunrIndexer, SlidingWindowAnalyzer, TaskGeneratorBuffer, MemoryGraphWriter)
+- `electron/corpus/` -- local-corpus RAG: file + git-history indexing, embedding-based retrieval, freshness guard
+  - Config: `corpus.json` in Electron userData directory (no UI; file-based only)

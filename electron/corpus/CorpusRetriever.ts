@@ -48,7 +48,13 @@ export class CorpusRetriever {
   }
 
   async query(queryText: string, projectId: string, k: number = 5): Promise<CorpusChunk[]> {
-    const qEmbed = await this.embedder.getEmbedding(queryText);
+    let qEmbed: number[];
+    try {
+      qEmbed = await this.embedder.getEmbedding(queryText);
+    } catch (err) {
+      console.error(`[CorpusRetriever] Failed to embed query text:`, err);
+      return [];
+    }
 
     const rows = this.db.prepare(
       'SELECT * FROM corpus_chunks WHERE project_id = ? AND embedding IS NOT NULL'
@@ -57,17 +63,21 @@ export class CorpusRetriever {
     const scored: CorpusChunk[] = [];
 
     for (const row of rows) {
-      const chunkEmbedding = blobToEmbedding(row.embedding);
-      const score = cosineSimilarity(qEmbed, chunkEmbedding);
+      try {
+        const chunkEmbedding = blobToEmbedding(row.embedding);
+        const score = cosineSimilarity(qEmbed, chunkEmbedding);
 
-      scored.push({
-        id: row.id,
-        project_id: row.project_id,
-        source_path: row.source_path,
-        chunk_text: row.chunk_text,
-        commit_hash: row.commit_hash,
-        score,
-      });
+        scored.push({
+          id: row.id,
+          project_id: row.project_id,
+          source_path: row.source_path,
+          chunk_text: row.chunk_text,
+          commit_hash: row.commit_hash,
+          score,
+        });
+      } catch (err) {
+        console.warn(`[CorpusRetriever] Skipping corrupt chunk ${row.id}:`, err);
+      }
     }
 
     scored.sort((a, b) => b.score - a.score);

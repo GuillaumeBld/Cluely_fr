@@ -116,6 +116,11 @@ export class CorpusIndexer {
     `);
 
     const upsertAll = this.db.transaction(() => {
+      // Remove old chunks for this file before re-inserting to avoid stale orphans
+      this.db.prepare(
+        'DELETE FROM corpus_chunks WHERE project_id = ? AND source_path = ?'
+      ).run(projectId, filePath);
+
       for (let i = 0; i < chunks.length; i++) {
         const id = chunkId(projectId, filePath, i);
         upsert.run(id, projectId, filePath, chunks[i], null, commitHash, now);
@@ -123,7 +128,7 @@ export class CorpusIndexer {
     });
     upsertAll();
 
-    // Embed asynchronously if embedder available
+    // Patch embeddings into stored chunks if embedder available
     if (this.embedder) {
       for (let i = 0; i < chunks.length; i++) {
         try {

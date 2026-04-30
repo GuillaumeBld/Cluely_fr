@@ -1,9 +1,15 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import Database from 'better-sqlite3';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
+import { execSync } from 'child_process';
 import { CorpusIndexer, chunkText } from '../../electron/corpus/CorpusIndexer';
+
+vi.mock('child_process', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('child_process')>();
+  return { ...actual, execSync: vi.fn(actual.execSync) };
+});
 
 describe('chunkText', () => {
   it('splits text into chunks respecting token limit', () => {
@@ -100,5 +106,117 @@ describe('CorpusIndexer', () => {
     const indexer = new CorpusIndexer(db);
     const count = await indexer.indexFile('proj-1', '/nonexistent/file.ts', null);
     expect(count).toBe(0);
+  });
+
+  it('removes stale chunks when re-indexing a shrunk file', async () => {
+    const filePath = path.join(tmpDir, 'shrink.ts');
+
+    // First index: large file producing multiple chunks
+    const longContent = Array(80).fill('const line = "some code content here";').join('\n');
+    fs.writeFileSync(filePath, longContent);
+
+    const indexer = new CorpusIndexer(db);
+    const count1 = await indexer.indexFile('proj-1', filePath, null);
+    expect(count1).toBeGreaterThan(1);
+
+    const rows1 = db.prepare('SELECT * FROM corpus_chunks WHERE project_id = ? AND source_path = ?')
+      .all('proj-1', filePath) as any[];
+    expect(rows1.length).toBe(count1);
+
+    // Second index: file shrinks to 1 chunk
+    fs.writeFileSync(filePath, 'const x = 1;');
+    const count2 = await indexer.indexFile('proj-1', filePath, null);
+    expect(count2).toBe(1);
+
+    // Verify old chunks are gone
+    const rows2 = db.prepare('SELECT * FROM corpus_chunks WHERE project_id = ? AND source_path = ?')
+      .all('proj-1', filePath) as any[];
+    expect(rows2.length).toBe(1);
+  });
+
+  describe('indexCommits', () => {
+    const mockedExecSync = vi.mocked(execSync);
+
+    afterEach(() => {
+      mockedExecSync.mockReset();
+    });
+
+    it('parses git log output and stores commit chunks', () => {
+      const gitLog = [
+        'abc123\nFix: handle edge case\nDetailed body here\n---END---',
+        'def456\nFeat: add feature\nMore details\n---END---',
+        '',
+      ].join('\n');
+
+      mockedExecSync.mockReturnValueOnce(gitLog);
+
+      const indexer = new CorpusIndexer(db);
+      const count = indexer.indexCommits('proj-1', '/fake/repo', 10);
+
+      expect(count).toBe(2);
+
+      const rows = db.prepare('SELECT * FROM corpus_chunks WHERE project_id = ?').all('proj-1') as any[];
+      expect(rows.length).toBe(2);
+      expect(rows.some((r: any) => r.commit_hash === 'abc123')).toBe(true);
+      expect(rows.some((r: any) => r.commit_hash === 'def456')).toBe(true);
+    });
+
+    it('handles git log failure gracefully', () => {
+      mockedExecSync.mockImplementationOnce(() => { throw new Error('not a git repo'); });
+
+      const indexer = new CorpusIndexer(db);
+      const count = indexer.indexCommits('proj-1', '/fake/repo', 10);
+      expect(count).toBe(0);
+    });
+
+    it('skips entries with empty messages', () => {
+      const gitLog = 'abc123\n\n---END---\ndef456\nReal message\n---END---\n';
+      mockedExecSync.mockReturnValueOnce(gitLog);
+
+      const indexer = new CorpusIndexer(db);
+      const count = indexer.indexCommits('proj-1', '/fake/repo', 10);
+
+      const rows = db.prepare('SELECT * FROM corpus_chunks WHERE project_id = ?').all('proj-1') as any[];
+      expect(rows.length).toBe(1);
+      expect(rows[0].commit_hash).toBe('def456');
+    });
+  });
+
+  describe('incrementalIndex', () => {
+    const mockedExecSync = vi.mocked(execSync);
+
+    afterEach(() => {
+      mockedExecSync.mockReset();
+    });
+
+    it('indexes files and commits from a project config', async () => {
+      const srcDir = path.join(tmpDir, 'src');
+      fs.mkdirSync(srcDir, { recursive: true });
+      fs.writeFileSync(path.join(srcDir, 'main.ts'), 'export const main = true;');
+      fs.writeFileSync(path.join(srcDir, 'util.ts'), 'export function util() {}');
+
+      const gitLog = 'abc123\nCommit message\n---END---\n';
+      mockedExecSync.mockReturnValue(gitLog);
+
+      const indexer = new CorpusIndexer(db);
+      const config = {
+        projectId: 'test-proj',
+        rootPath: tmpDir,
+        includeGlobs: ['**/*.ts'],
+        excludeGlobs: ['node_modules/**'],
+        commitCap: 10,
+        freshnessThresholdHours: 2,
+      };
+
+      const totalChunks = await indexer.incrementalIndex(config);
+      expect(totalChunks).toBeGreaterThan(0);
+
+      const rows = db.prepare('SELECT * FROM corpus_chunks WHERE project_id = ?').all('test-proj') as any[];
+      expect(rows.length).toBeGreaterThan(0);
+
+      const filePaths = [...new Set(rows.map((r: any) => r.source_path))];
+      expect(filePaths.some((p: string) => p.includes('main.ts'))).toBe(true);
+      expect(filePaths.some((p: string) => p === 'git:commit')).toBe(true);
+    });
   });
 });

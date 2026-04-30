@@ -42,6 +42,22 @@ describe('UploadGuard', () => {
     expect(() => guard.checkPath('/Users/g/other/c.ts')).not.toThrow();
   });
 
+  it('does not block paths sharing a prefix but in a different directory', () => {
+    const guard = new UploadGuard(['/data/project']);
+
+    expect(() => {
+      guard.checkPath('/data/project-unrelated/file.ts');
+    }).not.toThrow();
+  });
+
+  it('blocks the exact corpus root path itself', () => {
+    const guard = new UploadGuard(['/data/project']);
+
+    expect(() => {
+      guard.checkPath('/data/project');
+    }).toThrow(CorpusLeakError);
+  });
+
   it('error message includes blocked path', () => {
     const guard = new UploadGuard(['/corpus']);
 

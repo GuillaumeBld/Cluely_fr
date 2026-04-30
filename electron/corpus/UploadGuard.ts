@@ -21,7 +21,7 @@ export class UploadGuard {
     const resolved = path.resolve(sourcePath);
 
     for (const denied of this.denyList) {
-      if (resolved.startsWith(denied)) {
+      if (resolved === denied || resolved.startsWith(denied + path.sep)) {
         throw new CorpusLeakError(
           `Corpus path blocked from upload: ${sourcePath} is under corpus root ${denied}`
         );
