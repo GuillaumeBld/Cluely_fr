@@ -236,6 +236,55 @@ export interface ConflictResolution {
   resolved_at: string;
 }
 
+export const DDL_DECISIONS = `
+CREATE TABLE IF NOT EXISTS decisions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  meeting_id TEXT NOT NULL,
+  timestamp TEXT NOT NULL,
+  speaker TEXT NOT NULL,
+  text TEXT NOT NULL,
+  text_hash TEXT NOT NULL,
+  goal_id TEXT REFERENCES goals(id),
+  conflict_resolved INTEGER NOT NULL DEFAULT 0,
+  source_edge_id INTEGER,
+  dispatched_job_id TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  UNIQUE(meeting_id, text_hash)
+);
+`;
+
+export const DDL_DECISIONS_GOAL_INDEX = `
+CREATE INDEX IF NOT EXISTS idx_decisions_goal ON decisions(goal_id);
+`;
+
+export const DDL_DECISIONS_MEETING_INDEX = `
+CREATE INDEX IF NOT EXISTS idx_decisions_meeting ON decisions(meeting_id);
+`;
+
+export interface Goal {
+  id: string;
+  title: string;
+  description: string | null;
+  embedding: Buffer | null;
+  parent_id: string | null;
+  created_at: number;
+  completed_at: number | null;
+}
+
+export interface Decision {
+  id: number;
+  meeting_id: string;
+  timestamp: string;
+  speaker: string;
+  text: string;
+  text_hash: string;
+  goal_id: string | null;
+  conflict_resolved: number;
+  source_edge_id: number | null;
+  dispatched_job_id: string | null;
+  created_at: string;
+}
+
 export const ALL_DDL = [
   DDL_NODES,
   DDL_EDGES,
@@ -250,4 +299,7 @@ export const ALL_DDL = [
   DDL_SCHEMA_VERSION,
   DDL_PENDING_CONFLICTS,
   DDL_CONFLICT_RESOLUTIONS,
+  DDL_DECISIONS,
+  DDL_DECISIONS_GOAL_INDEX,
+  DDL_DECISIONS_MEETING_INDEX,
 ] as const;
