@@ -1,5 +1,6 @@
 import { LLMHelper } from "../LLMHelper";
 import { UNIVERSAL_RECAP_PROMPT } from "./prompts";
+import { ConflictResolution } from "../memory/schema";
 
 export class RecapLLM {
     private llmHelper: LLMHelper;
@@ -41,5 +42,24 @@ export class RecapLLM {
         if (!text) return "";
         // Simple clamp: max 5 lines
         return text.split('\n').filter(l => l.trim()).slice(0, 5).join('\n');
+    }
+
+    /**
+     * Append a "Memory Conflicts Resolved" section to a recap summary.
+     * Always present (empty section if no conflicts), per spec.
+     */
+    appendConflictDigest(summary: string, resolutions: ConflictResolution[]): string {
+        let section = '\n\n## Memory Conflicts Resolved\n';
+
+        if (resolutions.length === 0) {
+            section += 'No memory conflicts detected.\n';
+        } else {
+            for (const r of resolutions) {
+                const actionLabel = r.action === 'update' ? 'Updated' : r.action === 'flag' ? 'Flagged' : 'Ignored';
+                section += `- **${r.fact_key}**: "${r.old_value}" → "${r.new_value}" (${actionLabel})\n`;
+            }
+        }
+
+        return summary + section;
     }
 }
