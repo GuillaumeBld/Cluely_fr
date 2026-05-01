@@ -196,6 +196,11 @@ interface ElectronAPI {
     onBriefReady: (cb: (brief: any) => void) => () => void;
     getLastBrief: () => Promise<any>;
   };
+
+  // Goal Management
+  goalCreate: (opts: { title: string; description?: string; parent_id?: string }) => Promise<{ id: string; title: string } | { error: string }>;
+  goalList: () => Promise<Array<{ id: string; title: string; description: string; parent_id: string | null; created_at: number; completed_at: number | null }>>;
+  goalComplete: (id: string) => Promise<{ success: boolean; error?: string }>;
 }
 
 export const PROCESSING_EVENTS = {
@@ -826,4 +831,9 @@ contextBridge.exposeInMainWorld("electronAPI", {
     },
     getLastBrief: () => ipcRenderer.invoke('pre-meeting:get-last-brief'),
   },
+
+  // Goal Management API
+  goalCreate: (opts: { title: string; description?: string; parent_id?: string }) => ipcRenderer.invoke('goal:create', opts),
+  goalList: () => ipcRenderer.invoke('goal:list'),
+  goalComplete: (id: string) => ipcRenderer.invoke('goal:complete', id),
 } as ElectronAPI)
