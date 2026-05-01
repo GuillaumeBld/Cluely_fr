@@ -11,6 +11,7 @@
 
 import { EventEmitter } from 'events';
 import WebSocket from 'ws';
+import { ENGLISH_VARIANTS } from '../config/languages';
 
 const RECONNECT_BASE_DELAY_MS = 1000;
 const RECONNECT_MAX_DELAY_MS = 30000;
@@ -24,6 +25,9 @@ export class DeepgramStreamingSTT extends EventEmitter {
 
     private sampleRate = 16000;
     private numChannels = 1;
+    private languageCode = 'en-US';
+
+    private pendingLanguageChange?: NodeJS.Timeout;
 
     private reconnectAttempts = 0;
     private reconnectTimer: NodeJS.Timeout | null = null;
@@ -48,8 +52,31 @@ export class DeepgramStreamingSTT extends EventEmitter {
         console.log(`[DeepgramStreaming] Channel count set to ${count}`);
     }
 
-    /** No-op — Deepgram language is auto-detected or set via query param */
-    public setRecognitionLanguage(_key: string): void { }
+    public setRecognitionLanguage(key: string): void {
+        if (this.pendingLanguageChange) {
+            clearTimeout(this.pendingLanguageChange);
+        }
+
+        this.pendingLanguageChange = setTimeout(() => {
+            const config = ENGLISH_VARIANTS[key];
+            if (!config) {
+                console.warn(`[DeepgramStreaming] Unknown language key: ${key}`);
+                this.pendingLanguageChange = undefined;
+                return;
+            }
+
+            console.log(`[DeepgramStreaming] Updating recognition language to: ${key} (${config.primary})`);
+            this.languageCode = config.primary;
+
+            if (this.isActive) {
+                console.log('[DeepgramStreaming] Language changed while streaming. Restarting stream...');
+                this.stop();
+                this.start();
+            }
+
+            this.pendingLanguageChange = undefined;
+        }, 250);
+    }
 
     /** No-op — no Google credentials needed */
     public setCredentials(_path: string): void { }
@@ -114,7 +141,8 @@ export class DeepgramStreamingSTT extends EventEmitter {
             `&sample_rate=${this.sampleRate}` +
             `&channels=${this.numChannels}` +
             `&smart_format=true` +
-            `&interim_results=true`;
+            `&interim_results=true` +
+            `&language=${this.languageCode}`;
 
         console.log(`[DeepgramStreaming] Connecting (rate=${this.sampleRate}, ch=${this.numChannels})...`);
 

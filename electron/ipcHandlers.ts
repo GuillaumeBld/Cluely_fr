@@ -927,7 +927,7 @@ export function initializeIpcHandlers(appState: AppState): void {
         // Test Deepgram via WebSocket connection
         const WebSocket = require('ws');
         return await new Promise<{ success: boolean; error?: string }>((resolve) => {
-          const url = 'wss://api.deepgram.com/v1/listen?model=nova-2&encoding=linear16&sample_rate=16000&channels=1';
+          const url = 'wss://api.deepgram.com/v1/listen?model=nova-2&encoding=linear16&sample_rate=16000&channels=1&language=en-US';
           const ws = new WebSocket(url, {
             headers: { Authorization: `Token ${apiKey} ` },
           });
