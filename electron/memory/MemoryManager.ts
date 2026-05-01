@@ -22,6 +22,7 @@ const HALF_LIFE_DAYS = 30;
 export class MemoryManager {
   private static instance: MemoryManager;
   private db: Database.Database;
+  private _isInMemory = false;
 
   private constructor(dbOrPath?: Database.Database | string) {
     if (dbOrPath instanceof Database) {
@@ -37,9 +38,17 @@ export class MemoryManager {
       } catch (err) {
         console.error('[MemoryManager] Failed to open memory.db, falling back to in-memory:', err);
         this.db = new Database(':memory:');
+        this._isInMemory = true;
       }
     }
-    runMigration(this.db);
+    try {
+      runMigration(this.db);
+    } catch (err) {
+      console.error('[MemoryManager] Migration failed, falling back to in-memory:', err);
+      this.db = new Database(':memory:');
+      this._isInMemory = true;
+      runMigration(this.db);
+    }
   }
 
   public static getInstance(dbOrPath?: Database.Database | string): MemoryManager {
@@ -54,6 +63,10 @@ export class MemoryManager {
   /** Reset singleton (for tests). */
   public static resetInstance(): void {
     MemoryManager.instance = undefined as unknown as MemoryManager;
+  }
+
+  public isInMemoryMode(): boolean {
+    return this._isInMemory;
   }
 
   public getDb(): Database.Database {

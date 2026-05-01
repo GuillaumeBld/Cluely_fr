@@ -12,3 +12,4 @@
 - Electron main process code lives in `electron/` (not `src/main/`)
 - `electron/main.ts` -- AppState singleton is the service registry
 - `electron/memory/` -- SQLite graph store (memory.db) for relationship/fact tracking
+- `electron/services/` -- Domain services (pre-meeting orchestrator, calendar, email, zoom)

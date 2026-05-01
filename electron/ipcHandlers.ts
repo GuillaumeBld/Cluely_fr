@@ -1489,6 +1489,15 @@ export function initializeIpcHandlers(appState: AppState): void {
   });
 
   // ==========================================
+  // Pre-Meeting Brief Handlers
+  // ==========================================
+
+  safeHandle("pre-meeting:get-last-brief", () => {
+    const { PreMeetingOrchestrator } = require('./services/PreMeetingOrchestrator');
+    return PreMeetingOrchestrator.getInstance().getLastBrief();
+  });
+
+  // ==========================================
   // Calendar Integration Handlers
   // ==========================================
 
