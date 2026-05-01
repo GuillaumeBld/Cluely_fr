@@ -21,7 +21,7 @@ describe('PreMeetingLoader', () => {
     loader = PreMeetingLoader.getInstance(queryService);
 
     // Seed a goal
-    db.prepare('INSERT INTO goals (name) VALUES (?)').run('Sprint Goal');
+    db.prepare('INSERT INTO goals (id, title) VALUES (?, ?)').run('goal-sprint', 'Sprint Goal');
   });
 
   afterEach(() => {
@@ -37,7 +37,7 @@ describe('PreMeetingLoader', () => {
       timestamp: '2026-04-29T10:00:00Z',
       speaker: 'Alice',
       text: 'Will deliver the API by Wednesday',
-      goal_id: 1,
+      goal_id: 'goal-sprint',
     });
     ledger.append({
       meeting_id: 'prev-mtg',
@@ -50,7 +50,7 @@ describe('PreMeetingLoader', () => {
     const dispatched = db.prepare("SELECT id FROM decisions WHERE speaker = 'Bob'").get() as { id: number };
     ledger.appendDispatch(dispatched.id, 'job-done');
 
-    const brief = loader.buildPreBrief('upcoming-mtg', 1);
+    const brief = loader.buildPreBrief('upcoming-mtg', 'goal-sprint');
     expect(brief.meetingId).toBe('upcoming-mtg');
     expect(brief.openCommitments.length).toBe(1);
     expect(brief.openCommitments[0].speaker).toBe('Alice');

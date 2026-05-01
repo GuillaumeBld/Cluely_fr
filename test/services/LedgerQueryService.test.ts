@@ -18,7 +18,7 @@ describe('LedgerQueryService', () => {
     query = LedgerQueryService.getInstance(db);
 
     // Seed a goal for FK references
-    db.prepare('INSERT INTO goals (name) VALUES (?)').run('Project Alpha');
+    db.prepare('INSERT INTO goals (id, title) VALUES (?, ?)').run('goal-alpha', 'Project Alpha');
   });
 
   afterEach(() => {
@@ -33,7 +33,7 @@ describe('LedgerQueryService', () => {
       timestamp: '2026-04-28T10:00:00Z',
       speaker: 'Alice',
       text: 'Decision A — open commitment',
-      goal_id: 1,
+      goal_id: 'goal-alpha',
     });
     ledger.append({
       meeting_id: 'mtg-1',
@@ -64,9 +64,9 @@ describe('LedgerQueryService', () => {
 
     it('filters by goal_id when provided', () => {
       seedDecisions();
-      const open = query.queryOpenCommitments(1);
+      const open = query.queryOpenCommitments('goal-alpha');
       expect(open.length).toBe(1);
-      expect(open[0].goal_id).toBe(1);
+      expect(open[0].goal_id).toBe('goal-alpha');
     });
   });
 

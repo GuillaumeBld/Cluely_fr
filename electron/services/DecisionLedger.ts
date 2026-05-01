@@ -7,7 +7,7 @@ export interface DecisionEntry {
   timestamp: string;
   speaker: string;
   text: string;
-  goal_id?: number | null;
+  goal_id?: string | null;
   source_edge_id?: number | null;
 }
 

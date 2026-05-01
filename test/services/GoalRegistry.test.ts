@@ -22,8 +22,9 @@ describe('GoalRegistry', () => {
   describe('create', () => {
     it('inserts a goal and returns it with an id', () => {
       const goal = registry.create({ name: 'Archon Release', description: 'Ship v1' });
-      expect(goal.id).toBe(1);
-      expect(goal.name).toBe('Archon Release');
+      expect(goal.id).toBeTruthy();
+      expect(typeof goal.id).toBe('string');
+      expect(goal.title).toBe('Archon Release');
       expect(goal.description).toBe('Ship v1');
       expect(goal.created_at).toBeTruthy();
     });
@@ -43,11 +44,11 @@ describe('GoalRegistry', () => {
       const created = registry.create({ name: 'Test Goal' });
       const found = registry.getById(created.id);
       expect(found).toBeDefined();
-      expect(found!.name).toBe('Test Goal');
+      expect(found!.title).toBe('Test Goal');
     });
 
     it('returns undefined for missing id', () => {
-      expect(registry.getById(999)).toBeUndefined();
+      expect(registry.getById('nonexistent')).toBeUndefined();
     });
   });
 

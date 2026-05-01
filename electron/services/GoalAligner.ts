@@ -36,7 +36,7 @@ export class GoalAligner {
    * Align text to the closest goal.
    * Returns goal_id if above threshold, null otherwise. Never throws.
    */
-  public async align(text: string): Promise<number | null> {
+  public async align(text: string): Promise<string | null> {
     try {
       const embedding = await this.embedder.embed(text);
       const result = this.registry.findByEmbedding(embedding);

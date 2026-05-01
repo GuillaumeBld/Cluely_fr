@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import Database from 'better-sqlite3';
 import { Goal } from '../memory/schema';
 
@@ -25,18 +26,18 @@ export class GoalRegistry {
   }
 
   public create(goal: { name: string; description?: string; embedding?: Buffer }): Goal {
-    const stmt = this.db.prepare(
-      `INSERT INTO goals (name, description, embedding) VALUES (?, ?, ?)`
-    );
-    const info = stmt.run(goal.name, goal.description ?? null, goal.embedding ?? null);
-    return this.getById(info.lastInsertRowid as number)!;
+    const id = crypto.randomUUID();
+    this.db.prepare(
+      `INSERT INTO goals (id, title, description, embedding) VALUES (?, ?, ?, ?)`
+    ).run(id, goal.name, goal.description ?? null, goal.embedding ?? null);
+    return this.getById(id)!;
   }
 
   public list(): Goal[] {
     return this.db.prepare('SELECT * FROM goals ORDER BY created_at').all() as Goal[];
   }
 
-  public getById(id: number): Goal | undefined {
+  public getById(id: string): Goal | undefined {
     return this.db.prepare('SELECT * FROM goals WHERE id = ?').get(id) as Goal | undefined;
   }
 
@@ -64,7 +65,7 @@ export class GoalRegistry {
   /**
    * Store an embedding for an existing goal.
    */
-  public setEmbedding(id: number, embedding: number[]): void {
+  public setEmbedding(id: string, embedding: number[]): void {
     this.db.prepare('UPDATE goals SET embedding = ? WHERE id = ?').run(
       serializeEmbedding(embedding),
       id,

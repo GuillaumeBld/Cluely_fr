@@ -58,8 +58,8 @@ describe('DecisionLedger', () => {
 
     it('stores goal_id when provided', () => {
       // Create a goal to satisfy FK constraint
-      db.prepare('INSERT INTO goals (name) VALUES (?)').run('Test Goal');
-      const goalId = (db.prepare('SELECT last_insert_rowid() as id').get() as { id: number }).id;
+      const goalId = 'test-goal-id';
+      db.prepare('INSERT INTO goals (id, title) VALUES (?, ?)').run(goalId, 'Test Goal');
 
       const decision = ledger.append({ ...baseEntry, goal_id: goalId });
       expect(decision!.goal_id).toBe(goalId);

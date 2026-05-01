@@ -32,7 +32,7 @@ export class PreMeetingLoader {
    * Build a pre-meeting brief with open commitments.
    * Looks back 30 days by default.
    */
-  public buildPreBrief(meetingId: string, goalId?: number): PreBrief {
+  public buildPreBrief(meetingId: string, goalId?: string): PreBrief {
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
       .toISOString()
       .replace('T', ' ')

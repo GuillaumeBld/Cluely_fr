@@ -27,7 +27,7 @@ export class LedgerQueryService {
   /**
    * Query open commitments: decisions not yet dispatched and not conflict-resolved.
    */
-  public queryOpenCommitments(goalId?: number, since?: string): Decision[] {
+  public queryOpenCommitments(goalId?: string, since?: string): Decision[] {
     const conditions = [
       'dispatched_job_id IS NULL',
       'conflict_resolved = 0',
