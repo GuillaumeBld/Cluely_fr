@@ -26,8 +26,8 @@ export class AttendeeProfiler {
     return attendeeEmails.map(email => ({
       email,
       recentEmails: emailMap.get(email) ?? [],
-      openItems: [],      // TODO(#13): query memory graph (Composite A)
-      priorDecisions: [], // TODO(#13): query memory graph (Composite A)
+      openItems: [] as string[],      // TODO(#13): query memory graph (Composite A)
+      priorDecisions: [] as string[], // TODO(#13): query memory graph (Composite A)
     }));
   }
 }

@@ -6,6 +6,9 @@ import { templateClassifier } from './TemplateClassifier';
 import { AttendeeProfiler, AttendeeProfile } from './AttendeeProfiler';
 import { preBriefComposer, PreBrief } from './PreBriefComposer';
 import { EmailManager } from './EmailManager';
+import { healthSnapshotFetcher } from './HealthSnapshotFetcher';
+import { serializeSnapshot, serializeError } from './HealthSnapshotSerializer';
+import { HealthChunkWriter } from './HealthChunkWriter';
 
 const LEAD_TIME_MS = 5 * 60_000;   // 5 min before event
 const WINDOW_MS = 60_000;           // ± 1 min window
@@ -17,6 +20,7 @@ export class PreMeetingOrchestrator extends EventEmitter {
   private pollTimer: NodeJS.Timeout | null = null;
   private profiler: AttendeeProfiler;
   private lastBrief: PreBrief | null = null;
+  private healthChunkWriter: HealthChunkWriter | null = null;
 
   private constructor(
     private calendarManager: CalendarManager,
@@ -24,6 +28,10 @@ export class PreMeetingOrchestrator extends EventEmitter {
   ) {
     super();
     this.profiler = new AttendeeProfiler(EmailManager.getInstance());
+  }
+
+  setHealthChunkWriter(writer: HealthChunkWriter): void {
+    this.healthChunkWriter = writer;
   }
 
   static getInstance(cal = CalendarManager.getInstance(), zoom = ZoomWatcher.getInstance()): PreMeetingOrchestrator {
@@ -88,6 +96,30 @@ export class PreMeetingOrchestrator extends EventEmitter {
     } catch (err) {
       console.warn('[PreMeetingOrchestrator] Attendee profiling failed, proceeding with empty profiles:', err);
     }
+    // Health injection: fetch project health and write to KB (never fails pipeline, may add latency)
+    if (projectId && this.healthChunkWriter) {
+      try {
+        const snapshot = await healthSnapshotFetcher.fetchForProject(projectId);
+        if (snapshot) {
+          const markdown = serializeSnapshot(snapshot);
+          this.healthChunkWriter.writeChunk(markdown, {
+            projectId,
+            chunkType: 'health-snapshot',
+            fetchedAt: snapshot.fetchedAt,
+          });
+        } else {
+          const errorMd = serializeError(projectId, 'Endpoint unreachable or not configured');
+          this.healthChunkWriter.writeChunk(errorMd, {
+            projectId,
+            chunkType: 'health-snapshot',
+            fetchedAt: new Date().toISOString(),
+          });
+        }
+      } catch (err) {
+        console.warn('[PreMeetingOrchestrator] Health injection failed, continuing:', err);
+      }
+    }
+
     const brief = preBriefComposer.compose(event, projectId, templateId, attendees);
     this.lastBrief = brief;
     this.emit('pre-meeting:brief-ready', brief);

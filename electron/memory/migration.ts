@@ -76,7 +76,7 @@ export function migrateLegacyIfNeeded(db: Database.Database): void {
       const columns = (db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[]).map(c => c.name);
 
       if (columns.includes('key') && columns.includes('value')) {
-        // SAFETY: table is guaranteed to be in ALLOWED_LEGACY_TABLES (line 67)
+        // SAFETY: table is guaranteed to be in ALLOWED_LEGACY_TABLES
         const rows = db.prepare(`SELECT key, value FROM ${table}`).all() as { key: string; value: string }[];
         for (const row of rows) {
           db.prepare(
