@@ -31,17 +31,25 @@ export function ApprovalTray() {
   }, []);
 
   const handleApprove = async (draft: WorkflowDraft) => {
-    await window.electron?.ipcRenderer.invoke('approval:approve', { draft, meetingId });
-    setDrafts((prev) => prev.filter((d) => d.id !== draft.id));
+    try {
+      await window.electron?.ipcRenderer.invoke('approval:approve', { draft, meetingId });
+      setDrafts((prev) => prev.filter((d) => d.id !== draft.id));
+    } catch (err) {
+      console.error('[ApprovalTray] Approve failed:', err);
+    }
   };
 
   const handleDismiss = async (draft: WorkflowDraft) => {
-    await window.electron?.ipcRenderer.invoke('approval:dismiss', {
-      draftId: draft.id,
-      meetingId,
-      reason: 'user-dismissed',
-    });
-    setDrafts((prev) => prev.filter((d) => d.id !== draft.id));
+    try {
+      await window.electron?.ipcRenderer.invoke('approval:dismiss', {
+        draftId: draft.id,
+        meetingId,
+        reason: 'user-dismissed',
+      });
+      setDrafts((prev) => prev.filter((d) => d.id !== draft.id));
+    } catch (err) {
+      console.error('[ApprovalTray] Dismiss failed:', err);
+    }
   };
 
   if (drafts.length === 0) return null;

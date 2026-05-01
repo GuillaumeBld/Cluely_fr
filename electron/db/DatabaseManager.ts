@@ -239,6 +239,17 @@ export class DatabaseManager {
         // Data migration: convert actionItems from string[] to ActionItem[]
         this.migrateActionItemsFormat();
 
+        // Background agent audit log
+        const createAgentAccessLogTable = `
+            CREATE TABLE IF NOT EXISTS agent_access_log (
+                id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                data_type   TEXT NOT NULL,
+                accessed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                purpose     TEXT NOT NULL
+            );
+        `;
+        this.db.exec(createAgentAccessLogTable);
+
         console.log('[DatabaseManager] Migrations completed.');
     }
 
@@ -272,6 +283,10 @@ export class DatabaseManager {
     // ============================================
     // Public API
     // ============================================
+
+    public getDb(): Database.Database | null {
+        return this.db;
+    }
 
     public saveMeeting(meeting: Meeting, startTimeMs: number, durationMs: number) {
         if (!this.db) {

@@ -14,7 +14,8 @@ export class MemoryGraphWriter {
   }
   private write(e: DecisionCapturedEvent): void {
     try {
-      const db = DatabaseManager.getInstance().getDatabase();
+      const db = DatabaseManager.getInstance().getDb();
+      if (!db) return;
       // Guard: no-op if memory graph tables haven't been created yet (e.g., MemoryManager init failed)
       const tableExists = db
         .prepare(
@@ -22,7 +23,7 @@ export class MemoryGraphWriter {
         )
         .get();
       if (!tableExists) return;
-      // TODO(#15): wire MemoryManager.proposeEdge() here — schema exists (memory_nodes/memory_edges),
+      // TODO: wire MemoryManager.proposeEdge() here — schema exists (memory_nodes/memory_edges),
       // but write path deferred pending end-to-end integration testing of the decision capture pipeline.
       console.log(
         `[MemoryGraphWriter] Queued low-confidence relation: ${e.type} by ${e.speaker}`
