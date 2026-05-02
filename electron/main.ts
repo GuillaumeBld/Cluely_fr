@@ -85,6 +85,7 @@ import { DatabaseManager } from "./db/DatabaseManager"
 import { CredentialsManager } from "./services/CredentialsManager"
 import { ReleaseNotesManager } from "./update/ReleaseNotesManager"
 import { MemoryManager } from "./memory"
+import { registerMemoryHandlers } from "./ipc/memoryHandlers"
 import { IpcEventBus } from "./services/IpcEventBus"
 import { LunrIndexer } from "./services/LunrIndexer"
 import { SlidingWindowAnalyzer } from "./services/SlidingWindowAnalyzer"
@@ -204,6 +205,9 @@ export class AppState {
 
     // Initialize MemoryManager (separate memory.db for graph + facts)
     this.memoryManager = MemoryManager.getInstance()
+
+    // Register IPC handlers for memory graph queries
+    registerMemoryHandlers()
 
     // Initialize Corpus Watcher (local corpus RAG indexing)
     this.initializeCorpusWatcher()
