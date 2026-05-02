@@ -1,22 +1,16 @@
-import type { WorkflowDraft } from '../types/workflows';
+import type { WorkflowDraft, Dispatcher, DispatchResult } from '../types/workflows';
+
+export type { Dispatcher, DispatchResult };
 
 export interface ArchonConfig {
   baseUrl: string;
-}
-
-export interface DispatchResult {
-  jobId: string;
 }
 
 export interface HttpClient {
   post(url: string, body: unknown): Promise<{ jobId: string }>;
 }
 
-export interface Dispatcher {
-  dispatch(draft: WorkflowDraft): Promise<DispatchResult>;
-}
-
-export class ArchonDispatcher {
+export class ArchonDispatcher implements Dispatcher {
   private config: ArchonConfig;
   private httpClient: HttpClient;
 

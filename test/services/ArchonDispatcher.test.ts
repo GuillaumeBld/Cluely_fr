@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { ArchonDispatcher, HttpClient } from '../../src/services/ArchonDispatcher';
-import type { WorkflowDraft } from '../../src/types/workflows';
+import type { Dispatcher, WorkflowDraft } from '../../src/types/workflows';
 
 function makeDraft(): WorkflowDraft {
   return {
@@ -75,5 +75,12 @@ describe('ArchonDispatcher', () => {
     const dispatcher = new ArchonDispatcher({ baseUrl: 'http://localhost:3000' }, httpClient);
 
     await expect(dispatcher.dispatch(makeDraft())).rejects.toThrow('missing jobId');
+  });
+
+  it('ArchonDispatcher satisfies the Dispatcher interface', () => {
+    const httpClient: HttpClient = { post: vi.fn().mockResolvedValue({ jobId: 'x' }) };
+    // If ArchonDispatcher diverges from Dispatcher, this line fails to compile.
+    const d: Dispatcher = new ArchonDispatcher({ baseUrl: 'http://localhost' }, httpClient);
+    expect(d).toBeDefined();
   });
 });

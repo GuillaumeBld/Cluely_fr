@@ -8,6 +8,11 @@ import { DatabaseManager } from "./db/DatabaseManager"; // Import Database Manag
 import * as path from "path";
 import * as fs from "fs";
 import { AudioDevices } from "./audio/AudioDevices";
+import { registerApprovalHandlers } from "../src/ipc/approvalHandlers";
+import { ArchonDispatcher } from "../src/services/ArchonDispatcher";
+import { CredentialsWebhookEmitter } from "./services/WebhookEmitter";
+import { BASE_URL } from "./services/MulticaConfig";
+import type { DecisionLedger as IDecisionLedger, SafeHandleRegistrar } from "../src/ipc/approvalHandlers";
 
 import { ENGLISH_VARIANTS } from "./config/languages"
 
@@ -1912,4 +1917,44 @@ export function initializeIpcHandlers(appState: AppState): void {
       return { success: false, error: err.message };
     }
   });
+
+  // --- Approval handlers ---
+  // Wrap the local safeHandle in the SafeHandleRegistrar interface so
+  // registerApprovalHandlers doesn't depend on the concrete ipcMain shape.
+  const ipcRegistrar: SafeHandleRegistrar = {
+    safeHandle: (channel, listener) => safeHandle(channel, listener),
+  };
+
+  // Adapt the electron DecisionLedger (append-only decisions table) to the
+  // IPC-layer DecisionLedger interface which tracks dispatched jobs and dismissals.
+  const approvalLedger: IDecisionLedger = {
+    appendDispatch: async ({ meetingId: _meetingId, jobId, draftId: _draftId }) => {
+      // Log the dispatch — the decisions table stores dispatched_job_id per row;
+      // here we record the job ID for observability. Full ledger wiring (linking to
+      // a specific decision row) is tracked in a follow-up.
+      console.log('[ipcHandlers] Dispatch recorded — jobId:', jobId);
+    },
+    appendDismissal: async ({ meetingId: _meetingId, draftId, reason }) => {
+      console.log('[ipcHandlers] Dismissal recorded — draftId:', draftId, 'reason:', reason);
+    },
+  };
+
+  registerApprovalHandlers(
+    ipcRegistrar,
+    new ArchonDispatcher({ baseUrl: BASE_URL }, {
+      post: async (url: string, body: unknown) => {
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        if (!response.ok) {
+          throw new Error(`[ipcHandlers] HTTP ${response.status} from ${url}`);
+        }
+        return response.json() as Promise<{ jobId: string }>;
+      },
+    }),
+    approvalLedger,
+    new CredentialsWebhookEmitter(),
+  );
 }

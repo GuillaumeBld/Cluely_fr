@@ -16,7 +16,7 @@
 - `electron/services/` -- mid-call decision capture layer (IpcEventBus, LunrIndexer, SlidingWindowAnalyzer, TaskGeneratorBuffer, MemoryGraphWriter) and background agent (BackgroundAgent, AgentStateManager, CommitmentStalenessChecker, PermissionsAuditLog)
 - `electron/corpus/` -- local-corpus RAG: file + git-history indexing, embedding-based retrieval, freshness guard
   - Config: `corpus.json` in Electron userData directory (no UI; file-based only)
-- `src/services/` -- post-meeting pipeline (RecapLLM, WorkflowClassifier, WorkflowDrafter, PostMeetingProcessor, ArchonDispatcher)
+- `src/services/` -- post-meeting pipeline (RecapLLM, WorkflowClassifier, WorkflowDrafter, PostMeetingProcessor, ArchonDispatcher); exports `Dispatcher` interface (defined in `src/types/workflows.ts`) for use by the IPC layer
 - `src/components/` -- approval UI (ApprovalTray, WorkflowCard) for gated workflow execution
-- `src/ipc/approvalHandlers.ts` -- IPC bridge for approval/reject/dispatch actions
+- `src/ipc/approvalHandlers.ts` -- IPC bridge for approval/reject/dispatch actions; accepts any `Dispatcher` implementation (not tied to `ArchonDispatcher`)
 - `src/data/workflowTemplates.json` -- static workflow template definitions loaded at startup

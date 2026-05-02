@@ -1,5 +1,4 @@
-import type { WorkflowDraft } from '../types/workflows';
-import type { Dispatcher } from '../services/ArchonDispatcher';
+import type { WorkflowDraft, Dispatcher } from '../types/workflows';
 
 export interface DecisionLedger {
   appendDispatch(entry: { meetingId: string; jobId: string; draftId: string }): Promise<void>;
@@ -24,22 +23,30 @@ export function registerApprovalHandlers(
     'approval:approve',
     async (_event: unknown, opts: unknown) => {
       const { draft, meetingId } = opts as { draft: WorkflowDraft; meetingId: string };
+
+      let jobId: string;
       try {
-        const { jobId } = await dispatcher.dispatch(draft);
-        await decisionLedger.appendDispatch({ meetingId, jobId, draftId: draft.id });
-
-        // Fire-and-forget: do not await, do not block approval result
-        if (webhookEmitter) {
-          webhookEmitter.emit(draft, jobId).catch((err) => {
-            console.error('[approvalHandlers] Webhook emission failed:', err);
-          });
-        }
-
-        return { jobId };
+        ({ jobId } = await dispatcher.dispatch(draft));
       } catch (err) {
-        console.error('[approvalHandlers] approval:approve failed:', err);
+        console.error('[approvalHandlers] approval:approve — dispatch failed:', err);
         return { error: err instanceof Error ? err.message : 'Dispatch failed' };
       }
+
+      // Fire-and-forget: do not await, do not block approval result
+      if (webhookEmitter) {
+        webhookEmitter.emit(draft, jobId).catch((err) => {
+          console.error('[approvalHandlers] Webhook emission failed:', err);
+        });
+      }
+
+      try {
+        await decisionLedger.appendDispatch({ meetingId, jobId, draftId: draft.id });
+      } catch (err) {
+        // Job is already dispatched — log and continue in degraded mode
+        console.error('[approvalHandlers] approval:approve — ledger write failed (job dispatched, jobId:', jobId, '):', err);
+      }
+
+      return { jobId };
     },
   );
 
