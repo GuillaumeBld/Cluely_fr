@@ -100,6 +100,7 @@ import { AgentStateManager } from "./services/AgentStateManager"
 import { PermissionsAuditLog } from "./services/PermissionsAuditLog"
 import { CommitmentStalenessChecker, CommitmentQuerySource } from "./services/CommitmentStalenessChecker"
 import { BackgroundAgent } from "./services/BackgroundAgent"
+import { DashboardPoller } from './services/DashboardPoller'
 import { TokenUsageTracker } from "./services/TokenUsageTracker"
 import { getAgentConfig, setAgentIntervalMs } from "./config/agentConfig"
 
@@ -128,6 +129,8 @@ export class AppState {
   private memoryGraphWriter: MemoryGraphWriter = new MemoryGraphWriter()
   private agentStateManager: AgentStateManager = new AgentStateManager()
   private backgroundAgent: BackgroundAgent | null = null
+  private dashboardPoller: DashboardPoller | null = null
+  private _healthChunkWriter: import('./services/HealthChunkWriter').HealthChunkWriter | null = null
   private tokenUsageTracker: TokenUsageTracker = new TokenUsageTracker()
   private activeMeetingId: string = ''
   private turnCounter: number = 0
@@ -1198,6 +1201,14 @@ export class AppState {
     return this.backgroundAgent;
   }
 
+  public getDashboardPoller(): DashboardPoller | null {
+    return this.dashboardPoller;
+  }
+
+  public getHealthChunkWriter(): import('./services/HealthChunkWriter').HealthChunkWriter | null {
+    return this._healthChunkWriter;
+  }
+
   public getView(): "queue" | "solutions" {
     return this.view
   }
@@ -1962,6 +1973,22 @@ async function initializeApp() {
       console.error('[Main] Failed to start PreMeetingOrchestrator:', e);
     }
 
+    // Initialize DashboardPoller
+    try {
+      const { HealthChunkWriter: HCW } = require('./services/HealthChunkWriter');
+      const db = appState.getMemoryManager().getDb();
+      if (db) {
+        const healthWriter = new HCW(db);
+        appState['_healthChunkWriter'] = healthWriter;
+        const poller = new DashboardPoller(healthWriter);
+        appState['dashboardPoller'] = poller;
+        poller.start();
+        console.log('[Main] DashboardPoller started');
+      }
+    } catch (e) {
+      console.error('[Main] Failed to start DashboardPoller:', e);
+    }
+
     // Note: We do NOT force dock show here anymore, respecting stealth mode.
   })
 
@@ -1992,6 +2019,11 @@ async function initializeApp() {
       appState.getBackgroundAgent()?.stop();
     } catch (e) {
       console.error('[Main] Failed to stop BackgroundAgent:', e);
+    }
+    try {
+      appState.getDashboardPoller()?.stop();
+    } catch (e) {
+      console.error('[Main] Failed to stop DashboardPoller:', e);
     }
     try {
       MulticaManager.getInstance().stop();

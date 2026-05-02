@@ -1,1 +1,8 @@
-{}
+{
+  "finbiz": { "type": "http", "url": "http://localhost:9101/health" },
+  "qualiaai": { "type": "http", "url": "http://localhost:9102/health" },
+  "ev0": { "type": "http", "url": "http://localhost:9103/health" },
+  "signal": { "type": "http", "url": "http://localhost:9104/health" },
+  "succession": { "type": "http", "url": "http://localhost:9105/health" },
+  "scraping-doctor": { "type": "http", "url": "http://localhost:9106/health" }
+}

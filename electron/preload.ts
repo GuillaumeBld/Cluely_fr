@@ -203,6 +203,13 @@ interface ElectronAPI {
     getLastBrief: () => Promise<any>;
   };
 
+  // Dispatch Dashboard
+  dashboard: {
+    getSnapshots: () => Promise<Array<{ projectId: string; content: string; fetchedAt: string; stale: boolean }>>;
+    refresh: () => Promise<{ success: boolean }>;
+    onSnapshotsUpdated: (cb: (snapshots: Array<{ projectId: string; content: string; fetchedAt: string; stale: boolean }>) => void) => () => void;
+  };
+
   // Goal Management
   goalCreate: (opts: { title: string; description?: string; parent_id?: string }) => Promise<{ id: string; title: string } | { error: string }>;
   goalList: () => Promise<Array<{ id: string; title: string; description: string; parent_id: string | null; created_at: number; completed_at: number | null }>>;
@@ -842,6 +849,17 @@ contextBridge.exposeInMainWorld("electronAPI", {
       return () => ipcRenderer.removeListener('pre-meeting:brief-ready', subscription);
     },
     getLastBrief: () => ipcRenderer.invoke('pre-meeting:get-last-brief'),
+  },
+
+  // Dispatch Dashboard API
+  dashboard: {
+    getSnapshots: () => ipcRenderer.invoke('dashboard:get-snapshots'),
+    refresh: () => ipcRenderer.invoke('dashboard:refresh'),
+    onSnapshotsUpdated: (cb: (snapshots: any[]) => void) => {
+      const subscription = (_: any, data: any) => cb(data);
+      ipcRenderer.on('dashboard:snapshots-updated', subscription);
+      return () => ipcRenderer.removeListener('dashboard:snapshots-updated', subscription);
+    },
   },
 
   // Goal Management API
