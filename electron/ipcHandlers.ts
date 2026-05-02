@@ -10,6 +10,7 @@ import * as fs from "fs";
 import { AudioDevices } from "./audio/AudioDevices";
 
 import { ENGLISH_VARIANTS } from "./config/languages"
+import { registerDashboardHandlers } from './ipc/dashboardHandlers';
 
 export function initializeIpcHandlers(appState: AppState): void {
   const safeHandle = (channel: string, listener: (event: any, ...args: any[]) => Promise<any> | any) => {
@@ -1917,4 +1918,11 @@ export function initializeIpcHandlers(appState: AppState): void {
     if (typeof query !== 'string' || !query.trim()) return [];
     return appState.getLunrIndexer().search(query);
   });
+
+  // Dispatch Dashboard handlers
+  registerDashboardHandlers(
+    { safeHandle },
+    appState.getHealthChunkWriter(),
+    appState.getDashboardPoller(),
+  );
 }
