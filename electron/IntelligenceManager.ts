@@ -854,6 +854,7 @@ export class IntelligenceManager extends EventEmitter {
             }
         }
 
+        // Track interim segments for user to prevent data loss on stop
         if (segment.speaker === 'user') {
             if (!segment.final) {
                 this.lastInterimUser = segment;
@@ -985,6 +986,7 @@ export class IntelligenceManager extends EventEmitter {
 
         if (this.lastInterimUser) {
             console.log('[IntelligenceManager] Force-saving pending user interim transcript:', this.lastInterimUser.text);
+            // Clone and mark as final so addTranscript accepts it
             const finalSegment = { ...this.lastInterimUser, final: true };
             this.addTranscript(finalSegment);
             this.lastInterimUser = null;

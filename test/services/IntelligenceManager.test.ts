@@ -26,7 +26,8 @@ describe('IntelligenceManager — interim transcript tracking', () => {
 
     // After a final, lastInterimUser must be null
     expect((mgr as any).lastInterimUser).toBeNull();
-    // addTranscript was called twice but only the final was actually committed
+    // addTranscript is called for both segments; non-final is dropped by the early-return guard in addTranscript
+    expect(addSpy).toHaveBeenCalledTimes(2);
     const committedCalls = addSpy.mock.calls.filter(([seg]: any) => seg.final);
     expect(committedCalls).toHaveLength(1);
     expect(committedCalls[0][0].text).toBe('I will follow up.');
@@ -49,6 +50,25 @@ describe('IntelligenceManager — interim transcript tracking', () => {
     const forceSaved = addSpy.mock.calls.find(([seg]: any) => seg.final && seg.text === 'I will handle the');
     expect(forceSaved).toBeDefined();
     // After stopMeeting, lastInterimUser must be null
+    expect((mgr as any).lastInterimUser).toBeNull();
+  });
+
+  it('force-saves pending user interim even when session is too short (< 1s)', async () => {
+    const addSpy = vi.spyOn(mgr as any, 'addTranscript');
+
+    mgr.handleTranscript({ speaker: 'user', text: 'Wait—', timestamp: Date.now(), final: false });
+
+    // sessionStartTime stays at "just now" — durationMs < 1000; do NOT stub processAndSaveMeeting
+    await mgr.stopMeeting();
+
+    // Force-save must have run even though the meeting was abandoned
+    const forceSaved = addSpy.mock.calls.find(([seg]: any) => seg.final && seg.text === 'Wait—');
+    expect(forceSaved).toBeDefined();
+    expect((mgr as any).lastInterimUser).toBeNull();
+  });
+
+  it('interviewer interim does not affect lastInterimUser', () => {
+    mgr.handleTranscript({ speaker: 'interviewer', text: 'Tell me about', timestamp: Date.now(), final: false });
     expect((mgr as any).lastInterimUser).toBeNull();
   });
 
