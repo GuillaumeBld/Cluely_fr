@@ -130,6 +130,68 @@ describe('MemoryManager', () => {
       // Just created, so decay should be negligible
       expect(facts[0].confidence).toBeGreaterThan(0.95);
     });
+
+    it('decays with a custom halfLifeDays parameter', () => {
+      const node = mm.upsertNode('person', 'Carol');
+      mm.upsertFact(node.id, 'role', 'designer', 1.0);
+
+      // Backdate to 14 days ago
+      const fourteenDaysAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000);
+      db.prepare("UPDATE memory_facts SET updated_at = ? WHERE node_id = ?")
+        .run(fourteenDaysAgo.toISOString().replace('T', ' ').replace('Z', ''), node.id);
+
+      // 7-day half-life: after 14 days → 2 half-lives → confidence × 0.25
+      mm.decayFacts(7);
+
+      const facts = mm.getFacts(node.id);
+      expect(facts[0].confidence).toBeCloseTo(0.25, 1);
+    });
+  });
+
+  // ─── getFacts with halfLifeDays ─────────────────────────────────
+
+  describe('getFacts with halfLifeDays', () => {
+    it('returns decayed confidence when halfLifeDays is provided', () => {
+      const node = mm.upsertNode('person', 'Dave');
+      mm.upsertFact(node.id, 'team', 'platform', 1.0);
+
+      // Backdate to 30 days ago
+      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+      db.prepare("UPDATE memory_facts SET updated_at = ? WHERE node_id = ?")
+        .run(thirtyDaysAgo.toISOString().replace('T', ' ').replace('Z', ''), node.id);
+
+      // 30-day half-life: 30 days → 1 half-life → confidence × 0.5
+      const facts = mm.getFacts(node.id, 30);
+      expect(facts[0].confidence).toBeCloseTo(0.5, 1);
+    });
+
+    it('does not mutate stored confidence when using retrieval-time decay', () => {
+      const node = mm.upsertNode('person', 'Eve');
+      mm.upsertFact(node.id, 'status', 'active', 0.9);
+
+      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+      db.prepare("UPDATE memory_facts SET updated_at = ? WHERE node_id = ?")
+        .run(thirtyDaysAgo.toISOString().replace('T', ' ').replace('Z', ''), node.id);
+
+      // Call with half-life decay
+      mm.getFacts(node.id, 30);
+
+      // Verify stored confidence is unchanged
+      const storedFacts = mm.getFacts(node.id);
+      expect(storedFacts[0].confidence).toBeCloseTo(0.9, 5);
+    });
+
+    it('returns original confidence when halfLifeDays is omitted', () => {
+      const node = mm.upsertNode('person', 'Frank');
+      mm.upsertFact(node.id, 'role', 'manager', 0.8);
+
+      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+      db.prepare("UPDATE memory_facts SET updated_at = ? WHERE node_id = ?")
+        .run(thirtyDaysAgo.toISOString().replace('T', ' ').replace('Z', ''), node.id);
+
+      const facts = mm.getFacts(node.id);
+      expect(facts[0].confidence).toBeCloseTo(0.8, 5);
+    });
   });
 
   // ─── Pending Review ──────────────────────────────────────────────

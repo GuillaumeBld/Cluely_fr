@@ -76,6 +76,9 @@ export interface DispatchMacro {
   created_at: string;
 }
 
+/** Fact half-life in days — after this many days, confidence halves. */
+export const HALF_LIFE_DAYS = 30;
+
 // ─── DDL statements ────────────────────────────────────────────────
 
 export const SCHEMA_VERSION = 1;
