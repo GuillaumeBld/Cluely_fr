@@ -2,6 +2,7 @@ import { execFile } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
 import { MulticaManager } from './MulticaManager';
+import { IpcEventBus } from './IpcEventBus';
 
 const KB_ROOT = process.env.CLUELY_KB_ROOT || '/Volumes/SanDisk/dev/knowledge-base/cluely-multica';
 const SCRIPTS = path.join(KB_ROOT, 'scripts');
@@ -62,6 +63,10 @@ export class KBManager {
                 } else {
                     if (stdout) console.log('[KBManager]', stdout.trim());
                     console.log('[KBManager] Meeting written and synced to NotebookLM.');
+                    IpcEventBus.emitTyped('kb:updated', {
+                        summary: `KB updated: ${title} (${actionItems.length} action items)`,
+                        timestamp: Date.now(),
+                    });
                 }
                 resolve(); // Never block Cluely on KB failures
             });
