@@ -12,6 +12,10 @@ export interface HttpClient {
   post(url: string, body: unknown): Promise<{ jobId: string }>;
 }
 
+export interface Dispatcher {
+  dispatch(draft: WorkflowDraft): Promise<DispatchResult>;
+}
+
 export class ArchonDispatcher {
   private config: ArchonConfig;
   private httpClient: HttpClient;
