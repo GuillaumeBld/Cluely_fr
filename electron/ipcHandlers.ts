@@ -1377,10 +1377,10 @@ export function initializeIpcHandlers(appState: AppState): void {
   });
 
   // MODE 4: Recap (Summary)
-  safeHandle("generate-recap", async () => {
+  safeHandle("generate-recap", async (_, { meetingId }: { meetingId?: string } = {}) => {
     try {
       const intelligenceManager = appState.getIntelligenceManager();
-      const summary = await intelligenceManager.runRecap();
+      const summary = await intelligenceManager.runRecap(meetingId);
       return { summary };
     } catch (error: any) {
       throw error;
