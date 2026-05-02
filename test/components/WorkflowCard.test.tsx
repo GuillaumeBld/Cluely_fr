@@ -22,20 +22,20 @@ const mockDraft: WorkflowDraft = {
 const lowConfidenceDraft: WorkflowDraft = { ...mockDraft, id: 'draft-2', confidence: 0.42 };
 
 describe('WorkflowCard', () => {
-  afterEach(() => { cleanup(); });
+  afterEach(cleanup);
 
-  it('renders the title from draft.payload.title', async () => {
-    const { findByText } = render(
+  it('renders the title from draft.payload.title', () => {
+    const { getByText } = render(
       <WorkflowCard draft={mockDraft} onApprove={vi.fn()} onDismiss={vi.fn()} onEdit={vi.fn()} />
     );
-    expect(await findByText('Write Unit Tests')).toBeTruthy();
+    expect(getByText('Write Unit Tests')).toBeTruthy();
   });
 
-  it('renders confidence as percentage', async () => {
-    const { findByText } = render(
+  it('renders confidence as percentage', () => {
+    const { getByText } = render(
       <WorkflowCard draft={mockDraft} onApprove={vi.fn()} onDismiss={vi.fn()} onEdit={vi.fn()} />
     );
-    expect(await findByText('87%')).toBeTruthy();
+    expect(getByText('87%')).toBeTruthy();
   });
 
   it('does not show low-confidence-warning when confidence >= 0.5', () => {
@@ -46,11 +46,11 @@ describe('WorkflowCard', () => {
     expect(queryByText('Low Confidence')).toBeNull();
   });
 
-  it('shows low-confidence-warning when confidence < 0.5', async () => {
-    const { findByText } = render(
+  it('shows low-confidence-warning when confidence < 0.5', () => {
+    const { getByText } = render(
       <WorkflowCard draft={lowConfidenceDraft} onApprove={vi.fn()} onDismiss={vi.fn()} onEdit={vi.fn()} />
     );
-    expect(await findByText('Low Confidence')).toBeTruthy();
+    expect(getByText('Low Confidence')).toBeTruthy();
   });
 
   it('adds low-confidence class to root div when confidence < 0.5', () => {
@@ -60,11 +60,11 @@ describe('WorkflowCard', () => {
     expect(container.querySelector('.workflow-card.low-confidence')).toBeTruthy();
   });
 
-  it('renders template badge text', async () => {
-    const { findByText } = render(
+  it('renders template badge text', () => {
+    const { getByText } = render(
       <WorkflowCard draft={mockDraft} onApprove={vi.fn()} onDismiss={vi.fn()} onEdit={vi.fn()} />
     );
-    expect(await findByText('code-task')).toBeTruthy();
+    expect(getByText('code-task')).toBeTruthy();
   });
 
   it('calls onApprove after 3s timeout when Approve clicked', () => {
@@ -117,13 +117,13 @@ describe('WorkflowCard', () => {
     vi.useRealTimers();
   });
 
-  it('renders kb citations when present', async () => {
+  it('renders kb citations when present', () => {
     const citations: KBCitation[] = [{ id: 'kb-1', label: 'API Reference', source: 'docs/api.md' }];
     const draftWithCitations: WorkflowDraft = { ...mockDraft, kbCitations: citations };
-    const { findByText } = render(
+    const { getByText } = render(
       <WorkflowCard draft={draftWithCitations} onApprove={vi.fn()} onDismiss={vi.fn()} onEdit={vi.fn()} />
     );
-    expect(await findByText('API Reference')).toBeTruthy();
+    expect(getByText('API Reference')).toBeTruthy();
   });
 
   it('does not render kb-citations list when kbCitations is empty', () => {
