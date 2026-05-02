@@ -26,6 +26,12 @@ export interface LiveNoteSnapshot {
   turn_count: number;
 }
 
+export interface ProactiveNudgePayload {
+  message: string;
+  meeting_id: string;
+  timestamp: number; // ms since epoch
+}
+
 type BusEvents = {
   "decision:captured": DecisionCapturedEvent;
   "notes:updated": LiveNoteSnapshot;
@@ -33,6 +39,7 @@ type BusEvents = {
   "meeting:ended": { meeting_id: string };
   "token:anomaly": TokenAnomalyEvent;
   "kb:updated": { summary: string; timestamp: number };
+  "proactive:nudge": ProactiveNudgePayload;
 };
 
 class IpcEventBusClass extends EventEmitter {

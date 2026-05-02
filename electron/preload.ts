@@ -210,6 +210,11 @@ interface ElectronAPI {
     onSnapshotsUpdated: (cb: (snapshots: Array<{ projectId: string; content: string; fetchedAt: string; stale: boolean }>) => void) => () => void;
   };
 
+  // Proactive Advice
+  proactiveAdvice: {
+    onNudge: (cb: (data: { message: string; meeting_id: string; timestamp: number }) => void) => () => void;
+  };
+
   // Goal Management
   goalCreate: (opts: { title: string; description?: string; parent_id?: string }) => Promise<{ id: string; title: string } | { error: string }>;
   goalList: () => Promise<Array<{ id: string; title: string; description: string; parent_id: string | null; created_at: number; completed_at: number | null }>>;
@@ -859,6 +864,15 @@ contextBridge.exposeInMainWorld("electronAPI", {
       const subscription = (_: any, data: any) => cb(data);
       ipcRenderer.on('dashboard:snapshots-updated', subscription);
       return () => ipcRenderer.removeListener('dashboard:snapshots-updated', subscription);
+    },
+  },
+
+  // Proactive Advice API
+  proactiveAdvice: {
+    onNudge: (cb: (data: { message: string; meeting_id: string; timestamp: number }) => void) => {
+      const subscription = (_: any, data: any) => cb(data);
+      ipcRenderer.on('proactive:nudge', subscription);
+      return () => ipcRenderer.removeListener('proactive:nudge', subscription);
     },
   },
 
