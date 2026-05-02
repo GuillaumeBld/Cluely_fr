@@ -1,6 +1,8 @@
 import Database from 'better-sqlite3';
 import { DecisionLedger } from './DecisionLedger';
 import { GoalAligner } from './GoalAligner';
+import { extractRelations, LLMFn } from '../memory/RelationExtractor';
+import { MemoryManager } from '../memory/MemoryManager';
 
 export interface ExtractedDecision {
   text: string;
@@ -14,31 +16,40 @@ export interface DecisionExtractor {
 
 /**
  * Post-meeting processor: extracts decisions from a transcript,
- * aligns them to goals, and appends to the decision ledger.
+ * aligns them to goals, appends to the decision ledger,
+ * and extracts relation triples into the memory graph.
  */
 export class PostMeetingProcessor {
   private static instance: PostMeetingProcessor | undefined;
   private ledger: DecisionLedger;
   private aligner: GoalAligner;
   private extractor: DecisionExtractor;
+  private llmFn: LLMFn | null;
+  private memoryManager: MemoryManager | null;
 
   private constructor(
     ledger: DecisionLedger,
     aligner: GoalAligner,
     extractor: DecisionExtractor,
+    llmFn?: LLMFn,
+    memoryManager?: MemoryManager,
   ) {
     this.ledger = ledger;
     this.aligner = aligner;
     this.extractor = extractor;
+    this.llmFn = llmFn ?? null;
+    this.memoryManager = memoryManager ?? null;
   }
 
   public static getInstance(
     ledger: DecisionLedger,
     aligner: GoalAligner,
     extractor: DecisionExtractor,
+    llmFn?: LLMFn,
+    memoryManager?: MemoryManager,
   ): PostMeetingProcessor {
     if (!PostMeetingProcessor.instance) {
-      PostMeetingProcessor.instance = new PostMeetingProcessor(ledger, aligner, extractor);
+      PostMeetingProcessor.instance = new PostMeetingProcessor(ledger, aligner, extractor, llmFn, memoryManager);
     }
     return PostMeetingProcessor.instance;
   }
@@ -48,7 +59,8 @@ export class PostMeetingProcessor {
   }
 
   /**
-   * Process a meeting transcript: extract decisions, align to goals, write to ledger.
+   * Process a meeting transcript: extract decisions, align to goals, write to ledger,
+   * then extract relation triples into the memory graph.
    * Returns the number of decisions written.
    */
   public async run(meetingId: string, transcript: string): Promise<number> {
@@ -75,6 +87,15 @@ export class PostMeetingProcessor {
         if (result) written++;
       } catch (err) {
         console.error('[PostMeetingProcessor] Failed to persist decision:', decision.text.slice(0, 80), err);
+      }
+    }
+
+    // Extract relation triples into the memory graph
+    if (this.llmFn && this.memoryManager) {
+      try {
+        await extractRelations(transcript, meetingId, this.llmFn, this.memoryManager);
+      } catch (err) {
+        console.error('[PostMeetingProcessor] Relation extraction failed:', err);
       }
     }
 

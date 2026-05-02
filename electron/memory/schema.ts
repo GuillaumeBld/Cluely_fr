@@ -5,7 +5,7 @@
  * Node kinds allowed in the memory graph.
  * Extensible: add new literal members as needed.
  */
-export type NodeKind = 'person' | 'topic' | 'organization' | 'project' | 'meeting' | 'decision' | 'goal';
+export type NodeKind = 'person' | 'topic' | 'organization' | 'project' | 'meeting' | 'decision' | 'goal' | 'commitment';
 
 /**
  * Predicate labels for typed edges between nodes.
@@ -17,7 +17,11 @@ export type EdgePredicate =
   | 'agreed_with'
   | 'owes'
   | 'discussed'
-  | 'decided';
+  | 'decided'
+  | 'reports_to'
+  | 'blocked_by'
+  | 'contradicts'
+  | 'prefers';
 
 export interface MemoryNode {
   id: string;          // UUID

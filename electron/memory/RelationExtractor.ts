@@ -24,11 +24,11 @@ const EXTRACTION_SYSTEM_PROMPT = `You are a relation extractor for a personal kn
 Given a transcript snippet, extract structured triples (subject → predicate → object).
 
 Return a JSON array of objects with these fields:
-- sourceKind: one of "person", "topic", "organization", "project", "meeting", "decision"
+- sourceKind: one of "person", "topic", "organization", "project", "meeting", "decision", "goal", "commitment"
 - sourceLabel: human-readable name
 - targetKind: same options as sourceKind
 - targetLabel: human-readable name
-- predicate: one of "knows", "works_on", "belongs_to", "agreed_with", "owes", "discussed", "decided"
+- predicate: one of "knows", "works_on", "belongs_to", "agreed_with", "owes", "discussed", "decided", "reports_to", "blocked_by", "contradicts", "prefers"
 - confidence: number between 0 and 1
 - context: the exact snippet that supports this triple
 
