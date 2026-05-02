@@ -64,6 +64,7 @@ export interface StoredCredentials {
     openrouterModel?: string;
     exportWebhooks?: ExportWebhook[];
     backgroundAgent?: BackgroundAgentConfig;
+    globalDailyBudgetCents?: number;
 }
 
 export class CredentialsManager {
@@ -301,6 +302,16 @@ export class CredentialsManager {
         this.credentials.backgroundAgent.dailyBudgetCents = cents;
         this.saveCredentials();
         console.log(`[CredentialsManager] BackgroundAgent dailyBudgetCents: ${cents}`);
+    }
+
+    public getGlobalDailyBudgetCents(): number | null {
+        return this.credentials.globalDailyBudgetCents ?? null;
+    }
+
+    public setGlobalDailyBudgetCents(cents: number): void {
+        this.credentials.globalDailyBudgetCents = cents;
+        this.saveCredentials();
+        console.log(`[CredentialsManager] globalDailyBudgetCents: ${cents}`);
     }
 
     public saveCustomProvider(provider: CustomProvider): void {

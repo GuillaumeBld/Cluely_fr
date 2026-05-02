@@ -20,6 +20,9 @@ import { promisify } from 'util';
 import axios from 'axios';
 import { createProviderRateLimiters, RateLimiter } from './services/RateLimiter';
 import type { TokenUsageTracker } from './services/TokenUsageTracker';
+import { estimateCost } from './services/CostPricer';
+import type { MeetingCostTracker } from './services/MeetingCostTracker';
+import { IpcEventBus } from './services/IpcEventBus';
 const execAsync = promisify(exec);
 
 interface OllamaResponse {
@@ -57,6 +60,9 @@ export class LLMHelper {
   private activeCurlProvider: CurlProvider | null = null;
   private groqFastTextMode: boolean = false;
   private tokenTracker: TokenUsageTracker | null = null;
+  private costRecorder: MeetingCostTracker | null = null;
+  private activeMeetingId: string = '';
+  private dailyBudgetCents: number | null = null;
 
   // Rate limiters per provider to prevent 429 errors on free tiers
   private rateLimiters: ReturnType<typeof createProviderRateLimiters>;
@@ -110,6 +116,23 @@ export class LLMHelper {
 
   setTokenTracker(tracker: TokenUsageTracker): void {
     this.tokenTracker = tracker;
+  }
+
+  setCostRecorder(recorder: MeetingCostTracker): void {
+    this.costRecorder = recorder;
+  }
+
+  setActiveMeetingId(id: string): void {
+    this.activeMeetingId = id;
+  }
+
+  setDailyBudgetCents(cents: number | null): void {
+    this.dailyBudgetCents = cents;
+  }
+
+  private isDailyBudgetExceeded(): boolean {
+    if (!this.costRecorder || !this.dailyBudgetCents) return false;
+    return this.costRecorder.isOverDailyBudget(this.dailyBudgetCents);
   }
 
   public setApiKey(apiKey: string) {
@@ -379,8 +402,12 @@ export class LLMHelper {
         temperature: 0.3,      // Lower = faster, more focused
       }
     })
-    const tokens = response.usageMetadata?.totalTokenCount;
-    if (tokens) this.tokenTracker?.record(tokens);
+    const inputTokens = response.usageMetadata?.promptTokenCount ?? 0;
+    const outputTokens = response.usageMetadata?.candidatesTokenCount ?? 0;
+    const totalTokens = inputTokens + outputTokens;
+    if (totalTokens) this.tokenTracker?.record(totalTokens);
+    const costCents = estimateCost('gemini', GEMINI_FLASH_MODEL, inputTokens, outputTokens);
+    this.costRecorder?.record({ meetingId: this.activeMeetingId || null, provider: 'gemini', model: GEMINI_FLASH_MODEL, inputTokens, outputTokens, costCents });
     return response.text || ""
   }
 
@@ -401,8 +428,12 @@ export class LLMHelper {
         temperature: 0.3,      // Lower = faster, more focused
       }
     })
-    const tokens = response.usageMetadata?.totalTokenCount;
-    if (tokens) this.tokenTracker?.record(tokens);
+    const inputTokens = response.usageMetadata?.promptTokenCount ?? 0;
+    const outputTokens = response.usageMetadata?.candidatesTokenCount ?? 0;
+    const totalTokens = inputTokens + outputTokens;
+    if (totalTokens) this.tokenTracker?.record(totalTokens);
+    const costCents = estimateCost('gemini', GEMINI_FLASH_MODEL, inputTokens, outputTokens);
+    this.costRecorder?.record({ meetingId: this.activeMeetingId || null, provider: 'gemini', model: GEMINI_FLASH_MODEL, inputTokens, outputTokens, costCents });
     return response.text || ""
   }
 
@@ -745,6 +776,16 @@ ANSWER DIRECTLY:`;
   }
 
   public async chatWithGemini(message: string, imagePath?: string, context?: string, skipSystemPrompt: boolean = false, alternateGroqMessage?: string): Promise<string> {
+    if (this.isDailyBudgetExceeded()) {
+      IpcEventBus.emitTyped("cost:budget-exceeded", {
+        meeting_id: this.activeMeetingId || null,
+        daily_cents: this.costRecorder!.getDailySpend().totalCents,
+        budget_cents: this.dailyBudgetCents!,
+        timestamp: Date.now(),
+      });
+      throw new Error('Daily LLM budget exceeded');
+    }
+
     try {
       console.log(`[LLMHelper] chatWithGemini called with message:`, message.substring(0, 50))
 
@@ -960,8 +1001,11 @@ ANSWER DIRECTLY:`;
       stream: false
     });
 
-    const tokens = response.usage?.total_tokens;
-    if (tokens) this.tokenTracker?.record(tokens);
+    const inputTokens = response.usage?.prompt_tokens ?? 0;
+    const outputTokens = response.usage?.completion_tokens ?? 0;
+    if (inputTokens + outputTokens) this.tokenTracker?.record(inputTokens + outputTokens);
+    const costCents = estimateCost('groq', GROQ_MODEL, inputTokens, outputTokens);
+    this.costRecorder?.record({ meetingId: this.activeMeetingId || null, provider: 'groq', model: GROQ_MODEL, inputTokens, outputTokens, costCents });
 
     return response.choices[0]?.message?.content || "";
   }
@@ -1000,8 +1044,11 @@ ANSWER DIRECTLY:`;
       ? await client!.chat.completions.create({ model: modelId, messages, temperature: 0.4, max_tokens: 8192 } as any)
       : await this.openaiChatCompletionsCreateWithTokenFallback({ model: modelId, messages, temperature: 0.4, maxTokens: 8192 });
 
-    const tokens = (response as any).usage?.total_tokens;
-    if (tokens) this.tokenTracker?.record(tokens);
+    const inputTokens = (response as any).usage?.prompt_tokens ?? 0;
+    const outputTokens = (response as any).usage?.completion_tokens ?? 0;
+    if (inputTokens + outputTokens) this.tokenTracker?.record(inputTokens + outputTokens);
+    const costCents = estimateCost(isOpenRouter ? 'openrouter' : 'openai', modelId, inputTokens, outputTokens);
+    this.costRecorder?.record({ meetingId: this.activeMeetingId || null, provider: isOpenRouter ? 'openrouter' : 'openai', model: modelId, inputTokens, outputTokens, costCents });
 
     return (response as any).choices[0]?.message?.content || "";
   }
@@ -1083,6 +1130,12 @@ ANSWER DIRECTLY:`;
       ...(systemPrompt ? { system: systemPrompt } : {}),
       messages: [{ role: "user", content }],
     });
+
+    const inputTokens = (response as any).usage?.input_tokens ?? 0;
+    const outputTokens = (response as any).usage?.output_tokens ?? 0;
+    if (inputTokens + outputTokens) this.tokenTracker?.record(inputTokens + outputTokens);
+    const costCents = estimateCost('claude', CLAUDE_MODEL, inputTokens, outputTokens);
+    this.costRecorder?.record({ meetingId: this.activeMeetingId || null, provider: 'claude', model: CLAUDE_MODEL, inputTokens, outputTokens, costCents });
 
     const textBlock = response.content.find((block: any) => block.type === 'text') as any;
     return textBlock?.text || "";

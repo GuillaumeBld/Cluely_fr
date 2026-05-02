@@ -97,6 +97,8 @@ import { CorpusIndexer } from "./corpus/CorpusIndexer"
 import { loadCorpusConfig } from "./corpus/corpus.config"
 import { GoalAligner } from "./memory/GoalAligner"
 import { AgentStateManager } from "./services/AgentStateManager"
+import { MeetingCostTracker } from "./services/MeetingCostTracker"
+import { registerCostHandlers } from "./ipc/costHandlers"
 import { PermissionsAuditLog } from "./services/PermissionsAuditLog"
 import { CommitmentStalenessChecker, CommitmentQuerySource } from "./services/CommitmentStalenessChecker"
 import { BackgroundAgent } from "./services/BackgroundAgent"
@@ -132,6 +134,7 @@ export class AppState {
   private dashboardPoller: DashboardPoller | null = null
   private _healthChunkWriter: import('./services/HealthChunkWriter').HealthChunkWriter | null = null
   private tokenUsageTracker: TokenUsageTracker = new TokenUsageTracker()
+  private meetingCostTracker: MeetingCostTracker | null = null
   private activeMeetingId: string = ''
   private turnCounter: number = 0
 
@@ -229,8 +232,23 @@ export class AppState {
 
     this.processingHelper.getLLMHelper().setTokenTracker(this.tokenUsageTracker)
 
+    // Initialize MeetingCostTracker
+    const costDb = DatabaseManager.getInstance().getDb();
+    if (costDb) {
+      this.meetingCostTracker = new MeetingCostTracker(costDb);
+      const llm = this.processingHelper.getLLMHelper();
+      llm.setCostRecorder(this.meetingCostTracker);
+      const budgetCents = CredentialsManager.getInstance().getGlobalDailyBudgetCents();
+      if (budgetCents !== null) llm.setDailyBudgetCents(budgetCents);
+      console.log('[AppState] MeetingCostTracker initialized');
+    }
+
     IpcEventBus.onTyped("token:anomaly", (payload) => {
       this.broadcast("health:token-anomaly", payload)
+    })
+
+    IpcEventBus.onTyped("cost:budget-exceeded", (payload) => {
+      this.broadcast("cost:budget-exceeded", payload)
     })
 
     this.setupIntelligenceEvents()
@@ -950,6 +968,7 @@ export class AppState {
     this.slidingWindowAnalyzer.start(meetingId);
     this.tokenUsageTracker.start(meetingId);
     this.liveNotesExtractor.start(meetingId);
+    this.processingHelper.getLLMHelper().setActiveMeetingId(meetingId);
     IpcEventBus.emitTyped("meeting:started", { meeting_id: meetingId });
   }
 
@@ -970,6 +989,7 @@ export class AppState {
     this.tokenUsageTracker.stop();
     this.liveNotesExtractor.stop();
     this.lunrIndexer.clear();
+    this.processingHelper.getLLMHelper().setActiveMeetingId('');
     IpcEventBus.emitTyped("meeting:ended", { meeting_id: this.activeMeetingId });
 
     // 6. Reset Intelligence Context & Save
@@ -1207,6 +1227,10 @@ export class AppState {
 
   public getHealthChunkWriter(): import('./services/HealthChunkWriter').HealthChunkWriter | null {
     return this._healthChunkWriter;
+  }
+
+  public getMeetingCostTracker(): MeetingCostTracker | null {
+    return this.meetingCostTracker;
   }
 
   public getView(): "queue" | "solutions" {
