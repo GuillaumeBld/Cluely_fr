@@ -1,3 +1,10 @@
+export interface ExportWebhook {
+  id: string;
+  url: string;
+  name: string;
+  createdAt: string;
+}
+
 export interface ElectronAPI {
   updateContentDimensions: (dimensions: {
     width: number
@@ -143,7 +150,7 @@ export interface ElectronAPI {
   getStoredCredentials: () => Promise<{ hasGeminiKey: boolean; hasGroqKey: boolean; hasOpenaiKey: boolean; hasClaudeKey: boolean; googleServiceAccountPath: string | null; sttProvider: string; groqSttModel: string; hasSttGroqKey: boolean; hasSttOpenaiKey: boolean; hasDeepgramKey: boolean; hasElevenLabsKey: boolean; hasAzureKey: boolean; azureRegion: string; hasIbmWatsonKey: boolean; ibmWatsonRegion: string; hasOpenRouterKey: boolean; openrouterModel: string }>
 
   // Export Webhooks
-  getExportWebhooks: () => Promise<Array<{ id: string; url: string; name: string; createdAt: string }>>
+  getExportWebhooks: () => Promise<ExportWebhook[]>
   saveExportWebhook: (webhook: unknown) => Promise<{ success: boolean; error?: string }>
   deleteExportWebhook: (id: string) => Promise<{ success: boolean; error?: string }>
 

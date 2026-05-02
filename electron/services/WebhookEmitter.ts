@@ -4,6 +4,11 @@ import type { ExportWebhook } from './CredentialsManager';
 import { CredentialsManager } from './CredentialsManager';
 import type { WebhookEmitter } from '../../src/ipc/approvalHandlers';
 
+/**
+ * Fires POST requests to all configured export webhooks after approval.
+ * Failures are logged but never rethrown — this is intentionally fire-and-forget:
+ * webhook delivery does not affect the approval result.
+ */
 export class CredentialsWebhookEmitter implements WebhookEmitter {
     async emit(draft: WorkflowDraft, jobId: string): Promise<void> {
         const webhooks: ExportWebhook[] = CredentialsManager.getInstance().getExportWebhooks();
@@ -23,7 +28,8 @@ export class CredentialsWebhookEmitter implements WebhookEmitter {
                         console.log(`[WebhookEmitter] Posted to '${webhook.name}'`);
                     })
                     .catch((err: Error) => {
-                        console.error(`[WebhookEmitter] Failed to post to '${webhook.name}' (${webhook.url}):`, err.message);
+                        const safeUrl = (() => { try { const u = new URL(webhook.url); return u.origin + u.pathname; } catch { return webhook.name; } })();
+                        console.error(`[WebhookEmitter] Failed to post to '${webhook.name}' (${safeUrl}):`, err.message);
                     })
             )
         );

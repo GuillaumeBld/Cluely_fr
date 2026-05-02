@@ -1,12 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Trash2 } from 'lucide-react';
-
-interface ExportWebhook {
-    id: string;
-    url: string;
-    name: string;
-    createdAt: string;
-}
+import type { ExportWebhook } from '../../types/electron';
 
 export const ExportWebhooksSettings: React.FC = () => {
     const [webhooks, setWebhooks] = useState<ExportWebhook[]>([]);

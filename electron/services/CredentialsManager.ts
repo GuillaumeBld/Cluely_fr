@@ -317,6 +317,10 @@ export class CredentialsManager {
         return this.credentials.exportWebhooks || [];
     }
 
+    /**
+     * Upserts an export webhook by id: replaces the existing entry if found,
+     * appends a new entry otherwise. Persists immediately.
+     */
     public saveExportWebhook(webhook: ExportWebhook): void {
         if (!this.credentials.exportWebhooks) {
             this.credentials.exportWebhooks = [];
