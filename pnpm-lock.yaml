@@ -83,6 +83,9 @@ importers:
       lunr:
         specifier: ^2.3.9
         version: 2.3.9
+      minimatch:
+        specifier: ^10.2.5
+        version: 10.2.5
       openai:
         specifier: ^6.19.0
         version: 6.34.0(ws@8.20.0)(zod@3.24.3)
@@ -4505,10 +4508,6 @@ packages:
     resolution: {integrity: sha512-z0yWI+4FDrrweS8Zmt4Ej5HdJmky15+L2e6Wgn3+iK5fWzb6T3fhNFq2+MeTRb064c6Wr4N/wv0DzQTjNzHNGQ==}
     engines: {node: '>=10'}
 
-  minimatch@10.0.1:
-    resolution: {integrity: sha512-ethXTt3SGGR+95gudmqJ1eNhRO7eGEGIgYA9vnPatK4/etz2MEVDno5GMCibdMTuBMyElzIlgxMna3K94XDIDQ==}
-    engines: {node: 20 || >=22}
-
   minimatch@10.2.5:
     resolution: {integrity: sha512-MULkVLfKGYDFYejP07QOurDLLQpcjk7Fw+7jXS2R2czRQzR56yHRveU5NDJEOviH+hETZKSkIk5c+T23GjFUMg==}
     engines: {node: 18 || 20 || >=22}
@@ -8549,7 +8548,7 @@ snapshots:
       js-yaml: 4.1.0
       json5: 2.2.3
       lazy-val: 1.0.5
-      minimatch: 10.0.1
+      minimatch: 10.2.5
       resedit: 1.7.2
       sanitize-filename: 1.6.3
       semver: 7.7.1
@@ -9862,7 +9861,7 @@ snapshots:
     dependencies:
       foreground-child: 3.3.1
       jackspeak: 4.1.0
-      minimatch: 10.0.1
+      minimatch: 10.2.5
       minipass: 7.1.2
       package-json-from-dist: 1.0.1
       path-scurry: 2.0.0
@@ -11092,10 +11091,6 @@ snapshots:
   mimic-response@1.0.1: {}
 
   mimic-response@3.1.0: {}
-
-  minimatch@10.0.1:
-    dependencies:
-      brace-expansion: 2.0.1
 
   minimatch@10.2.5:
     dependencies:
