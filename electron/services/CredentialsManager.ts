@@ -22,6 +22,13 @@ export interface CurlProvider {
     responsePath: string; // e.g. "choices[0].message.content"
 }
 
+export interface ExportWebhook {
+    id: string;
+    url: string;
+    name: string;
+    createdAt: string;
+}
+
 export interface StoredCredentials {
     geminiApiKey?: string;
     groqApiKey?: string;
@@ -44,6 +51,7 @@ export interface StoredCredentials {
     ibmWatsonRegion?: string;
     openrouterApiKey?: string;
     openrouterModel?: string;
+    exportWebhooks?: ExportWebhook[];
 }
 
 export class CredentialsManager {
@@ -303,6 +311,31 @@ export class CredentialsManager {
         this.credentials.curlProviders = this.credentials.curlProviders.filter(p => p.id !== id);
         this.saveCredentials();
         console.log(`[CredentialsManager] Curl Provider '${id}' deleted`);
+    }
+
+    public getExportWebhooks(): ExportWebhook[] {
+        return this.credentials.exportWebhooks || [];
+    }
+
+    public saveExportWebhook(webhook: ExportWebhook): void {
+        if (!this.credentials.exportWebhooks) {
+            this.credentials.exportWebhooks = [];
+        }
+        const index = this.credentials.exportWebhooks.findIndex(w => w.id === webhook.id);
+        if (index !== -1) {
+            this.credentials.exportWebhooks[index] = webhook;
+        } else {
+            this.credentials.exportWebhooks.push(webhook);
+        }
+        this.saveCredentials();
+        console.log(`[CredentialsManager] Export webhook '${webhook.name}' saved`);
+    }
+
+    public deleteExportWebhook(id: string): void {
+        if (!this.credentials.exportWebhooks) return;
+        this.credentials.exportWebhooks = this.credentials.exportWebhooks.filter(w => w.id !== id);
+        this.saveCredentials();
+        console.log(`[CredentialsManager] Export webhook '${id}' deleted`);
     }
 
     public clearAll(): void {

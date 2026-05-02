@@ -757,6 +757,39 @@ export function initializeIpcHandlers(appState: AppState): void {
     }
   });
 
+  // Export Webhook Handlers
+  safeHandle("get-export-webhooks", async () => {
+    try {
+      const { CredentialsManager } = require('./services/CredentialsManager');
+      return CredentialsManager.getInstance().getExportWebhooks();
+    } catch (error: any) {
+      console.error('[ipcHandlers] Error getting export webhooks:', error);
+      return [];
+    }
+  });
+
+  safeHandle("save-export-webhook", async (_, webhook: unknown) => {
+    try {
+      const { CredentialsManager } = require('./services/CredentialsManager');
+      CredentialsManager.getInstance().saveExportWebhook(webhook as any);
+      return { success: true };
+    } catch (error: any) {
+      console.error('[ipcHandlers] Error saving export webhook:', error);
+      return { success: false, error: error.message };
+    }
+  });
+
+  safeHandle("delete-export-webhook", async (_, id: string) => {
+    try {
+      const { CredentialsManager } = require('./services/CredentialsManager');
+      CredentialsManager.getInstance().deleteExportWebhook(id);
+      return { success: true };
+    } catch (error: any) {
+      console.error('[ipcHandlers] Error deleting export webhook:', error);
+      return { success: false, error: error.message };
+    }
+  });
+
   // Get stored API keys (masked for UI display)
   safeHandle("get-stored-credentials", async () => {
     try {

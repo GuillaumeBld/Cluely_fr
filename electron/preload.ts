@@ -53,6 +53,11 @@ interface ElectronAPI {
   setOpenaiApiKey: (apiKey: string) => Promise<{ success: boolean; error?: string }>
   setClaudeApiKey: (apiKey: string) => Promise<{ success: boolean; error?: string }>
   getStoredCredentials: () => Promise<{ hasGeminiKey: boolean; hasGroqKey: boolean; hasOpenaiKey: boolean; hasClaudeKey: boolean; googleServiceAccountPath: string | null; sttProvider: string; groqSttModel: string; hasSttGroqKey: boolean; hasSttOpenaiKey: boolean; hasDeepgramKey: boolean; hasElevenLabsKey: boolean; hasAzureKey: boolean; azureRegion: string; hasIbmWatsonKey: boolean; ibmWatsonRegion: string; hasOpenRouterKey: boolean; openrouterModel: string }>
+
+  // Export Webhooks
+  getExportWebhooks: () => Promise<Array<{ id: string; url: string; name: string; createdAt: string }>>
+  saveExportWebhook: (webhook: unknown) => Promise<{ success: boolean; error?: string }>
+  deleteExportWebhook: (id: string) => Promise<{ success: boolean; error?: string }>
   setOpenRouterApiKey: (apiKey: string) => Promise<{ success: boolean; error?: string }>
   setOpenRouterModel: (model: string) => Promise<{ success: boolean; error?: string }>
 
@@ -396,6 +401,11 @@ contextBridge.exposeInMainWorld("electronAPI", {
   setOpenaiApiKey: (apiKey: string) => ipcRenderer.invoke("set-openai-api-key", apiKey),
   setClaudeApiKey: (apiKey: string) => ipcRenderer.invoke("set-claude-api-key", apiKey),
   getStoredCredentials: () => ipcRenderer.invoke("get-stored-credentials"),
+
+  // Export Webhooks
+  getExportWebhooks: () => ipcRenderer.invoke('get-export-webhooks'),
+  saveExportWebhook: (webhook: unknown) => ipcRenderer.invoke('save-export-webhook', webhook),
+  deleteExportWebhook: (id: string) => ipcRenderer.invoke('delete-export-webhook', id),
 
   // STT Provider Management
   setSttProvider: (provider: 'google' | 'groq' | 'openai' | 'deepgram' | 'elevenlabs' | 'azure' | 'ibmwatson') => ipcRenderer.invoke("set-stt-provider", provider),
