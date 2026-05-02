@@ -39,6 +39,26 @@ describe('ArchonDispatcher', () => {
     );
   });
 
+  it('includes citation with speaker, timestamp, and verbatimExcerpt in dispatch body', async () => {
+    const httpClient: HttpClient = {
+      post: vi.fn().mockResolvedValue({ jobId: 'job-456' }),
+    };
+    const dispatcher = new ArchonDispatcher({ baseUrl: 'http://localhost:3000' }, httpClient);
+
+    await dispatcher.dispatch(makeDraft());
+
+    expect(httpClient.post).toHaveBeenCalledWith(
+      'http://localhost:3000/api/jobs',
+      expect.objectContaining({
+        citation: {
+          speaker: 'Alice',
+          timestamp: '00:15',
+          verbatimExcerpt: 'I will write tests',
+        },
+      }),
+    );
+  });
+
   it('propagates HTTP errors', async () => {
     const httpClient: HttpClient = {
       post: vi.fn().mockRejectedValue(new Error('Network error')),
