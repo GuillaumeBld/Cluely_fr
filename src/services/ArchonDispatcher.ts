@@ -11,13 +11,7 @@ export interface HttpClient {
 }
 
 export class ArchonDispatcher implements Dispatcher {
-  private config: ArchonConfig;
-  private httpClient: HttpClient;
-
-  constructor(config: ArchonConfig, httpClient: HttpClient) {
-    this.config = config;
-    this.httpClient = httpClient;
-  }
+  constructor(private config: ArchonConfig, private httpClient: HttpClient) {}
 
   async dispatch(draft: WorkflowDraft): Promise<DispatchResult> {
     const url = `${this.config.baseUrl}/api/jobs`;
