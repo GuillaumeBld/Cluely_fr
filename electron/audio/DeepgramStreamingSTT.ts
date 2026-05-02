@@ -16,6 +16,7 @@ import { ENGLISH_VARIANTS } from '../config/languages';
 const RECONNECT_BASE_DELAY_MS = 1000;
 const RECONNECT_MAX_DELAY_MS = 30000;
 const KEEPALIVE_INTERVAL_MS = 15000;
+const TRANSCRIPT_WATCHDOG_MS = 30_000;
 
 export class DeepgramStreamingSTT extends EventEmitter {
     private apiKey: string;
@@ -32,6 +33,8 @@ export class DeepgramStreamingSTT extends EventEmitter {
     private reconnectAttempts = 0;
     private reconnectTimer: NodeJS.Timeout | null = null;
     private keepAliveTimer: NodeJS.Timeout | null = null;
+    private lastTranscriptAt: number | null = null;
+    private transcriptWatchdogTimer: NodeJS.Timeout | null = null;
 
     constructor(apiKey: string) {
         super();
@@ -159,6 +162,7 @@ export class DeepgramStreamingSTT extends EventEmitter {
 
             // Start keep-alive pings
             this.startKeepAlive();
+            this.startTranscriptWatchdog();
         });
 
         this.ws.on('message', (data: WebSocket.Data) => {
@@ -169,6 +173,7 @@ export class DeepgramStreamingSTT extends EventEmitter {
                 // { type: "Results", channel: { alternatives: [{ transcript, confidence }] }, is_final }
                 if (msg.type !== 'Results') return;
 
+                this.lastTranscriptAt = Date.now();
                 const transcript = msg.channel?.alternatives?.[0]?.transcript;
                 if (!transcript) return;
 
@@ -246,8 +251,29 @@ export class DeepgramStreamingSTT extends EventEmitter {
         }
     }
 
+    private startTranscriptWatchdog(): void {
+        this.clearTranscriptWatchdog();
+        this.lastTranscriptAt = Date.now();
+        this.transcriptWatchdogTimer = setInterval(() => {
+            if (!this.isActive || !this.ws) return;
+            const age = Date.now() - (this.lastTranscriptAt ?? Date.now());
+            if (age > TRANSCRIPT_WATCHDOG_MS) {
+                console.warn(`[DeepgramStreaming] Watchdog: no transcript in ${age}ms, forcing reconnect`);
+                try { this.ws.close(4000, 'watchdog'); } catch { /* ignore */ }
+            }
+        }, TRANSCRIPT_WATCHDOG_MS / 2);
+    }
+
+    private clearTranscriptWatchdog(): void {
+        if (this.transcriptWatchdogTimer) {
+            clearInterval(this.transcriptWatchdogTimer);
+            this.transcriptWatchdogTimer = null;
+        }
+    }
+
     private clearTimers(): void {
         this.clearKeepAlive();
+        this.clearTranscriptWatchdog();
         if (this.reconnectTimer) {
             clearTimeout(this.reconnectTimer);
             this.reconnectTimer = null;

@@ -88,6 +88,7 @@ import { MemoryManager } from "./memory"
 import { IpcEventBus } from "./services/IpcEventBus"
 import { LunrIndexer } from "./services/LunrIndexer"
 import { SlidingWindowAnalyzer } from "./services/SlidingWindowAnalyzer"
+import { LiveNotesExtractor } from "./services/LiveNotesExtractor"
 import { taskGeneratorBuffer } from "./services/TaskGeneratorBuffer"
 import { MemoryGraphWriter } from "./services/MemoryGraphWriter"
 import { CorpusWatcher } from "./corpus/CorpusWatcher"
@@ -122,6 +123,7 @@ export class AppState {
   // Mid-call decision capture services
   private lunrIndexer: LunrIndexer = new LunrIndexer()
   private slidingWindowAnalyzer: SlidingWindowAnalyzer = new SlidingWindowAnalyzer(this.lunrIndexer)
+  private liveNotesExtractor: LiveNotesExtractor = new LiveNotesExtractor(this.lunrIndexer)
   private memoryGraphWriter: MemoryGraphWriter = new MemoryGraphWriter()
   private agentStateManager: AgentStateManager = new AgentStateManager()
   private backgroundAgent: BackgroundAgent | null = null
@@ -480,6 +482,15 @@ export class AppState {
         this.microphoneCapture.on('error', (err: Error) => {
           console.error('[Main] MicrophoneCapture Error:', err);
         });
+        this.microphoneCapture.on('stall', () => {
+          console.warn('[Main] MicrophoneCapture stall — restarting BT audio...');
+          try {
+            this.microphoneCapture?.stop();
+            this.microphoneCapture?.start();
+          } catch (err) {
+            console.error('[Main] Failed to restart MicrophoneCapture after stall:', err);
+          }
+        });
       }
 
       // 2. Initialize STT Services if missing
@@ -678,6 +689,13 @@ export class AppState {
       if ('setAudioChannelCount' in this.googleSTT_User!) {
         (this.googleSTT_User as any).setAudioChannelCount(1);
       }
+
+      // Forward live notes to renderer windows
+      IpcEventBus.onTyped("notes:updated", (snapshot) => {
+        const helper = this.getWindowHelper();
+        helper.getLauncherWindow()?.webContents.send('live-notes-updated', snapshot);
+        helper.getOverlayWindow()?.webContents.send('live-notes-updated', snapshot);
+      });
 
       console.log('[Main] Full Audio Pipeline (System + Mic) Initialized (Ready)');
 
@@ -924,6 +942,7 @@ export class AppState {
     this.turnCounter = 0;
     this.slidingWindowAnalyzer.start(meetingId);
     this.tokenUsageTracker.start(meetingId);
+    this.liveNotesExtractor.start(meetingId);
     IpcEventBus.emitTyped("meeting:started", { meeting_id: meetingId });
   }
 
@@ -942,6 +961,7 @@ export class AppState {
     // 5. Stop mid-call decision capture (flush happens in IntelligenceManager.processAndSaveMeeting)
     this.slidingWindowAnalyzer.stop();
     this.tokenUsageTracker.stop();
+    this.liveNotesExtractor.stop();
     this.lunrIndexer.clear();
     IpcEventBus.emitTyped("meeting:ended", { meeting_id: this.activeMeetingId });
 
