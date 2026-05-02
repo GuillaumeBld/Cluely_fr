@@ -374,4 +374,36 @@ describe('MemoryManager', () => {
       expect(edges.length).toBe(0);
     });
   });
+
+  // ─── Singleton identity ──────────────────────────────────────────
+
+  describe('getInstance singleton', () => {
+    it('returns the same instance on repeated calls', () => {
+      const mm2 = MemoryManager.getInstance();
+      expect(mm2).toBe(mm);
+    });
+
+    it('ignores db argument when instance already exists', () => {
+      const db2 = new Database(':memory:');
+      const mm2 = MemoryManager.getInstance(db2);
+      expect(mm2).toBe(mm);
+      db2.close();
+    });
+
+    it('isDegraded returns false for a healthy in-memory instance', () => {
+      expect(mm.isDegraded()).toBe(false);
+    });
+  });
+
+  // ─── isDegraded fallback ─────────────────────────────────────────
+
+  describe('isDegraded fallback', () => {
+    it('returns isDegraded=true when opened with an invalid path', () => {
+      MemoryManager.resetInstance();
+      // Pass a path that cannot be opened (directory instead of file)
+      const degraded = MemoryManager.getInstance('/');
+      expect(degraded.isDegraded()).toBe(true);
+      MemoryManager.resetInstance();
+    });
+  });
 });

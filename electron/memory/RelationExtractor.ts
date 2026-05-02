@@ -1,4 +1,4 @@
-import { EdgePredicate, NodeKind } from './schema';
+import { EdgePredicate, NodeKind, NODE_KINDS } from './schema';
 import { MemoryManager } from './MemoryManager';
 
 /**
@@ -20,11 +20,14 @@ export interface TripleProposal {
  */
 export type LLMFn = (systemPrompt: string, userText: string) => Promise<string>;
 
+// Derived from NODE_KINDS — add new node types in schema.ts, this updates automatically.
+const KIND_LIST = NODE_KINDS.map(k => `"${k}"`).join(', ');
+
 const EXTRACTION_SYSTEM_PROMPT = `You are a relation extractor for a personal knowledge graph.
 Given a transcript snippet, extract structured triples (subject → predicate → object).
 
 Return a JSON array of objects with these fields:
-- sourceKind: one of "person", "topic", "organization", "project", "meeting", "decision", "goal", "commitment"
+- sourceKind: one of ${KIND_LIST}
 - sourceLabel: human-readable name
 - targetKind: same options as sourceKind
 - targetLabel: human-readable name

@@ -1,5 +1,4 @@
 import Database from 'better-sqlite3';
-import { MemoryEdge } from './schema';
 
 export interface CommitmentRow {
   edge_id: number;
