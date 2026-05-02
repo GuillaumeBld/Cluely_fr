@@ -1,4 +1,4 @@
-import { IpcEventBus, TokenAnomalyEvent } from "./IpcEventBus";
+import { IpcEventBus } from "./IpcEventBus";
 
 export class TokenUsageTracker {
   private window: number[] = [];
@@ -21,7 +21,9 @@ export class TokenUsageTracker {
 
   record(tokenCount: number): void {
     if (!this.activeMeetingId) return;
+    if (tokenCount <= 0) return; // guard against zero/negative counts (e.g. filtered API responses)
 
+    // Need at least 2 prior data points to form a meaningful baseline mean
     if (this.window.length >= 2) {
       const mean = this.window.reduce((a, b) => a + b, 0) / this.window.length;
       if (tokenCount > this.anomalyMultiple * mean) {

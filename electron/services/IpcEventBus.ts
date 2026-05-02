@@ -13,9 +13,9 @@ export interface DecisionCapturedEvent {
 export interface TokenAnomalyEvent {
   meeting_id: string;
   token_count: number;
-  rolling_avg: number;
+  rolling_avg: number;     // mean of the prior window BEFORE this call — the baseline used for comparison
   threshold_multiple: number;
-  timestamp: number;
+  timestamp: number; // ms since epoch
 }
 
 type BusEvents = {

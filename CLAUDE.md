@@ -3,7 +3,7 @@
 ## Development
 
 ### Testing
-- Test runner: **vitest** (v2, configured for Vite 5 compatibility)
+- Test runner: **vitest** (v4, configured for Vite 5 compatibility)
 - Run tests: `npx vitest` or `npx vitest run`
 - Electron module is mocked via alias in `vitest.config.ts` -> `test/__mocks__/electron.ts`
 - Tests live in `test/` mirroring `electron/` and `src/` structure
@@ -13,7 +13,7 @@
 - `electron/main.ts` -- AppState singleton is the service registry
 - `electron/memory/` -- SQLite graph store (memory.db) for relationship/fact tracking
 - `electron/config/` -- agent configuration (agentConfig)
-- `electron/services/` -- mid-call decision capture layer (IpcEventBus, LunrIndexer, SlidingWindowAnalyzer, TaskGeneratorBuffer, MemoryGraphWriter) and background agent (BackgroundAgent, AgentStateManager, CommitmentStalenessChecker, PermissionsAuditLog)
+- `electron/services/` -- mid-call decision capture layer (IpcEventBus, LunrIndexer, SlidingWindowAnalyzer, TaskGeneratorBuffer, MemoryGraphWriter, TokenUsageTracker) and background agent (BackgroundAgent, AgentStateManager, CommitmentStalenessChecker, PermissionsAuditLog)
 - `electron/corpus/` -- local-corpus RAG: file + git-history indexing, embedding-based retrieval, freshness guard
   - Config: `corpus.json` in Electron userData directory (no UI; file-based only)
 - `src/services/` -- post-meeting pipeline (RecapLLM, WorkflowClassifier, WorkflowDrafter, PostMeetingProcessor, ArchonDispatcher)

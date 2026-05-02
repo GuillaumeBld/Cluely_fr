@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { IpcEventBus, DecisionCapturedEvent } from '../../electron/services/IpcEventBus';
+import { IpcEventBus, DecisionCapturedEvent, TokenAnomalyEvent } from '../../electron/services/IpcEventBus';
 
 describe('IpcEventBus', () => {
   it('is a singleton', () => {
@@ -64,6 +64,26 @@ describe('IpcEventBus', () => {
     });
 
     expect(handler).not.toHaveBeenCalled();
+  });
+
+  it('delivers token:anomaly events with correct payload shape', () => {
+    const handler = vi.fn();
+    IpcEventBus.onTyped('token:anomaly', handler);
+
+    const payload: TokenAnomalyEvent = {
+      meeting_id: 'meeting_1',
+      token_count: 500,
+      rolling_avg: 100,
+      threshold_multiple: 2,
+      timestamp: Date.now(),
+    };
+
+    IpcEventBus.emitTyped('token:anomaly', payload);
+
+    expect(handler).toHaveBeenCalledOnce();
+    expect(handler).toHaveBeenCalledWith(payload);
+
+    IpcEventBus.offTyped('token:anomaly', handler);
   });
 
   it('isolates listener errors — a throwing listener does not block others', () => {

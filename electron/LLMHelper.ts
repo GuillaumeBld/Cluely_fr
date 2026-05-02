@@ -380,7 +380,7 @@ export class LLMHelper {
       }
     })
     const tokens = response.usageMetadata?.totalTokenCount;
-    if (tokens) this.tokenTracker?.record(tokens);
+    if (tokens != null) this.tokenTracker?.record(tokens);
     return response.text || ""
   }
 
@@ -402,7 +402,7 @@ export class LLMHelper {
       }
     })
     const tokens = response.usageMetadata?.totalTokenCount;
-    if (tokens) this.tokenTracker?.record(tokens);
+    if (tokens != null) this.tokenTracker?.record(tokens);
     return response.text || ""
   }
 
@@ -961,7 +961,7 @@ ANSWER DIRECTLY:`;
     });
 
     const tokens = response.usage?.total_tokens;
-    if (tokens) this.tokenTracker?.record(tokens);
+    if (tokens != null) this.tokenTracker?.record(tokens);
 
     return response.choices[0]?.message?.content || "";
   }
@@ -1001,7 +1001,11 @@ ANSWER DIRECTLY:`;
       : await this.openaiChatCompletionsCreateWithTokenFallback({ model: modelId, messages, temperature: 0.4, maxTokens: 8192 });
 
     const tokens = (response as any).usage?.total_tokens;
-    if (tokens) this.tokenTracker?.record(tokens);
+    if (tokens == null) {
+      console.warn('[LLMHelper] OpenRouter/OpenAI response missing usage.total_tokens — token not recorded');
+    } else {
+      this.tokenTracker?.record(tokens);
+    }
 
     return (response as any).choices[0]?.message?.content || "";
   }
@@ -1691,7 +1695,7 @@ ANSWER DIRECTLY:`;
     });
 
     const tokens = response.usageMetadata?.totalTokenCount;
-    if (tokens) this.tokenTracker?.record(tokens);
+    if (tokens != null) this.tokenTracker?.record(tokens);
 
     return response.text || "";
   }

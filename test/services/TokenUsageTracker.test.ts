@@ -71,4 +71,43 @@ describe('TokenUsageTracker', () => {
       token_count: 600,
     }));
   });
+
+  it('respects custom anomalyMultiple constructor param', () => {
+    tracker = new TokenUsageTracker(10, 3.0); // 3× threshold
+    tracker.start('mtg-1');
+    tracker.record(100);
+    tracker.record(100);
+    tracker.record(250); // 250 < 3 * 100 = 300 → no anomaly
+    expect(emitSpy).not.toHaveBeenCalled();
+    tracker.record(400); // 400 > 3 * (100+100+250)/3 ≈ 3 * 150 = 450? no — window is [100,100,250], mean=150, 3*150=450 → no anomaly
+    expect(emitSpy).not.toHaveBeenCalled();
+    tracker.record(600); // window=[100,100,250,400], mean=212.5, 3*212.5=637.5 → 600 < 637.5, no anomaly
+    expect(emitSpy).not.toHaveBeenCalled();
+    tracker.record(700); // window=[100,100,250,400,600], mean=290, 3*290=870 → no anomaly
+    expect(emitSpy).not.toHaveBeenCalled();
+    tracker.record(1000); // window=[100,100,250,400,600,700], mean≈358, 3*358≈1075 → no anomaly
+    expect(emitSpy).not.toHaveBeenCalled();
+    // fresh tracker for clean threshold test
+    tracker = new TokenUsageTracker(10, 3.0);
+    vi.spyOn(IpcEventBus, 'emitTyped').mockImplementation(() => {});
+    emitSpy = vi.spyOn(IpcEventBus, 'emitTyped');
+    tracker.start('mtg-2');
+    tracker.record(100);
+    tracker.record(100);
+    tracker.record(400); // 400 > 3 * 100 = 300 → anomaly
+    expect(emitSpy).toHaveBeenCalledWith('token:anomaly', expect.objectContaining({
+      token_count: 400,
+      threshold_multiple: 3,
+    }));
+  });
+
+  it('does not record zero-token counts', () => {
+    tracker.start('mtg-1');
+    tracker.record(100);
+    tracker.record(100);
+    tracker.record(0); // zero count — should be ignored, not added to window
+    // window is still [100, 100]; a normal value should not trigger anomaly
+    tracker.record(150); // 150 < 2 * 100 = 200 → no anomaly
+    expect(emitSpy).not.toHaveBeenCalled();
+  });
 });

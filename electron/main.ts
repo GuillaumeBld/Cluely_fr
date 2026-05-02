@@ -85,7 +85,7 @@ import { DatabaseManager } from "./db/DatabaseManager"
 import { CredentialsManager } from "./services/CredentialsManager"
 import { ReleaseNotesManager } from "./update/ReleaseNotesManager"
 import { MemoryManager } from "./memory"
-import { IpcEventBus } from "./services/IpcEventBus"
+import { IpcEventBus, TokenAnomalyEvent } from "./services/IpcEventBus"
 import { LunrIndexer } from "./services/LunrIndexer"
 import { SlidingWindowAnalyzer } from "./services/SlidingWindowAnalyzer"
 import { taskGeneratorBuffer } from "./services/TaskGeneratorBuffer"
@@ -126,6 +126,9 @@ export class AppState {
   private agentStateManager: AgentStateManager = new AgentStateManager()
   private backgroundAgent: BackgroundAgent | null = null
   private tokenUsageTracker: TokenUsageTracker = new TokenUsageTracker()
+  private readonly onTokenAnomaly = (payload: TokenAnomalyEvent): void => {
+    this.broadcast("health:token-anomaly", payload);
+  };
   private activeMeetingId: string = ''
   private turnCounter: number = 0
 
@@ -217,9 +220,7 @@ export class AppState {
 
     this.processingHelper.getLLMHelper().setTokenTracker(this.tokenUsageTracker)
 
-    IpcEventBus.onTyped("token:anomaly", (payload) => {
-      this.broadcast("health:token-anomaly", payload)
-    })
+    IpcEventBus.onTyped("token:anomaly", this.onTokenAnomaly)
 
     this.setupIntelligenceEvents()
 
@@ -1656,6 +1657,10 @@ export class AppState {
 
     this.visibilityMode = mode;
   }
+
+  public destroy(): void {
+    IpcEventBus.offTyped("token:anomaly", this.onTokenAnomaly);
+  }
 }
 
 // Application initialization
@@ -1910,6 +1915,11 @@ async function initializeApp() {
 
   // Scrub API keys from memory on quit to minimize exposure window
   app.on("before-quit", () => {
+    try {
+      appState.destroy();
+    } catch (e) {
+      console.error('[Main] Failed to destroy AppState:', e);
+    }
     try {
       const { HermesCore } = require('./hermes');
       HermesCore.getInstance().stop();
