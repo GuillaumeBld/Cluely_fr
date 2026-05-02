@@ -13,10 +13,14 @@ try {
 
 const { MicrophoneCapture: RustMicCapture } = NativeModule || {};
 
+const BT_STALL_MS = 3_000;
+
 export class MicrophoneCapture extends EventEmitter {
     private monitor: any = null;
     private isRecording: boolean = false;
     private deviceId: string | null = null;
+    private lastChunkAt: number | null = null;
+    private stallWatchdogTimer: NodeJS.Timeout | null = null;
 
     constructor(deviceId?: string | null) {
         super();
@@ -68,6 +72,7 @@ export class MicrophoneCapture extends EventEmitter {
 
             this.monitor.start((chunk: Uint8Array) => {
                 if (chunk && chunk.length > 0) {
+                    this.lastChunkAt = Date.now();
                     // Debug: log occasionally
                     if (Math.random() < 0.05) {
                         console.log(`[MicrophoneCapture] Emitting chunk: ${chunk.length} bytes to JS`);
@@ -77,6 +82,7 @@ export class MicrophoneCapture extends EventEmitter {
             });
 
             this.isRecording = true;
+            this.startStallWatchdog();
             this.emit('start');
         } catch (error) {
             console.error('[MicrophoneCapture] Failed to start:', error);
@@ -90,6 +96,7 @@ export class MicrophoneCapture extends EventEmitter {
     public stop(): void {
         if (!this.isRecording) return;
 
+        this.clearStallWatchdog();
         console.log('[MicrophoneCapture] Stopping capture...');
         try {
             this.monitor?.stop();
@@ -98,10 +105,28 @@ export class MicrophoneCapture extends EventEmitter {
         }
 
         // DO NOT destroy monitor here. Keep it alive for seamless restart.
-        // this.monitor = null; 
+        // this.monitor = null;
 
         this.isRecording = false;
         this.emit('stop');
+    }
+
+    private startStallWatchdog(): void {
+        this.stallWatchdogTimer = setInterval(() => {
+            if (!this.isRecording || this.lastChunkAt === null) return;
+            const age = Date.now() - this.lastChunkAt;
+            if (age > BT_STALL_MS) {
+                console.warn(`[MicrophoneCapture] BT stall detected (${age}ms without data)`);
+                this.emit('stall');
+            }
+        }, 1_000);
+    }
+
+    private clearStallWatchdog(): void {
+        if (this.stallWatchdogTimer) {
+            clearInterval(this.stallWatchdogTimer);
+            this.stallWatchdogTimer = null;
+        }
     }
 
     public destroy(): void {

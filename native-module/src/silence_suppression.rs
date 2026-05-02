@@ -11,6 +11,7 @@
 // - Hangover: Only affects AFTER speech ends (no latency impact)
 
 use std::time::{Duration, Instant};  // Added for timing
+use crate::silero_vad::SileroVad;
 
 /// Configuration for silence suppression
 /// Optimized for low latency
@@ -60,6 +61,7 @@ impl SilenceSuppressionConfig {
 /// Silence suppression state machine
 pub struct SilenceSuppressor {
     config: SilenceSuppressionConfig,
+    vad: SileroVad,
     state: SuppressionState,
     last_speech_time: Instant,
     last_keepalive_time: Instant,
@@ -95,6 +97,7 @@ impl SilenceSuppressor {
         );
         Self {
             config,
+            vad: SileroVad::new(),
             state: SuppressionState::Active, // Start in active to not miss first words
             last_speech_time: now,
             last_keepalive_time: now,
@@ -107,8 +110,7 @@ impl SilenceSuppressor {
     /// CRITICAL: Speech frames are NEVER delayed
     pub fn process(&mut self, frame: &[i16]) -> FrameAction {
         let now = Instant::now();
-        let rms = calculate_rms(frame);
-        let has_speech = rms >= self.config.speech_threshold_rms;
+        let has_speech = self.vad.is_speech(frame);
         
         // ALWAYS check for speech first - immediate response
         if has_speech {
@@ -168,6 +170,7 @@ impl SilenceSuppressor {
 }
 
 /// Calculate RMS of i16 samples efficiently
+#[allow(dead_code)]
 fn calculate_rms(samples: &[i16]) -> f32 {
     if samples.is_empty() {
         return 0.0;

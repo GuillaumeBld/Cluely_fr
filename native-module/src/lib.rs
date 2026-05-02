@@ -18,6 +18,7 @@ pub mod speaker;
 pub mod streaming_resampler;
 pub mod audio_config;
 pub mod silence_suppression;
+pub mod silero_vad;
 
 // Keep old resampler module for compatibility
 pub mod resampler;
@@ -246,6 +247,12 @@ impl MicrophoneCapture {
                 SilenceSuppressionConfig::for_microphone()
             );
 
+            // Clock drift detection
+            let mut drift_check_start = std::time::Instant::now();
+            let mut frames_in_window: u64 = 0;
+            const DRIFT_CHECK_INTERVAL_MS: u64 = 2_000;
+            const DRIFT_MIN_FRAMES: u64 = 50; // ~50 batches/2s minimum
+
             println!("[MicrophoneCapture] DSP thread started (suppression active)");
 
             loop {
@@ -265,9 +272,19 @@ impl MicrophoneCapture {
                 
                 // 2. Resample
                 if !raw_batch.is_empty() {
+                    frames_in_window += raw_batch.len() as u64;
                     let resampled = resampler.resample(&raw_batch);
                     frame_buffer.extend(resampled);
                     raw_batch.clear();
+                }
+
+                // Clock drift check
+                if drift_check_start.elapsed().as_millis() >= DRIFT_CHECK_INTERVAL_MS as u128 {
+                    if frames_in_window < DRIFT_MIN_FRAMES {
+                        println!("[MicrophoneCapture] WARNING: clock drift or BT stall — only {} sample batches in 2s", frames_in_window);
+                    }
+                    frames_in_window = 0;
+                    drift_check_start = std::time::Instant::now();
                 }
 
                 // 3. Process frames with Silence Suppression
@@ -285,13 +302,13 @@ impl MicrophoneCapture {
                         }
                     }
                 }
-                
+
                 // 4. Short sleep
                 if frame_buffer.len() < FRAME_SAMPLES {
                     thread::sleep(Duration::from_millis(DSP_POLL_MS));
                 }
             }
-            
+
             println!("[MicrophoneCapture] DSP thread stopped.");
         }));
 

@@ -18,8 +18,17 @@ export interface TokenAnomalyEvent {
   timestamp: number;
 }
 
+export interface LiveNoteSnapshot {
+  meeting_id: string;
+  timestamp: number; // ms since epoch
+  action_items: Array<{ speaker: string; text: string }>;
+  decisions: Array<{ speaker: string; text: string }>;
+  turn_count: number;
+}
+
 type BusEvents = {
   "decision:captured": DecisionCapturedEvent;
+  "notes:updated": LiveNoteSnapshot;
   "meeting:started": { meeting_id: string };
   "meeting:ended": { meeting_id: string };
   "token:anomaly": TokenAnomalyEvent;
