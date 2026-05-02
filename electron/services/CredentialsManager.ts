@@ -29,6 +29,17 @@ export interface ExportWebhook {
     createdAt: string;
 }
 
+export interface BackgroundAgentConfig {
+    enabled: boolean;
+    intervalMs: number;      // 900000 | 1800000 | 3600000
+    dailyBudgetCents: number; // default 10
+}
+
+export const DEFAULT_BG_AGENT_CONFIG: BackgroundAgentConfig = {
+    enabled: true,
+    intervalMs: 1800000,
+    dailyBudgetCents: 10,
+};
 export interface StoredCredentials {
     geminiApiKey?: string;
     groqApiKey?: string;
@@ -52,6 +63,7 @@ export interface StoredCredentials {
     openrouterApiKey?: string;
     openrouterModel?: string;
     exportWebhooks?: ExportWebhook[];
+    backgroundAgent?: BackgroundAgentConfig;
 }
 
 export class CredentialsManager {
@@ -148,6 +160,10 @@ export class CredentialsManager {
 
     public getDefaultModel(): string {
         return this.credentials.defaultModel || 'gemini-3-flash-preview';
+    }
+
+    public getBackgroundAgentConfig(): BackgroundAgentConfig {
+        return this.credentials.backgroundAgent ?? { ...DEFAULT_BG_AGENT_CONFIG };
     }
 
     public getAllCredentials(): StoredCredentials {
@@ -264,6 +280,27 @@ export class CredentialsManager {
         this.credentials.defaultModel = model;
         this.saveCredentials();
         console.log(`[CredentialsManager] Default Model set to: ${model}`);
+    }
+
+    public setBackgroundAgentEnabled(enabled: boolean): void {
+        if (!this.credentials.backgroundAgent) this.credentials.backgroundAgent = { ...DEFAULT_BG_AGENT_CONFIG };
+        this.credentials.backgroundAgent.enabled = enabled;
+        this.saveCredentials();
+        console.log(`[CredentialsManager] BackgroundAgent enabled: ${enabled}`);
+    }
+
+    public setBackgroundAgentIntervalMs(ms: number): void {
+        if (!this.credentials.backgroundAgent) this.credentials.backgroundAgent = { ...DEFAULT_BG_AGENT_CONFIG };
+        this.credentials.backgroundAgent.intervalMs = ms;
+        this.saveCredentials();
+        console.log(`[CredentialsManager] BackgroundAgent intervalMs: ${ms}`);
+    }
+
+    public setBackgroundAgentDailyBudgetCents(cents: number): void {
+        if (!this.credentials.backgroundAgent) this.credentials.backgroundAgent = { ...DEFAULT_BG_AGENT_CONFIG };
+        this.credentials.backgroundAgent.dailyBudgetCents = cents;
+        this.saveCredentials();
+        console.log(`[CredentialsManager] BackgroundAgent dailyBudgetCents: ${cents}`);
     }
 
     public saveCustomProvider(provider: CustomProvider): void {

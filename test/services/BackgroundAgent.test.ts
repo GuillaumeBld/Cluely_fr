@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import Database from 'better-sqlite3';
 import { BackgroundAgent, CalendarSource } from '../../electron/services/BackgroundAgent';
 import { AgentStateManager } from '../../electron/services/AgentStateManager';
 import { PermissionsAuditLog, AuditEntry } from '../../electron/services/PermissionsAuditLog';
@@ -187,5 +188,102 @@ describe('BackgroundAgent', () => {
     const secondTimer = (agent as any).timer;
     // First timer should have been cleared, new one set
     expect(secondTimer).not.toBe(firstTimer);
+  });
+});
+
+describe('BackgroundAgent — enable/disable gate', () => {
+  let stateManager: AgentStateManager;
+  let auditLog: ReturnType<typeof createAuditLog>;
+  let stalenessChecker: CommitmentStalenessChecker;
+  let calendarSource: CalendarSource;
+  let agent: BackgroundAgent;
+
+  beforeEach(() => {
+    mockSend.mockClear();
+    stateManager = new AgentStateManager();
+    auditLog = createAuditLog();
+    const commitmentSource: CommitmentQuerySource = { queryOpenCommitments: () => [] };
+    stalenessChecker = new CommitmentStalenessChecker(commitmentSource);
+    calendarSource = { getUpcomingEvents: vi.fn().mockResolvedValue([]) };
+    agent = new BackgroundAgent(stateManager, auditLog, stalenessChecker, calendarSource);
+  });
+
+  afterEach(() => { agent.stop(); stateManager.dispose(); });
+
+  it('skips cycle when disabled', async () => {
+    agent.setEnabled(false);
+    await agent._runCycle();
+    expect(mockSend).not.toHaveBeenCalled();
+    agent.setEnabled(true);
+  });
+});
+
+describe('BackgroundAgent — cost gate', () => {
+  it('skips cycle when over daily budget', async () => {
+    const stateManager = new AgentStateManager();
+    const auditLog = createAuditLog();
+    const commitmentSource: CommitmentQuerySource = { queryOpenCommitments: () => [] };
+    const stalenessChecker = new CommitmentStalenessChecker(commitmentSource);
+    const calendarSource: CalendarSource = { getUpcomingEvents: vi.fn().mockResolvedValue([]) };
+
+    const db = new Database(':memory:');
+    const { BackgroundCostTracker } = await import('../../electron/services/BackgroundCostTracker');
+    const tracker = new BackgroundCostTracker(db);
+    tracker.recordUsage(999999, 99); // way over any budget
+
+    const agentWithCost = new BackgroundAgent(
+      stateManager, auditLog, stalenessChecker, calendarSource,
+      30000, null, tracker, null,
+    );
+    agentWithCost.setDailyBudgetCents(5);
+
+    mockSend.mockClear();
+    await agentWithCost._runCycle();
+
+    expect(mockSend).not.toHaveBeenCalled();
+    agentWithCost.stop();
+    stateManager.dispose();
+  });
+});
+
+describe('BackgroundAgent — draft broadcast', () => {
+  it('broadcasts approval:drafts-ready when drafter produces drafts', async () => {
+    const stateManager = new AgentStateManager();
+    const auditLog = createAuditLog();
+    const calendarSource: CalendarSource = { getUpcomingEvents: vi.fn().mockResolvedValue([]) };
+
+    const mockDraft = {
+      id: 'draft-1', templateId: 'research-task',
+      payload: { title: 'Test', description: 'Desc', steps: [] },
+      kbCitations: [], goalTag: null, speaker: 'background-agent',
+      confidence: 0.8, source: 'background-staleness' as const, tokensUsed: 600,
+    };
+    const mockDrafter = {
+      draftFromStaleness: vi.fn().mockResolvedValue(mockDraft),
+      draftFromEmail: vi.fn().mockResolvedValue(null),
+      draftFromCalendarChange: vi.fn().mockResolvedValue(null),
+      draftFromKBUpdate: vi.fn().mockResolvedValue(null),
+    } as any;
+
+    const staleSource: CommitmentQuerySource = {
+      queryOpenCommitments: () => [{
+        id: 'c1', meetingId: 'm1', text: 'Send report',
+        speaker: 'Alice', timestamp: Date.now() - 86400000, dispatchedJobId: null,
+      }],
+    };
+    const checker = new CommitmentStalenessChecker(staleSource);
+    const agentWithDrafter = new BackgroundAgent(
+      stateManager, auditLog, checker, calendarSource,
+      30000, mockDrafter, null, null,
+    );
+
+    mockSend.mockClear();
+    await agentWithDrafter._runCycle();
+
+    expect(mockSend).toHaveBeenCalledWith('approval:drafts-ready', {
+      drafts: expect.arrayContaining([expect.objectContaining({ id: 'draft-1' })]),
+    });
+    agentWithDrafter.stop();
+    stateManager.dispose();
   });
 });

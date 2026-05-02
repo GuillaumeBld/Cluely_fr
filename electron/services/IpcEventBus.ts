@@ -32,6 +32,7 @@ type BusEvents = {
   "meeting:started": { meeting_id: string };
   "meeting:ended": { meeting_id: string };
   "token:anomaly": TokenAnomalyEvent;
+  "kb:updated": { summary: string; timestamp: number };
 };
 
 class IpcEventBusClass extends EventEmitter {

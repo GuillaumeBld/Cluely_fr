@@ -1820,17 +1820,36 @@ async function initializeApp() {
             queryOpenCommitments: () => [], // Placeholder — wired to real ledger in future composite
           };
           const stalenessChecker = new CommitmentStalenessChecker(commitmentSource);
-          const config = getAgentConfig();
+
+          // Create cost tracker and drafter for background agent
+          const { BackgroundCostTracker } = require('./services/BackgroundCostTracker');
+          const { BackgroundTriggerDrafter } = require('./services/BackgroundTriggerDrafter');
+          const { EmailManager } = require('./services/EmailManager');
+          const { CredentialsManager } = require('./services/CredentialsManager');
+
+          const costTracker = new BackgroundCostTracker(db);
+          const llmHelper = appState.processingHelper.getLLMHelper();
+          const drafter = new BackgroundTriggerDrafter(llmHelper);
+          const emailMgr = EmailManager.getInstance();
+
+          // Load persisted settings
+          const bgConfig = CredentialsManager.getInstance().getBackgroundAgentConfig();
+
           const bgAgent = new BackgroundAgent(
             appState['agentStateManager'],
             auditLog,
             stalenessChecker,
             calMgr,
-            config.intervalMs,
+            bgConfig.intervalMs,
+            drafter,
+            costTracker,
+            emailMgr,
           );
+          bgAgent.setEnabled(bgConfig.enabled);
+          bgAgent.setDailyBudgetCents(bgConfig.dailyBudgetCents);
           appState['backgroundAgent'] = bgAgent;
           bgAgent.start();
-          console.log(`[Main] BackgroundAgent started (interval: ${config.intervalMs}ms)`);
+          console.log(`[Main] BackgroundAgent started (interval: ${bgConfig.intervalMs}ms, enabled: ${bgConfig.enabled})`);
         }
       } catch (bgErr) {
         console.error('[Main] Failed to start BackgroundAgent:', bgErr);
@@ -1858,6 +1877,28 @@ async function initializeApp() {
         console.log(`[Main] BackgroundAgent interval updated to ${ms}ms`);
       }
       return { intervalMs: ms };
+    });
+
+    // IPC: agent:set-enabled — enable or disable the background agent
+    ipcMain.handle('agent:set-enabled', (_event, enabled: boolean) => {
+      const { CredentialsManager } = require('./services/CredentialsManager');
+      CredentialsManager.getInstance().setBackgroundAgentEnabled(enabled);
+      appState.getBackgroundAgent()?.setEnabled(enabled);
+      return { enabled };
+    });
+
+    // IPC: agent:set-budget — set daily cost budget in cents
+    ipcMain.handle('agent:set-budget', (_event, cents: number) => {
+      const { CredentialsManager } = require('./services/CredentialsManager');
+      CredentialsManager.getInstance().setBackgroundAgentDailyBudgetCents(cents);
+      appState.getBackgroundAgent()?.setDailyBudgetCents(cents);
+      return { dailyBudgetCents: cents };
+    });
+
+    // IPC: agent:get-settings — return current background agent settings
+    ipcMain.handle('agent:get-settings', () => {
+      const { CredentialsManager } = require('./services/CredentialsManager');
+      return CredentialsManager.getInstance().getBackgroundAgentConfig();
     });
 
     // Recover unprocessed meetings (persistence check)

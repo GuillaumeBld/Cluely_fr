@@ -13,3 +13,9 @@ export function getAgentConfig(): AgentConfig {
 export function setAgentIntervalMs(ms: number): void {
   currentIntervalMs = Math.max(60_000, ms); // minimum 1 minute
 }
+
+export const INTERVAL_PRESETS_MS = {
+  '15min': 15 * 60 * 1000,
+  '30min': 30 * 60 * 1000,
+  '60min': 60 * 60 * 1000,
+} as const;
