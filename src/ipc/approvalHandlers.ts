@@ -10,10 +10,15 @@ export interface SafeHandleRegistrar {
   safeHandle(channel: string, listener: (event: unknown, ...args: unknown[]) => Promise<unknown> | unknown): void;
 }
 
+export interface WebhookEmitter {
+  emit(draft: WorkflowDraft, jobId: string): Promise<void>;
+}
+
 export function registerApprovalHandlers(
   registrar: SafeHandleRegistrar,
   archonDispatcher: ArchonDispatcher,
   decisionLedger: DecisionLedger,
+  webhookEmitter?: WebhookEmitter,
 ): void {
   registrar.safeHandle(
     'approval:approve',
@@ -22,6 +27,14 @@ export function registerApprovalHandlers(
       try {
         const { jobId } = await archonDispatcher.dispatch(draft);
         await decisionLedger.appendDispatch({ meetingId, jobId, draftId: draft.id });
+
+        // Fire-and-forget: do not await, do not block approval result
+        if (webhookEmitter) {
+          webhookEmitter.emit(draft, jobId).catch((err) => {
+            console.error('[approvalHandlers] Webhook emission failed:', err);
+          });
+        }
+
         return { jobId };
       } catch (err) {
         console.error('[approvalHandlers] approval:approve failed:', err);

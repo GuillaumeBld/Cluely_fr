@@ -757,6 +757,53 @@ export function initializeIpcHandlers(appState: AppState): void {
     }
   });
 
+  // Export Webhook Handlers
+  safeHandle("get-export-webhooks", async () => {
+    try {
+      const { CredentialsManager } = require('./services/CredentialsManager');
+      return CredentialsManager.getInstance().getExportWebhooks();
+    } catch (error: any) {
+      // Degrade silently to empty list — credentials file may not exist yet on first run
+      console.error('[ipcHandlers] Error getting export webhooks:', error);
+      return [];
+    }
+  });
+
+  safeHandle("save-export-webhook", async (_, webhook: unknown) => {
+    try {
+      const w = webhook as Record<string, unknown>;
+      if (typeof w?.id !== 'string' || typeof w?.url !== 'string' || typeof w?.name !== 'string' || typeof w?.createdAt !== 'string') {
+        return { success: false, error: 'Invalid webhook payload' };
+      }
+      let parsed: URL;
+      try {
+        parsed = new URL(w.url);
+      } catch {
+        return { success: false, error: 'Invalid webhook URL' };
+      }
+      if (!['http:', 'https:'].includes(parsed.protocol)) {
+        return { success: false, error: 'Only http/https URLs are allowed' };
+      }
+      const { CredentialsManager } = require('./services/CredentialsManager');
+      CredentialsManager.getInstance().saveExportWebhook({ id: w.id, url: w.url, name: w.name, createdAt: w.createdAt });
+      return { success: true };
+    } catch (error: any) {
+      console.error('[ipcHandlers] Error saving export webhook:', error);
+      return { success: false, error: error.message };
+    }
+  });
+
+  safeHandle("delete-export-webhook", async (_, id: string) => {
+    try {
+      const { CredentialsManager } = require('./services/CredentialsManager');
+      CredentialsManager.getInstance().deleteExportWebhook(id);
+      return { success: true };
+    } catch (error: any) {
+      console.error('[ipcHandlers] Error deleting export webhook:', error);
+      return { success: false, error: error.message };
+    }
+  });
+
   // Get stored API keys (masked for UI display)
   safeHandle("get-stored-credentials", async () => {
     try {

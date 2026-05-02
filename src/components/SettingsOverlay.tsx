@@ -6,11 +6,12 @@ import {
     ArrowUp, ArrowDown, ArrowLeft, ArrowRight,
     Camera, RotateCcw, Eye, Layout, MessageSquare, Crop,
     ChevronDown, Check, BadgeCheck, Power, Palette, Calendar, Ghost, Sun, Moon, RefreshCw, Info, Globe, FlaskConical, Terminal, Settings, Activity, ExternalLink, Trash2,
-    Sparkles, Pencil
+    Sparkles, Pencil, Webhook
 } from 'lucide-react';
 import { analytics } from '../lib/analytics/analytics.service';
 import { AboutSection } from './AboutSection';
 import { AIProvidersSettings } from './settings/AIProvidersSettings';
+import { ExportWebhooksSettings } from './settings/ExportWebhooksSettings';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useShortcuts } from '../hooks/useShortcuts';
 import { KeyRecorder } from './ui/KeyRecorder';
@@ -898,6 +899,13 @@ const SettingsOverlay: React.FC<SettingsOverlayProps> = ({ isOpen, onClose }) =>
                                     </button>
 
                                     <button
+                                        onClick={() => setActiveTab('webhooks')}
+                                        className={`w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-3 ${activeTab === 'webhooks' ? 'bg-bg-item-active text-text-primary' : 'text-text-secondary hover:text-text-primary hover:bg-bg-item-active/50'}`}
+                                    >
+                                        <Webhook size={16} /> Webhooks
+                                    </button>
+
+                                    <button
                                         onClick={() => setActiveTab('about')}
                                         className={`w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-3 ${activeTab === 'about' ? 'bg-bg-item-active text-text-primary' : 'text-text-secondary hover:text-text-primary hover:bg-bg-item-active/50'}`}
                                     >
@@ -1210,6 +1218,9 @@ const SettingsOverlay: React.FC<SettingsOverlayProps> = ({ isOpen, onClose }) =>
                             )}
                             {activeTab === 'ai-providers' && (
                                 <AIProvidersSettings />
+                            )}
+                            {activeTab === 'webhooks' && (
+                                <ExportWebhooksSettings />
                             )}
                             {activeTab === 'keybinds' && (
                                 <div className="space-y-5 animated fadeIn select-text pb-4">
