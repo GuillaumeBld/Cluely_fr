@@ -76,6 +76,7 @@ export interface IntelligenceModeEvents {
     'refined_answer_token': (token: string, intent: string) => void;
     'recap': (summary: string) => void;
     'recap_token': (token: string) => void;
+    'recap_warning': (code: string) => void;
     'follow_up_questions_update': (questions: string) => void;
     'follow_up_questions_token': (token: string) => void;
     'manual_answer_started': () => void;
@@ -673,6 +674,9 @@ export class IntelligenceManager extends EventEmitter {
     /**
      * MODE 4: Recap (Summary)
      * Neutral conversation summary
+     *
+     * @param meetingId - Optional meeting ID; when provided, conflict resolutions
+     *   from MemoryManager are appended as a digest section to the summary.
      */
     async runRecap(meetingId?: string): Promise<string | null> {
         console.log('[IntelligenceManager] runRecap called');
@@ -700,12 +704,15 @@ export class IntelligenceManager extends EventEmitter {
                 fullSummary += token;
             }
 
-            if (fullSummary && meetingId && this.memoryManager && this.recapLLM) {
+            if (fullSummary && meetingId && this.memoryManager) {
                 try {
                     const resolutions = this.memoryManager.getConflictResolutions(meetingId);
-                    fullSummary = this.recapLLM.appendConflictDigest(fullSummary, resolutions);
+                    const digestSection = this.recapLLM!.appendConflictDigest('', resolutions);
+                    this.emit('recap_token', digestSection);
+                    fullSummary = fullSummary + digestSection;
                 } catch (err) {
                     console.error('[IntelligenceManager] Conflict digest failed:', err);
+                    this.emit('recap_warning', 'conflict-digest-failed');
                 }
             }
 

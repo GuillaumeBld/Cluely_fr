@@ -4,8 +4,8 @@ import { MemoryManager } from '../../electron/memory/MemoryManager';
 import { runMigration } from '../../electron/memory/migration';
 import { RecapLLM } from '../../electron/llm/RecapLLM';
 
-describe('RecapLLM — conflict digest appended by runRecap', () => {
-  it('appendConflictDigest called with resolutions for given meetingId', async () => {
+describe('RecapLLM.appendConflictDigest — conflict digest section formatting', () => {
+  it('appends resolved conflicts for given meetingId', async () => {
     const db = new Database(':memory:');
     runMigration(db);
     MemoryManager.resetInstance();
