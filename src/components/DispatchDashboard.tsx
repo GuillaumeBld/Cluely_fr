@@ -20,25 +20,11 @@ function countAlerts(content: string): number {
   return (section.match(/^- /gm) ?? []).length;
 }
 
-function statusColor(status: string): string {
+function statusStyles(status: string): { text: string; dot: string } {
   switch (status) {
-    case 'healthy':
-      return 'text-emerald-400';
-    case 'degraded':
-      return 'text-amber-400';
-    default:
-      return 'text-red-400';
-  }
-}
-
-function statusDot(status: string): string {
-  switch (status) {
-    case 'healthy':
-      return 'bg-emerald-400';
-    case 'degraded':
-      return 'bg-amber-400';
-    default:
-      return 'bg-red-400';
+    case 'healthy': return { text: 'text-emerald-400', dot: 'bg-emerald-400' };
+    case 'degraded': return { text: 'text-amber-400', dot: 'bg-amber-400' };
+    default:         return { text: 'text-red-400',    dot: 'bg-red-400'    };
   }
 }
 
@@ -121,11 +107,12 @@ export function DispatchDashboard() {
             {snapshots.map(snap => {
               const status = parseStatus(snap.content);
               const alerts = countAlerts(snap.content);
+              const { text, dot } = statusStyles(status);
               return (
                 <div key={snap.projectId} className="flex items-center gap-2 text-[10px]">
-                  <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${statusDot(status)}`} />
+                  <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${dot}`} />
                   <span className="font-semibold text-violet-300/80 w-28 truncate">{snap.projectId}</span>
-                  <span className={`${statusColor(status)} w-16`}>{status}</span>
+                  <span className={`${text} w-16`}>{status}</span>
                   {alerts > 0 && (
                     <span className="text-amber-400">{alerts} alert{alerts > 1 ? 's' : ''}</span>
                   )}
