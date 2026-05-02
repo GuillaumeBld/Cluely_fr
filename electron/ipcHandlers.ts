@@ -1912,4 +1912,9 @@ export function initializeIpcHandlers(appState: AppState): void {
       return { success: false, error: err.message };
     }
   });
+
+  safeHandle("transcript-search", async (_event, query: string) => {
+    if (typeof query !== 'string' || !query.trim()) return [];
+    return appState.getLunrIndexer().search(query);
+  });
 }

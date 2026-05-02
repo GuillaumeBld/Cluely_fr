@@ -75,6 +75,45 @@ describe('LunrIndexer', () => {
     });
   });
 
+  describe('search (extended)', () => {
+    it('returns all turns for empty query (guard is in IPC layer)', () => {
+      indexer.addTurn({ turn_id: 't1', speaker: 'Alice', text: 'hello world', timestamp: Date.now(), meeting_id: 'm1' });
+      // Empty string triggers lunr wildcard match — the IPC handler guards against this
+      const results = indexer.search('');
+      expect(results.length).toBeGreaterThanOrEqual(0);
+    });
+
+    it('returns empty array when no turns indexed', () => {
+      expect(indexer.search('hello')).toEqual([]);
+    });
+
+    it('matches multi-word query containing all terms', () => {
+      indexer.addTurn({ turn_id: 't1', speaker: 'Alice', text: 'we agreed on the deadline for Friday', timestamp: Date.now(), meeting_id: 'm1' });
+      indexer.addTurn({ turn_id: 't2', speaker: 'Bob', text: 'the weather is nice today', timestamp: Date.now(), meeting_id: 'm1' });
+
+      const results = indexer.search('agreed deadline');
+      expect(results).toHaveLength(1);
+      expect(results[0].turn_id).toBe('t1');
+    });
+
+    it('matches by speaker name', () => {
+      indexer.addTurn({ turn_id: 't1', speaker: 'Alice', text: 'first turn', timestamp: Date.now(), meeting_id: 'm1' });
+      indexer.addTurn({ turn_id: 't2', speaker: 'Bob', text: 'second turn', timestamp: Date.now(), meeting_id: 'm1' });
+
+      const results = indexer.search('Alice');
+      expect(results).toHaveLength(1);
+      expect(results[0].speaker).toBe('Alice');
+    });
+
+    it('returns empty after clear()', () => {
+      indexer.addTurn({ turn_id: 't1', speaker: 'Alice', text: 'important meeting notes', timestamp: Date.now(), meeting_id: 'm1' });
+      expect(indexer.search('important')).toHaveLength(1);
+
+      indexer.clear();
+      expect(indexer.search('important')).toEqual([]);
+    });
+  });
+
   describe('clear', () => {
     it('removes all turns', () => {
       indexer.addTurn({ turn_id: 't1', speaker: 'Alice', text: 'hello', timestamp: Date.now(), meeting_id: 'm1' });

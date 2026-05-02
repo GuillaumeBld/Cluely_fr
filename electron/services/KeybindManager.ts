@@ -32,6 +32,9 @@ export const DEFAULT_KEYBINDS: KeybindConfig[] = [
     { id: 'window:move-down', label: 'Move Window Down', accelerator: 'CommandOrControl+Down', isGlobal: false, defaultAccelerator: 'CommandOrControl+Down' },
     { id: 'window:move-left', label: 'Move Window Left', accelerator: 'CommandOrControl+Left', isGlobal: false, defaultAccelerator: 'CommandOrControl+Left' },
     { id: 'window:move-right', label: 'Move Window Right', accelerator: 'CommandOrControl+Right', isGlobal: false, defaultAccelerator: 'CommandOrControl+Right' },
+
+    // Transcript
+    { id: 'transcript:search', label: 'Search Transcript', accelerator: 'CommandOrControl+F', isGlobal: false, defaultAccelerator: 'CommandOrControl+F' },
 ];
 
 export class KeybindManager {
