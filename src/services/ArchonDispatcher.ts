@@ -29,6 +29,11 @@ export class ArchonDispatcher {
       goalTag: draft.goalTag,
       kbCitations: draft.kbCitations,
       speaker: draft.speaker,
+      citation: {
+        speaker: draft.speaker,
+        timestamp: draft.timestamp,
+        verbatimExcerpt: draft.rawExcerpt,
+      },
     };
 
     const result = await this.httpClient.post(url, body);
