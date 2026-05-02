@@ -5,7 +5,7 @@ import { describe, it, expect, vi, afterEach } from 'vitest';
 import React from 'react';
 import { render, fireEvent, act, cleanup } from '@testing-library/react';
 import { WorkflowCard } from '../../src/components/WorkflowCard';
-import type { WorkflowDraft } from '../../src/types/workflows';
+import type { WorkflowDraft, KBCitation } from '../../src/types/workflows';
 
 const mockDraft: WorkflowDraft = {
   id: 'draft-1',
@@ -91,5 +91,45 @@ describe('WorkflowCard', () => {
 
     fireEvent.click(getByText('Dismiss'));
     expect(onDismiss).toHaveBeenCalledOnce();
+  });
+
+  it('calls onEdit immediately when Preview clicked', () => {
+    const onEdit = vi.fn();
+    const { getByText } = render(
+      <WorkflowCard draft={mockDraft} onApprove={vi.fn()} onDismiss={vi.fn()} onEdit={onEdit} />
+    );
+    fireEvent.click(getByText('Preview'));
+    expect(onEdit).toHaveBeenCalledOnce();
+  });
+
+  it('disables Approve button and shows Confirming text after click', () => {
+    vi.useFakeTimers();
+    const { getByText } = render(
+      <WorkflowCard draft={mockDraft} onApprove={vi.fn()} onDismiss={vi.fn()} onEdit={vi.fn()} />
+    );
+
+    act(() => { fireEvent.click(getByText('Approve')); });
+
+    const btn = getByText('Confirming...');
+    expect(btn).toBeTruthy();
+    expect((btn as HTMLButtonElement).disabled).toBe(true);
+
+    vi.useRealTimers();
+  });
+
+  it('renders kb citations when present', async () => {
+    const citations: KBCitation[] = [{ id: 'kb-1', label: 'API Reference', source: 'docs/api.md' }];
+    const draftWithCitations: WorkflowDraft = { ...mockDraft, kbCitations: citations };
+    const { findByText } = render(
+      <WorkflowCard draft={draftWithCitations} onApprove={vi.fn()} onDismiss={vi.fn()} onEdit={vi.fn()} />
+    );
+    expect(await findByText('API Reference')).toBeTruthy();
+  });
+
+  it('does not render kb-citations list when kbCitations is empty', () => {
+    const { container } = render(
+      <WorkflowCard draft={mockDraft} onApprove={vi.fn()} onDismiss={vi.fn()} onEdit={vi.fn()} />
+    );
+    expect(container.querySelector('.kb-citations')).toBeNull();
   });
 });
