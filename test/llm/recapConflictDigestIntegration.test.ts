@@ -5,7 +5,7 @@ import { runMigration } from '../../electron/memory/migration';
 import { RecapLLM } from '../../electron/llm/RecapLLM';
 
 describe('RecapLLM.appendConflictDigest — conflict digest section formatting', () => {
-  it('appends resolved conflicts for given meetingId', async () => {
+  it('appends resolved conflicts for given meetingId', () => {
     const db = new Database(':memory:');
     runMigration(db);
     MemoryManager.resetInstance();
@@ -33,7 +33,7 @@ describe('RecapLLM.appendConflictDigest — conflict digest section formatting',
     MemoryManager.resetInstance();
   });
 
-  it('returns empty section when no conflicts for meetingId', async () => {
+  it('returns empty section when no conflicts for meetingId', () => {
     const db = new Database(':memory:');
     runMigration(db);
     MemoryManager.resetInstance();

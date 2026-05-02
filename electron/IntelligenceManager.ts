@@ -709,7 +709,7 @@ export class IntelligenceManager extends EventEmitter {
                     const resolutions = this.memoryManager.getConflictResolutions(meetingId);
                     const digestSection = this.recapLLM!.appendConflictDigest('', resolutions);
                     this.emit('recap_token', digestSection);
-                    fullSummary = fullSummary + digestSection;
+                    fullSummary += digestSection;
                 } catch (err) {
                     console.error('[IntelligenceManager] Conflict digest failed:', err);
                     this.emit('recap_warning', 'conflict-digest-failed');
