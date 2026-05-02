@@ -191,7 +191,8 @@ export class MemoryManager {
    * Returns new fact objects — the database is never mutated.
    * Formula: new_confidence = confidence * 2^(−daysSinceUpdate / halfLifeDays)
    */
-  private applyDecay<T extends MemoryFact>(facts: T[], now: number, halfLifeDays: number): T[] {
+  private applyDecay<T extends MemoryFact>(facts: T[], halfLifeDays: number): T[] {
+    const now = Date.now();
     return facts.map(fact => {
       const updatedAt = new Date(fact.updated_at + 'Z').getTime(); // SQLite datetimes are UTC
       if (isNaN(updatedAt)) {
@@ -220,7 +221,7 @@ export class MemoryManager {
 
     if (halfLifeDays === undefined || halfLifeDays <= 0) return facts;
 
-    return this.applyDecay(facts, Date.now(), halfLifeDays);
+    return this.applyDecay(facts, halfLifeDays);
   }
 
   // ─── Confidence Decay ────────────────────────────────────────────
@@ -321,7 +322,7 @@ export class MemoryManager {
 
     if (halfLifeDays === undefined || halfLifeDays <= 0) return facts;
 
-    return this.applyDecay(facts, Date.now(), halfLifeDays);
+    return this.applyDecay(facts, halfLifeDays);
   }
 
   /**
