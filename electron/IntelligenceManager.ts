@@ -834,6 +834,7 @@ export class IntelligenceManager extends EventEmitter {
      * Handle incoming transcript from native audio service
      */
     private lastInterimInterviewer: TranscriptSegment | null = null;
+    private lastInterimUser: TranscriptSegment | null = null;
 
     /**
      * Handle incoming transcript from native audio service
@@ -850,6 +851,14 @@ export class IntelligenceManager extends EventEmitter {
                 this.lastInterimInterviewer = segment;
             } else {
                 this.lastInterimInterviewer = null;
+            }
+        }
+
+        if (segment.speaker === 'user') {
+            if (!segment.final) {
+                this.lastInterimUser = segment;
+            } else {
+                this.lastInterimUser = null;
             }
         }
 
@@ -972,6 +981,13 @@ export class IntelligenceManager extends EventEmitter {
             const finalSegment = { ...this.lastInterimInterviewer, final: true };
             this.addTranscript(finalSegment);
             this.lastInterimInterviewer = null;
+        }
+
+        if (this.lastInterimUser) {
+            console.log('[IntelligenceManager] Force-saving pending user interim transcript:', this.lastInterimUser.text);
+            const finalSegment = { ...this.lastInterimUser, final: true };
+            this.addTranscript(finalSegment);
+            this.lastInterimUser = null;
         }
 
         // 1. Snapshot valid data BEFORE resetting
@@ -1259,6 +1275,8 @@ export class IntelligenceManager extends EventEmitter {
         this.transcriptEpochSummaries = [];
         this.sessionStartTime = Date.now();
         this.lastAssistantMessage = null;
+        this.lastInterimInterviewer = null;
+        this.lastInterimUser = null;
         this.assistantResponseHistory = []; // Reset temporal RAG history
         this.activeMode = 'idle';
         if (this.assistCancellationToken) {
