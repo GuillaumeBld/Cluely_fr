@@ -28,7 +28,7 @@ export class ArchonDispatcher {
       payload: draft.payload,
       goalTag: draft.goalTag,
       kbCitations: draft.kbCitations,
-      speaker: draft.speaker,
+      speaker: draft.speaker, // backward-compat; prefer citation.speaker for new consumers
       citation: {
         speaker: draft.speaker,
         timestamp: draft.timestamp,
