@@ -1,5 +1,5 @@
 import type { WorkflowDraft } from '../types/workflows';
-import type { ArchonDispatcher } from '../services/ArchonDispatcher';
+import type { Dispatcher } from '../services/ArchonDispatcher';
 
 export interface DecisionLedger {
   appendDispatch(entry: { meetingId: string; jobId: string; draftId: string }): Promise<void>;
@@ -16,7 +16,7 @@ export interface WebhookEmitter {
 
 export function registerApprovalHandlers(
   registrar: SafeHandleRegistrar,
-  archonDispatcher: ArchonDispatcher,
+  dispatcher: Dispatcher,
   decisionLedger: DecisionLedger,
   webhookEmitter?: WebhookEmitter,
 ): void {
@@ -25,7 +25,7 @@ export function registerApprovalHandlers(
     async (_event: unknown, opts: unknown) => {
       const { draft, meetingId } = opts as { draft: WorkflowDraft; meetingId: string };
       try {
-        const { jobId } = await archonDispatcher.dispatch(draft);
+        const { jobId } = await dispatcher.dispatch(draft);
         await decisionLedger.appendDispatch({ meetingId, jobId, draftId: draft.id });
 
         // Fire-and-forget: do not await, do not block approval result

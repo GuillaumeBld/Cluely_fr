@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { registerApprovalHandlers, DecisionLedger, SafeHandleRegistrar, WebhookEmitter } from '../../src/ipc/approvalHandlers';
-import { ArchonDispatcher } from '../../src/services/ArchonDispatcher';
+import type { Dispatcher } from '../../src/services/ArchonDispatcher';
 import type { WorkflowDraft } from '../../src/types/workflows';
 
 function makeDraft(): WorkflowDraft {
@@ -24,8 +24,9 @@ describe('approvalHandlers', () => {
       safeHandle: (channel, listener) => handlers.set(channel, listener),
     };
 
-    const httpClient = { post: vi.fn().mockResolvedValue({ jobId: 'job-456' }) };
-    const dispatcher = new ArchonDispatcher({ baseUrl: 'http://localhost:3000' }, httpClient);
+    const dispatcher: Dispatcher = {
+      dispatch: vi.fn().mockResolvedValue({ jobId: 'job-456' }),
+    };
 
     const ledger: DecisionLedger = {
       appendDispatch: vi.fn().mockResolvedValue(undefined),
@@ -51,8 +52,9 @@ describe('approvalHandlers', () => {
       safeHandle: (channel, listener) => handlers.set(channel, listener),
     };
 
-    const httpClient = { post: vi.fn().mockResolvedValue({ jobId: 'job-789' }) };
-    const dispatcher = new ArchonDispatcher({ baseUrl: 'http://localhost:3000' }, httpClient);
+    const dispatcher: Dispatcher = {
+      dispatch: vi.fn().mockResolvedValue({ jobId: 'job-789' }),
+    };
 
     const ledger: DecisionLedger = {
       appendDispatch: vi.fn().mockResolvedValue(undefined),
@@ -79,8 +81,9 @@ describe('approvalHandlers', () => {
       safeHandle: (channel, listener) => handlers.set(channel, listener),
     };
 
-    const httpClient = { post: vi.fn().mockResolvedValue({ jobId: 'job-fail' }) };
-    const dispatcher = new ArchonDispatcher({ baseUrl: 'http://localhost:3000' }, httpClient);
+    const dispatcher: Dispatcher = {
+      dispatch: vi.fn().mockResolvedValue({ jobId: 'job-fail' }),
+    };
 
     const ledger: DecisionLedger = {
       appendDispatch: vi.fn().mockResolvedValue(undefined),
@@ -106,8 +109,9 @@ describe('approvalHandlers', () => {
       safeHandle: (channel, listener) => handlers.set(channel, listener),
     };
 
-    const httpClient = { post: vi.fn().mockResolvedValue({ jobId: 'job-no-hook' }) };
-    const dispatcher = new ArchonDispatcher({ baseUrl: 'http://localhost:3000' }, httpClient);
+    const dispatcher: Dispatcher = {
+      dispatch: vi.fn().mockResolvedValue({ jobId: 'job-no-hook' }),
+    };
 
     const ledger: DecisionLedger = {
       appendDispatch: vi.fn().mockResolvedValue(undefined),
@@ -129,8 +133,9 @@ describe('approvalHandlers', () => {
       safeHandle: (channel, listener) => handlers.set(channel, listener),
     };
 
-    const httpClient = { post: vi.fn() };
-    const dispatcher = new ArchonDispatcher({ baseUrl: 'http://localhost:3000' }, httpClient);
+    const dispatcher: Dispatcher = {
+      dispatch: vi.fn(),
+    };
 
     const ledger: DecisionLedger = {
       appendDispatch: vi.fn(),
