@@ -25,7 +25,7 @@ const GoalPanel: React.FC<GoalPanelProps> = ({ onSelectGoal, selectedGoalId }) =
   const load = async () => {
     try {
       const all = await window.electronAPI?.goalList?.() ?? [];
-      setGoals((all as Goal[]).filter(g => !g.completed_at));
+      setGoals(all.filter(g => !g.completed_at));
     } catch (err) {
       console.error('[GoalPanel] Failed to load goals:', err);
     }
