@@ -210,6 +210,13 @@ interface ElectronAPI {
     onSnapshotsUpdated: (cb: (snapshots: Array<{ projectId: string; content: string; fetchedAt: string; stale: boolean }>) => void) => () => void;
   };
 
+  // Daily Summary
+  dailySummary: {
+    get: (date?: string) => Promise<any | null>;
+    generate: () => Promise<any | null>;
+    onReady: (cb: (summary: any) => void) => () => void;
+  };
+
   // Goal Management
   goalCreate: (opts: { title: string; description?: string; parent_id?: string }) => Promise<{ id: string; title: string } | { error: string }>;
   goalList: () => Promise<Array<{ id: string; title: string; description: string; parent_id: string | null; created_at: number; completed_at: number | null }>>;
@@ -859,6 +866,17 @@ contextBridge.exposeInMainWorld("electronAPI", {
       const subscription = (_: any, data: any) => cb(data);
       ipcRenderer.on('dashboard:snapshots-updated', subscription);
       return () => ipcRenderer.removeListener('dashboard:snapshots-updated', subscription);
+    },
+  },
+
+  // Daily Summary API
+  dailySummary: {
+    get: (date?: string) => ipcRenderer.invoke('daily-summary:get', date),
+    generate: () => ipcRenderer.invoke('daily-summary:generate'),
+    onReady: (cb: (summary: any) => void) => {
+      const subscription = (_: any, data: any) => cb(data);
+      ipcRenderer.on('daily-summary:ready', subscription);
+      return () => ipcRenderer.removeListener('daily-summary:ready', subscription);
     },
   },
 

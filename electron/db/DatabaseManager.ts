@@ -239,6 +239,18 @@ export class DatabaseManager {
         // Data migration: convert actionItems from string[] to ActionItem[]
         this.migrateActionItemsFormat();
 
+        // Daily summaries table (daily digest pipeline)
+        const createDailySummariesTable = `
+            CREATE TABLE IF NOT EXISTS daily_summaries (
+                id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                date        TEXT NOT NULL UNIQUE,
+                meetings_count INTEGER NOT NULL DEFAULT 0,
+                generated_at TEXT NOT NULL DEFAULT (datetime('now')),
+                summary_json TEXT NOT NULL
+            );
+        `;
+        this.db.exec(createDailySummariesTable);
+
         // Background agent audit log
         const createAgentAccessLogTable = `
             CREATE TABLE IF NOT EXISTS agent_access_log (
@@ -619,11 +631,65 @@ export class DatabaseManager {
         return results;
     }
 
+    public getMeetingsByDate(dateStr: string): Meeting[] {
+        if (!this.db) return [];
+
+        const stmt = this.db.prepare(`
+            SELECT * FROM meetings
+            WHERE DATE(created_at, 'localtime') = ?
+            ORDER BY created_at ASC
+        `);
+
+        const rows = stmt.all(dateStr) as any[];
+
+        return rows.map(row => {
+            const summaryData = JSON.parse(row.summary_json || '{}');
+            const minutes = Math.floor(row.duration_ms / 60000);
+            const seconds = Math.floor((row.duration_ms % 60000) / 1000);
+            const durationStr = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+
+            return {
+                id: row.id,
+                title: row.title,
+                date: row.created_at,
+                duration: durationStr,
+                summary: summaryData.legacySummary || '',
+                detailedSummary: summaryData.detailedSummary,
+                calendarEventId: row.calendar_event_id,
+                source: row.source as any,
+                transcript: [] as any[],
+                usage: [] as any[]
+            };
+        });
+    }
+
+    public saveDailySummary(date: string, meetingsCount: number, summaryJson: string): void {
+        if (!this.db) return;
+        const stmt = this.db.prepare(`
+            INSERT OR REPLACE INTO daily_summaries (date, meetings_count, generated_at, summary_json)
+            VALUES (?, ?, datetime('now'), ?)
+        `);
+        stmt.run(date, meetingsCount, summaryJson);
+    }
+
+    public getDailySummary(date: string): { date: string; meetingsCount: number; generatedAt: string; summaryJson: string } | null {
+        if (!this.db) return null;
+        const row = this.db.prepare('SELECT * FROM daily_summaries WHERE date = ?').get(date) as any;
+        if (!row) return null;
+        return {
+            date: row.date,
+            meetingsCount: row.meetings_count,
+            generatedAt: row.generated_at,
+            summaryJson: row.summary_json,
+        };
+    }
+
     public clearAllData(): boolean {
         if (!this.db) return false;
 
         try {
             // Clear all tables (order matters due to foreign keys, but SQLite handles with ON DELETE CASCADE)
+            this.db.exec('DELETE FROM daily_summaries');
             this.db.exec('DELETE FROM corpus_chunks');
             this.db.exec('DELETE FROM embedding_queue');
             this.db.exec('DELETE FROM chunk_summaries');
