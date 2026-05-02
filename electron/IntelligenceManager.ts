@@ -25,6 +25,7 @@ import { AnswerLLM, AssistLLM, FollowUpLLM, RecapLLM, FollowUpQuestionsLLM, What
 import { desktopCapturer } from 'electron';
 import { DatabaseManager, Meeting, ActionItem } from './db/DatabaseManager';
 import { GoalAligner } from './memory/GoalAligner';
+import { MemoryManager } from './memory/MemoryManager';
 const crypto = require('crypto');
 import { app } from 'electron';
 import { taskGeneratorBuffer } from './services/TaskGeneratorBuffer';
@@ -163,6 +164,9 @@ export class IntelligenceManager extends EventEmitter {
     // Goal alignment (optional — set via setGoalAligner)
     private goalAligner: GoalAligner | null = null;
 
+    // Memory manager for conflict resolution digest (optional — set via setMemoryManager)
+    private memoryManager: MemoryManager | null = null;
+
     // Keep reference to LLMHelper for client access
     private llmHelper: LLMHelper;
 
@@ -182,6 +186,10 @@ export class IntelligenceManager extends EventEmitter {
 
     public setGoalAligner(aligner: GoalAligner): void {
         this.goalAligner = aligner;
+    }
+
+    public setMemoryManager(mm: MemoryManager): void {
+        this.memoryManager = mm;
     }
 
 
@@ -666,7 +674,7 @@ export class IntelligenceManager extends EventEmitter {
      * MODE 4: Recap (Summary)
      * Neutral conversation summary
      */
-    async runRecap(): Promise<string | null> {
+    async runRecap(meetingId?: string): Promise<string | null> {
         console.log('[IntelligenceManager] runRecap called');
         this.setMode('recap');
 
@@ -690,6 +698,15 @@ export class IntelligenceManager extends EventEmitter {
             for await (const token of stream) {
                 this.emit('recap_token', token);
                 fullSummary += token;
+            }
+
+            if (fullSummary && meetingId && this.memoryManager && this.recapLLM) {
+                try {
+                    const resolutions = this.memoryManager.getConflictResolutions(meetingId);
+                    fullSummary = this.recapLLM.appendConflictDigest(fullSummary, resolutions);
+                } catch (err) {
+                    console.error('[IntelligenceManager] Conflict digest failed:', err);
+                }
             }
 
             if (fullSummary) {

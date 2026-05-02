@@ -213,6 +213,9 @@ export class AppState {
       this.intelligenceManager.setGoalAligner(goalAligner);
     }
 
+    // Wire MemoryManager for conflict digest in recap
+    this.intelligenceManager.setMemoryManager(this.memoryManager);
+
     this.setupIntelligenceEvents()
 
     // Setup Ollama IPC
