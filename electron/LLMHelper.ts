@@ -19,6 +19,7 @@ import { exec } from 'child_process';
 import { promisify } from 'util';
 import axios from 'axios';
 import { createProviderRateLimiters, RateLimiter } from './services/RateLimiter';
+import type { TokenUsageTracker } from './services/TokenUsageTracker';
 const execAsync = promisify(exec);
 
 interface OllamaResponse {
@@ -55,6 +56,7 @@ export class LLMHelper {
   private customProvider: CustomProvider | null = null;
   private activeCurlProvider: CurlProvider | null = null;
   private groqFastTextMode: boolean = false;
+  private tokenTracker: TokenUsageTracker | null = null;
 
   // Rate limiters per provider to prevent 429 errors on free tiers
   private rateLimiters: ReturnType<typeof createProviderRateLimiters>;
@@ -104,6 +106,10 @@ export class LLMHelper {
     } else {
       console.warn("[LLMHelper] No API key provided. Client will be uninitialized until key is set.")
     }
+  }
+
+  setTokenTracker(tracker: TokenUsageTracker): void {
+    this.tokenTracker = tracker;
   }
 
   public setApiKey(apiKey: string) {
@@ -373,6 +379,8 @@ export class LLMHelper {
         temperature: 0.3,      // Lower = faster, more focused
       }
     })
+    const tokens = response.usageMetadata?.totalTokenCount;
+    if (tokens) this.tokenTracker?.record(tokens);
     return response.text || ""
   }
 
@@ -393,6 +401,8 @@ export class LLMHelper {
         temperature: 0.3,      // Lower = faster, more focused
       }
     })
+    const tokens = response.usageMetadata?.totalTokenCount;
+    if (tokens) this.tokenTracker?.record(tokens);
     return response.text || ""
   }
 
@@ -950,6 +960,9 @@ ANSWER DIRECTLY:`;
       stream: false
     });
 
+    const tokens = response.usage?.total_tokens;
+    if (tokens) this.tokenTracker?.record(tokens);
+
     return response.choices[0]?.message?.content || "";
   }
 
@@ -986,6 +999,9 @@ ANSWER DIRECTLY:`;
     const response = isOpenRouter
       ? await client!.chat.completions.create({ model: modelId, messages, temperature: 0.4, max_tokens: 8192 } as any)
       : await this.openaiChatCompletionsCreateWithTokenFallback({ model: modelId, messages, temperature: 0.4, maxTokens: 8192 });
+
+    const tokens = (response as any).usage?.total_tokens;
+    if (tokens) this.tokenTracker?.record(tokens);
 
     return (response as any).choices[0]?.message?.content || "";
   }
@@ -1673,6 +1689,9 @@ ANSWER DIRECTLY:`;
         temperature: 0.4,
       }
     });
+
+    const tokens = response.usageMetadata?.totalTokenCount;
+    if (tokens) this.tokenTracker?.record(tokens);
 
     return response.text || "";
   }

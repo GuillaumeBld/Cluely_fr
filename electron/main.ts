@@ -98,6 +98,7 @@ import { AgentStateManager } from "./services/AgentStateManager"
 import { PermissionsAuditLog } from "./services/PermissionsAuditLog"
 import { CommitmentStalenessChecker, CommitmentQuerySource } from "./services/CommitmentStalenessChecker"
 import { BackgroundAgent } from "./services/BackgroundAgent"
+import { TokenUsageTracker } from "./services/TokenUsageTracker"
 import { getAgentConfig, setAgentIntervalMs } from "./config/agentConfig"
 
 export class AppState {
@@ -124,6 +125,7 @@ export class AppState {
   private memoryGraphWriter: MemoryGraphWriter = new MemoryGraphWriter()
   private agentStateManager: AgentStateManager = new AgentStateManager()
   private backgroundAgent: BackgroundAgent | null = null
+  private tokenUsageTracker: TokenUsageTracker = new TokenUsageTracker()
   private activeMeetingId: string = ''
   private turnCounter: number = 0
 
@@ -212,6 +214,12 @@ export class AppState {
       );
       this.intelligenceManager.setGoalAligner(goalAligner);
     }
+
+    this.processingHelper.getLLMHelper().setTokenTracker(this.tokenUsageTracker)
+
+    IpcEventBus.onTyped("token:anomaly", (payload) => {
+      this.broadcast("health:token-anomaly", payload)
+    })
 
     this.setupIntelligenceEvents()
 
@@ -912,6 +920,7 @@ export class AppState {
     this.activeMeetingId = meetingId;
     this.turnCounter = 0;
     this.slidingWindowAnalyzer.start(meetingId);
+    this.tokenUsageTracker.start(meetingId);
     IpcEventBus.emitTyped("meeting:started", { meeting_id: meetingId });
   }
 
@@ -929,6 +938,7 @@ export class AppState {
 
     // 5. Stop mid-call decision capture (flush happens in IntelligenceManager.processAndSaveMeeting)
     this.slidingWindowAnalyzer.stop();
+    this.tokenUsageTracker.stop();
     this.lunrIndexer.clear();
     IpcEventBus.emitTyped("meeting:ended", { meeting_id: this.activeMeetingId });
 
