@@ -33,7 +33,7 @@ interface Meeting {
     summary: string;
     detailedSummary?: {
         overview?: string;
-        actionItems: string[];
+        actionItems: (string | { text: string; goal_id?: string | null; goal_confidence?: number | null; speaker?: string; timestamp?: number; completed_at?: number | null })[];
         keyPoints: string[];
         actionItemsTitle?: string;
         keyPointsTitle?: string;
@@ -98,7 +98,7 @@ OVERVIEW:
 ${meeting.detailedSummary.overview || ''}
 
 ACTION ITEMS:
-${meeting.detailedSummary.actionItems?.map(item => `- ${item}`).join('\n') || 'None'}
+${meeting.detailedSummary.actionItems?.map(item => `- ${typeof item === 'string' ? item : item.text}`).join('\n') || 'None'}
 
 KEY POINTS:
 ${meeting.detailedSummary.keyPoints?.map(item => `- ${item}`).join('\n') || 'None'}
@@ -146,7 +146,8 @@ ${meeting.detailedSummary.keyPoints?.map(item => `- ${item}`).join('\n') || 'Non
         if (!newVal.trim()) {
             // Optional: Remove empty items? For now just keep empty or update
         }
-        newItems[index] = newVal;
+        const existing = newItems[index];
+        newItems[index] = typeof existing === 'string' ? newVal : { ...existing, text: newVal };
 
         setMeeting(prev => ({
             ...prev,
@@ -292,28 +293,37 @@ ${meeting.detailedSummary.keyPoints?.map(item => `- ${item}`).join('\n') || 'Non
                                             />
                                         </div>
                                         <ul className="space-y-3">
-                                            {meeting.detailedSummary.actionItems.map((item, i) => (
+                                            {meeting.detailedSummary.actionItems.map((item, i) => {
+                                                const text = typeof item === 'string' ? item : item.text;
+                                                const goalId = typeof item === 'object' ? item.goal_id : null;
+                                                return (
                                                 <li key={i} className="flex items-start gap-3 group">
                                                     <div className="mt-2 w-1.5 h-1.5 rounded-full bg-text-secondary group-hover:bg-blue-500 transition-colors shrink-0" />
                                                     <div className="flex-1">
                                                         <EditableTextBlock
-                                                            initialValue={item}
+                                                            initialValue={text}
                                                             onSave={(val) => handleActionItemSave(i, val)}
                                                             tagName="p"
                                                             className="text-sm text-text-secondary leading-relaxed -ml-2 px-2 rounded-sm transition-colors"
                                                             placeholder={t('action_item_placeholder')}
                                                             onEnter={() => {
                                                                 const newItems = [...(meeting.detailedSummary?.actionItems || [])];
-                                                                newItems.splice(i + 1, 0, "");
+                                                                newItems.splice(i + 1, 0, { text: "" });
                                                                 setMeeting(prev => ({
                                                                     ...prev,
                                                                     detailedSummary: { ...prev.detailedSummary!, actionItems: newItems }
                                                                 }));
                                                             }}
                                                         />
+                                                        {goalId && (
+                                                            <span className="inline-flex items-center mt-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                                                                Objectif lié
+                                                            </span>
+                                                        )}
                                                     </div>
                                                 </li>
-                                            ))}
+                                                );
+                                            })}
                                         </ul>
                                     </section>
                                 )}
@@ -522,7 +532,7 @@ ${meeting.detailedSummary.keyPoints?.map(item => `- ${item}`).join('\n') || 'Non
                     title: meeting.title,
                     summary: meeting.detailedSummary?.overview,
                     keyPoints: meeting.detailedSummary?.keyPoints,
-                    actionItems: meeting.detailedSummary?.actionItems,
+                    actionItems: meeting.detailedSummary?.actionItems?.map(item => typeof item === 'string' ? item : item.text),
                     transcript: meeting.transcript
                 }}
                 initialQuery={submittedQuery}

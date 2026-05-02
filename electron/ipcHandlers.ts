@@ -1914,6 +1914,20 @@ export function initializeIpcHandlers(appState: AppState): void {
     }
   });
 
+  safeHandle("goal:pre-call-hint", async (_, goalId: string) => {
+    if (typeof goalId !== 'string' || !goalId.trim()) return [];
+    try {
+      const { GoalHintBuilder } = require('./memory/GoalHintBuilder');
+      const { DatabaseManager } = require('./db/DatabaseManager');
+      const dbManager = DatabaseManager.getInstance();
+      const builder = new GoalHintBuilder(dbManager);
+      return builder.buildPreCallHint(goalId);
+    } catch (error: any) {
+      console.error('[IPC] goal:pre-call-hint failed:', error);
+      return [];
+    }
+  });
+
   safeHandle("transcript-search", async (_event, query: string) => {
     if (typeof query !== 'string' || !query.trim()) return [];
     return appState.getLunrIndexer().search(query);

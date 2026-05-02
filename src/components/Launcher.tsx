@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, ArrowRight, MoreHorizontal, Calendar, Clock, ChevronRight, Settings, RefreshCw, Ghost, Plus, Trash2, Download, Zap, Link as LinkIcon, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, MoreHorizontal, Calendar, Clock, ChevronRight, Settings, RefreshCw, Ghost, Plus, Trash2, Download, Zap, Link as LinkIcon, X, Target } from 'lucide-react';
 import { generateMeetingPDF } from '../utils/pdfGenerator';
 import icon from "./icon.png";
 import ConnectCalendarButton from './ui/ConnectCalendarButton';
@@ -12,6 +12,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { analytics } from '../lib/analytics/analytics.service';
 import { useShortcuts } from '../hooks/useShortcuts';
 import { PreBriefBanner } from './PreBriefBanner';
+import GoalPanel from './GoalPanel';
+import PreCallHint from './PreCallHint';
 
 interface Meeting {
     id: string;
@@ -19,7 +21,7 @@ interface Meeting {
     date: string;
     duration: string;
     summary: string;
-    detailedSummary?: { actionItems: string[]; keyPoints: string[] };
+    detailedSummary?: { actionItems: (string | { text: string; goal_id?: string | null })[]; keyPoints: string[] };
     transcript?: Array<{ speaker: string; text: string; timestamp: number }>;
     usage?: Array<{ type: 'assist' | 'followup' | 'chat' | 'followup_questions'; timestamp: number; question?: string; answer?: string; items?: string[] }>;
     active?: boolean;
@@ -170,6 +172,8 @@ const Launcher: React.FC<LauncherProps> = ({ onStartMeeting, onOpenSettings }) =
     const [menuEntered, setMenuEntered] = useState(false);
     const [isGlobalChatOpen, setIsGlobalChatOpen] = useState(false);
     const [submittedGlobalQuery, setSubmittedGlobalQuery] = useState('');
+    const [selectedGoalId, setSelectedGoalId] = useState<string | null>(null);
+    const [showGoals, setShowGoals] = useState(false);
     const [multicaToast, setMulticaToast] = useState<{ count: number; workspaceName: string } | null>(null);
 
     const { isShortcutPressed } = useShortcuts();
@@ -323,6 +327,13 @@ const Launcher: React.FC<LauncherProps> = ({ onStartMeeting, onOpenSettings }) =
                     >
                         <RefreshCw size={14} />
                     </button>
+                    <button
+                        onClick={() => setShowGoals(v => !v)}
+                        title="Objectifs"
+                        className={`p-1.5 rounded-lg transition-colors ${showGoals ? 'text-blue-400' : 'text-text-tertiary hover:text-text-secondary'}`}
+                    >
+                        <Target size={15} />
+                    </button>
                     <button onClick={onOpenSettings} className="p-1.5 text-text-tertiary hover:text-text-primary transition-colors rounded-lg hover:bg-white/5">
                         <Settings size={14} />
                     </button>
@@ -381,14 +392,25 @@ const Launcher: React.FC<LauncherProps> = ({ onStartMeeting, onOpenSettings }) =
                                         </div>
 
                                         {/* Start button */}
-                                        <button
-                                            onClick={() => { setShowWorkspaceSelector(true); analytics.trackCommandExecuted('start_natively_cta'); }}
-                                            className="flex items-center gap-2 px-4 py-1.5 rounded-full text-[12px] font-semibold bg-sky-500 hover:bg-sky-400 text-white transition-all shadow-md shadow-sky-500/20 active:scale-95"
-                                        >
-                                            <img src={icon} alt="" className="w-3.5 h-3.5 brightness-0 invert" />
-                                            Démarrer
-                                        </button>
+                                        <div className="flex flex-col items-end gap-1">
+                                            <PreCallHint goalId={selectedGoalId} />
+                                            <button
+                                                onClick={() => { setShowWorkspaceSelector(true); analytics.trackCommandExecuted('start_natively_cta'); }}
+                                                className="flex items-center gap-2 px-4 py-1.5 rounded-full text-[12px] font-semibold bg-sky-500 hover:bg-sky-400 text-white transition-all shadow-md shadow-sky-500/20 active:scale-95"
+                                            >
+                                                <img src={icon} alt="" className="w-3.5 h-3.5 brightness-0 invert" />
+                                                Démarrer
+                                            </button>
+                                        </div>
                                     </div>
+
+                                    {/* Goal Panel */}
+                                    {showGoals && (
+                                        <GoalPanel
+                                            onSelectGoal={setSelectedGoalId}
+                                            selectedGoalId={selectedGoalId}
+                                        />
+                                    )}
 
                                     {/* KB context banner */}
                                     <AnimatePresence>

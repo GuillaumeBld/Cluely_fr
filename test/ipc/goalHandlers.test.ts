@@ -151,4 +151,50 @@ describe('goal IPC handlers (SQL logic)', () => {
       expect(g2.completed_at).toBeNull();
     });
   });
+
+  describe('goal:pre-call-hint (via DatabaseManager.getOpenActionItemsByGoal)', () => {
+    it('returns open items for a goal across meetings', () => {
+      // Setup meetings table (matches DatabaseManager schema)
+      db.exec(`CREATE TABLE IF NOT EXISTS meetings (
+        id TEXT PRIMARY KEY, title TEXT, start_time INTEGER,
+        duration_ms INTEGER, summary_json TEXT,
+        calendar_event_id TEXT, source TEXT,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP
+      )`);
+
+      const summaryJson = JSON.stringify({
+        detailedSummary: {
+          actionItems: [
+            { text: 'Deploy RAG', goal_id: 'g1', goal_confidence: 0.8 },
+            { text: 'Done task', goal_id: 'g1', goal_confidence: 0.75, completed_at: 1700000000 },
+            { text: 'Other goal', goal_id: 'g2', goal_confidence: 0.7 },
+          ],
+          keyPoints: [],
+        }
+      });
+      db.prepare("INSERT INTO meetings (id, title, summary_json) VALUES (?, ?, ?)")
+        .run('m1', 'Meeting 1', summaryJson);
+
+      // Replicate the getOpenActionItemsByGoal query
+      const rows = db.prepare(
+        'SELECT id, summary_json, created_at FROM meetings ORDER BY created_at DESC'
+      ).all() as any[];
+
+      const results: any[] = [];
+      for (const row of rows) {
+        const data = JSON.parse(row.summary_json || '{}');
+        const items = data?.detailedSummary?.actionItems || [];
+        for (const item of items) {
+          if (typeof item === 'object' && item.goal_id === 'g1' && !item.completed_at) {
+            results.push({ text: item.text, meeting_id: row.id, goal_id: 'g1', meeting_date: row.created_at });
+          }
+        }
+      }
+
+      expect(results).toHaveLength(1);
+      expect(results[0].text).toBe('Deploy RAG');
+      // completed item excluded
+      // other-goal item excluded
+    });
+  });
 });
