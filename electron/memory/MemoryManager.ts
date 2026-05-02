@@ -13,13 +13,11 @@ import {
   PendingReview,
   PendingConflict,
   ConflictResolution,
+  HALF_LIFE_DAYS,
 } from './schema';
 
 /** Confidence threshold — proposals below this go to pending_review instead of edges. */
 const CONFIDENCE_GATE = 0.7;
-
-/** Fact half-life in days — after this many days, confidence halves. */
-const HALF_LIFE_DAYS = 30;
 
 export class MemoryManager {
   private static instance: MemoryManager | undefined;
@@ -188,19 +186,57 @@ export class MemoryManager {
     return this.db.prepare('SELECT * FROM memory_facts WHERE id = ?').get(Number(info.lastInsertRowid)) as MemoryFact;
   }
 
-  public getFacts(nodeId: string): MemoryFact[] {
-    return this.db.prepare(
+  /**
+   * Apply retrieval-time exponential decay to an array of facts.
+   * Returns new fact objects — the database is never mutated.
+   * Formula: new_confidence = confidence * 2^(−daysSinceUpdate / halfLifeDays)
+   */
+  private applyDecay<T extends MemoryFact>(facts: T[], now: number, halfLifeDays: number): T[] {
+    return facts.map(fact => {
+      const updatedAt = new Date(fact.updated_at + 'Z').getTime(); // SQLite datetimes are UTC
+      if (isNaN(updatedAt)) {
+        console.warn('[MemoryManager] Skipping fact with invalid updated_at:', fact.id, fact.updated_at);
+        return fact;
+      }
+      const daysSinceUpdate = (now - updatedAt) / (1000 * 60 * 60 * 24);
+      if (daysSinceUpdate <= 0) return fact;
+      return { ...fact, confidence: fact.confidence * Math.pow(2, -daysSinceUpdate / halfLifeDays) };
+    });
+  }
+
+  /**
+   * Retrieve all facts for the given node.
+   *
+   * @param nodeId - The node whose facts to fetch.
+   * @param halfLifeDays - Optional. When supplied and > 0, returned `confidence` values
+   *   are multiplied by `2^(−daysSinceUpdate / halfLifeDays)` (retrieval-time decay).
+   *   The database is **not** mutated. When omitted or ≤ 0, raw stored values are returned.
+   * @returns Array of `MemoryFact` objects (new objects when decay is applied).
+   */
+  public getFacts(nodeId: string, halfLifeDays?: number): MemoryFact[] {
+    const facts = this.db.prepare(
       'SELECT * FROM memory_facts WHERE node_id = ?'
     ).all(nodeId) as MemoryFact[];
+
+    if (halfLifeDays === undefined || halfLifeDays <= 0) return facts;
+
+    return this.applyDecay(facts, Date.now(), halfLifeDays);
   }
 
   // ─── Confidence Decay ────────────────────────────────────────────
 
   /**
    * Apply exponential decay to all fact confidences based on time since last update.
-   * Formula: new_confidence = confidence * 2^(−days_since_update / HALF_LIFE_DAYS)
+   * Formula: new_confidence = confidence * 2^(−days_since_update / halfLifeDays)
+   *
+   * @param halfLifeDays - Days after which confidence halves. Defaults to {@link HALF_LIFE_DAYS} (30). Must be > 0.
+   * @returns Number of facts updated in the database.
    */
-  public decayFacts(): number {
+  public decayFacts(halfLifeDays: number = HALF_LIFE_DAYS): number {
+    if (halfLifeDays <= 0) {
+      console.warn('[MemoryManager] decayFacts called with halfLifeDays <= 0, skipping decay.');
+      return 0;
+    }
     const facts = this.db.prepare('SELECT id, confidence, updated_at FROM memory_facts').all() as {
       id: number;
       confidence: number;
@@ -224,7 +260,7 @@ export class MemoryManager {
         const daysSinceUpdate = (now - updatedAt) / (1000 * 60 * 60 * 24);
         if (daysSinceUpdate <= 0) continue;
 
-        const decayed = fact.confidence * Math.pow(2, -daysSinceUpdate / HALF_LIFE_DAYS);
+        const decayed = fact.confidence * Math.pow(2, -daysSinceUpdate / halfLifeDays);
         updateStmt.run(decayed, fact.id);
         updated++;
       }
@@ -266,8 +302,14 @@ export class MemoryManager {
   /**
    * Query all facts for entities matching the given label.
    * Returns facts joined with node info for conflict comparison.
+   *
+   * @param entityLabel - The node label to look up.
+   * @param halfLifeDays - Optional. When supplied and > 0, returned `confidence` values
+   *   are multiplied by `2^(−daysSinceUpdate / halfLifeDays)` (retrieval-time decay).
+   *   The database is **not** mutated. When omitted or ≤ 0, raw stored values are returned.
+   * @returns Array of `MemoryFact` objects extended with `node_label` and `node_kind`.
    */
-  public queryEntityFacts(entityLabel: string): (MemoryFact & { node_label: string; node_kind: NodeKind })[] {
+  public queryEntityFacts(entityLabel: string, halfLifeDays?: number): (MemoryFact & { node_label: string; node_kind: NodeKind })[] {
     const sql = `
       SELECT f.*, n.label AS node_label, n.kind AS node_kind
       FROM memory_facts f
@@ -275,7 +317,11 @@ export class MemoryManager {
       WHERE n.label = ?
       ORDER BY f.updated_at DESC
     `;
-    return this.db.prepare(sql).all(entityLabel) as (MemoryFact & { node_label: string; node_kind: NodeKind })[];
+    const facts = this.db.prepare(sql).all(entityLabel) as (MemoryFact & { node_label: string; node_kind: NodeKind })[];
+
+    if (halfLifeDays === undefined || halfLifeDays <= 0) return facts;
+
+    return this.applyDecay(facts, Date.now(), halfLifeDays);
   }
 
   /**
