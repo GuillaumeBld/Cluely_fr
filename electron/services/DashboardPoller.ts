@@ -10,7 +10,7 @@ export class DashboardPoller {
 
   constructor(
     private healthChunkWriter: HealthChunkWriter,
-    intervalMs = 5 * 60_000,
+    intervalMs = 5 * 60_000, // 5 min; health endpoints are low-frequency, not real-time
   ) {
     this._intervalMs = intervalMs;
   }
@@ -18,8 +18,8 @@ export class DashboardPoller {
   start(intervalMs?: number): void {
     if (intervalMs !== undefined) this._intervalMs = intervalMs;
     this.stop();
-    this._runCycle().catch(() => {});
-    this.timer = setInterval(() => this._runCycle(), this._intervalMs);
+    this.triggerCycle().catch(err => console.error('[DashboardPoller] Initial cycle failed:', err));
+    this.timer = setInterval(() => this.triggerCycle().catch(err => console.error('[DashboardPoller] Cycle failed:', err)), this._intervalMs);
   }
 
   stop(): void {
@@ -41,7 +41,13 @@ export class DashboardPoller {
     return this._intervalMs;
   }
 
-  async _runCycle(): Promise<void> {
+  /**
+   * Runs one fetch cycle across all configured endpoints.
+   * Prefixed with the intent of a semi-public API: called on demand from
+   * dashboardHandlers and in tests, but not intended as a general-purpose
+   * public method.
+   */
+  async triggerCycle(): Promise<void> {
     const endpoints = getAllEndpoints();
     const projectIds = Object.keys(endpoints);
     const now = new Date().toISOString();

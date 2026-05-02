@@ -123,4 +123,49 @@ describe('DispatchDashboard', () => {
       expect(result!.queryByText('Dispatch')).toBeNull();
     });
   });
+
+  it('renders nothing when electronAPI is not available', async () => {
+    delete (window as any).electronAPI;
+    let result: ReturnType<typeof render>;
+    await act(async () => {
+      result = render(<DispatchDashboard />);
+    });
+    // Dashboard should not render any content without API
+    expect(result!.queryByText('Dispatch')).toBeNull();
+  });
+
+  it('calls IPC subscription cleanup on unmount', async () => {
+    const mockCleanup = vi.fn();
+    mockOnSnapshotsUpdated.mockReturnValue(mockCleanup);
+
+    let result: ReturnType<typeof render>;
+    await act(async () => {
+      result = render(<DispatchDashboard />);
+    });
+
+    act(() => {
+      result!.unmount();
+    });
+
+    expect(mockCleanup).toHaveBeenCalled();
+  });
+
+  it('does not call refresh again while already refreshing', async () => {
+    let resolveRefresh!: () => void;
+    mockRefresh.mockReturnValue(new Promise<{ success: boolean }>(r => { resolveRefresh = () => r({ success: true }); }));
+
+    let result: ReturnType<typeof render>;
+    await act(async () => {
+      result = render(<DispatchDashboard />);
+    });
+
+    const refreshBtn = result!.getByLabelText('Refresh');
+    // Click twice rapidly
+    fireEvent.click(refreshBtn);
+    fireEvent.click(refreshBtn);
+
+    // Should only have been called once due to `if (refreshing) return`
+    expect(mockRefresh).toHaveBeenCalledTimes(1);
+    resolveRefresh();
+  });
 });

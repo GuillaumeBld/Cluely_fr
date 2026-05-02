@@ -78,8 +78,8 @@ export function DispatchDashboard() {
     try {
       const api = (window as any).electronAPI;
       await api?.dashboard?.refresh();
-    } catch {
-      // ignore
+    } catch (err) {
+      console.warn('[DispatchDashboard] Refresh failed:', err);
     } finally {
       setRefreshing(false);
     }

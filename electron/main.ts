@@ -1909,15 +1909,31 @@ async function initializeApp() {
       console.error('[Main] Failed to start ZoomWatcher:', e);
     }
 
+    // Initialize shared HealthChunkWriter — single instance shared by PreMeetingOrchestrator
+    // and DashboardPoller to avoid split-singleton state (both consumers, one SQLite writer).
+    let sharedHealthWriter: import('./services/HealthChunkWriter').HealthChunkWriter | null = null;
+    try {
+      const { HealthChunkWriter: HCW } = require('./services/HealthChunkWriter');
+      const db = appState.getMemoryManager().getDb();
+      if (db) {
+        sharedHealthWriter = new HCW(db);
+        // Bracket-assign to private field: AppState does not yet have a setHealthChunkWriter setter.
+        // Safe at runtime; TODO: add setter to AppState to eliminate bracket notation.
+        appState['_healthChunkWriter'] = sharedHealthWriter;
+      } else {
+        console.warn('[Main] HealthChunkWriter skipped: MemoryManager db is null');
+      }
+    } catch (e) {
+      console.error('[Main] Failed to init HealthChunkWriter:', e);
+    }
+
     // Initialize PreMeetingOrchestrator — zero-touch pre-meeting context loader
     try {
       const { PreMeetingOrchestrator } = require('./services/PreMeetingOrchestrator');
-      const { HealthChunkWriter } = require('./services/HealthChunkWriter');
       const orchestrator = PreMeetingOrchestrator.getInstance();
 
-      // Wire health chunk writer to enable project health injection (issue #19)
-      const healthWriter = new HealthChunkWriter(appState.getMemoryManager().getDb());
-      orchestrator.setHealthChunkWriter(healthWriter);
+      // Wire shared health chunk writer to enable project health injection (issue #19)
+      if (sharedHealthWriter) orchestrator.setHealthChunkWriter(sharedHealthWriter);
 
       orchestrator.on('pre-meeting:brief-ready', (brief: any) => {
         BrowserWindow.getAllWindows().forEach(win => {
@@ -1934,15 +1950,15 @@ async function initializeApp() {
 
     // Initialize DashboardPoller
     try {
-      const { HealthChunkWriter: HCW } = require('./services/HealthChunkWriter');
-      const db = appState.getMemoryManager().getDb();
-      if (db) {
-        const healthWriter = new HCW(db);
-        appState['_healthChunkWriter'] = healthWriter;
-        const poller = new DashboardPoller(healthWriter);
+      if (sharedHealthWriter) {
+        const poller = new DashboardPoller(sharedHealthWriter);
+        // Bracket-assign to private field: AppState does not yet have a setDashboardPoller setter.
+        // Safe at runtime; TODO: add setter to AppState to eliminate bracket notation.
         appState['dashboardPoller'] = poller;
         poller.start();
         console.log('[Main] DashboardPoller started');
+      } else {
+        console.warn('[Main] DashboardPoller skipped: HealthChunkWriter not initialized');
       }
     } catch (e) {
       console.error('[Main] Failed to start DashboardPoller:', e);

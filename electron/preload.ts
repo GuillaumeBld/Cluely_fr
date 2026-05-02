@@ -206,7 +206,7 @@ interface ElectronAPI {
   // Dispatch Dashboard
   dashboard: {
     getSnapshots: () => Promise<Array<{ projectId: string; content: string; fetchedAt: string; stale: boolean }>>;
-    refresh: () => Promise<{ success: boolean }>;
+    refresh: () => Promise<{ success: boolean; error?: string }>;
     onSnapshotsUpdated: (cb: (snapshots: Array<{ projectId: string; content: string; fetchedAt: string; stale: boolean }>) => void) => () => void;
   };
 

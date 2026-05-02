@@ -2,6 +2,9 @@ import { getAllEndpoints } from '../config/HealthEndpointConfig';
 import { HealthChunkWriter } from '../services/HealthChunkWriter';
 import { DashboardPoller } from '../services/DashboardPoller';
 
+// Structural type matching ipcHandlers.ts's `safeHandle` closure.
+// Defined locally to avoid a circular import between ipc/ and the root electron/ layer.
+// If the safeHandle signature changes upstream, update both.
 type SafeHandleRegistrar = {
   safeHandle(channel: string, listener: (event: any, ...args: any[]) => Promise<any> | any): void;
 };
@@ -31,16 +34,19 @@ export function registerDashboardHandlers(
       }
 
       return snapshots;
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('[dashboardHandlers] get-snapshots failed:', err);
-      return { error: err.message };
+      return [];
     }
   });
 
   registrar.safeHandle('dashboard:refresh', async () => {
     if (!poller) return { success: false, error: 'Poller not initialized' };
+    // Fire-and-forget: `success: true` means the cycle was enqueued, not completed.
+    // Async errors from triggerCycle() are caught by the inner .catch(). The outer
+    // try/catch guards against any unexpected synchronous throw before the promise resolves.
     try {
-      poller._runCycle().catch((err: any) => {
+      poller.triggerCycle().catch((err: any) => {
         console.error('[dashboardHandlers] refresh cycle failed:', err);
       });
       return { success: true };
