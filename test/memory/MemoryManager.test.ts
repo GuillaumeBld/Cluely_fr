@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import Database from 'better-sqlite3';
 import { MemoryManager } from '../../electron/memory/MemoryManager';
+import { HALF_LIFE_DAYS } from '../../electron/memory/schema';
 
 describe('MemoryManager', () => {
   let db: Database.Database;
@@ -191,6 +192,159 @@ describe('MemoryManager', () => {
 
       const facts = mm.getFacts(node.id);
       expect(facts[0].confidence).toBeCloseTo(0.8, 5);
+    });
+  });
+
+  // ─── queryEntityFacts with halfLifeDays ─────────────────────────
+
+  describe('queryEntityFacts with halfLifeDays', () => {
+    it('returns decayed confidence when halfLifeDays is provided', () => {
+      const node = mm.upsertNode('person', 'Grace');
+      mm.upsertFact(node.id, 'title', 'Lead', 1.0);
+
+      // Backdate to 30 days ago (1 half-life)
+      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+      db.prepare("UPDATE memory_facts SET updated_at = ? WHERE node_id = ?")
+        .run(thirtyDaysAgo.toISOString().replace('T', ' ').replace('Z', ''), node.id);
+
+      // 30-day half-life: 30 days → 1 half-life → confidence × 0.5
+      const facts = mm.queryEntityFacts('Grace', 30);
+      expect(facts[0].confidence).toBeCloseTo(0.5, 1);
+    });
+
+    it('does not mutate stored confidence when using retrieval-time decay', () => {
+      const node = mm.upsertNode('person', 'Heidi');
+      mm.upsertFact(node.id, 'dept', 'Engineering', 0.9);
+
+      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+      db.prepare("UPDATE memory_facts SET updated_at = ? WHERE node_id = ?")
+        .run(thirtyDaysAgo.toISOString().replace('T', ' ').replace('Z', ''), node.id);
+
+      mm.queryEntityFacts('Heidi', 30); // retrieval with decay
+
+      // Stored value must remain unchanged
+      const stored = mm.queryEntityFacts('Heidi'); // no halfLifeDays
+      expect(stored[0].confidence).toBeCloseTo(0.9, 5);
+    });
+
+    it('returns original confidence when halfLifeDays is omitted', () => {
+      const node = mm.upsertNode('person', 'Ivan');
+      mm.upsertFact(node.id, 'role', 'analyst', 0.75);
+
+      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+      db.prepare("UPDATE memory_facts SET updated_at = ? WHERE node_id = ?")
+        .run(thirtyDaysAgo.toISOString().replace('T', ' ').replace('Z', ''), node.id);
+
+      const facts = mm.queryEntityFacts('Ivan');
+      expect(facts[0].confidence).toBeCloseTo(0.75, 5);
+    });
+  });
+
+  // ─── getFacts — halfLifeDays boundary guards ─────────────────────
+
+  describe('getFacts — halfLifeDays boundary guards', () => {
+    it('returns original facts when halfLifeDays is 0', () => {
+      const node = mm.upsertNode('person', 'Judy');
+      mm.upsertFact(node.id, 'role', 'tester', 0.8);
+
+      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+      db.prepare("UPDATE memory_facts SET updated_at = ? WHERE node_id = ?")
+        .run(thirtyDaysAgo.toISOString().replace('T', ' ').replace('Z', ''), node.id);
+
+      // halfLifeDays = 0 → guard triggers → original confidence returned
+      const facts = mm.getFacts(node.id, 0);
+      expect(facts[0].confidence).toBeCloseTo(0.8, 5);
+    });
+
+    it('returns original facts when halfLifeDays is negative', () => {
+      const node = mm.upsertNode('person', 'Karl');
+      mm.upsertFact(node.id, 'role', 'devops', 0.7);
+
+      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+      db.prepare("UPDATE memory_facts SET updated_at = ? WHERE node_id = ?")
+        .run(thirtyDaysAgo.toISOString().replace('T', ' ').replace('Z', ''), node.id);
+
+      const facts = mm.getFacts(node.id, -10);
+      expect(facts[0].confidence).toBeCloseTo(0.7, 5);
+    });
+  });
+
+  // ─── getFacts — invalid updated_at handling ──────────────────────
+
+  describe('getFacts — invalid updated_at handling', () => {
+    it('returns fact unchanged when updated_at is not a valid date string', () => {
+      const node = mm.upsertNode('person', 'Lena');
+      mm.upsertFact(node.id, 'role', 'pm', 0.9);
+
+      // Inject a malformed timestamp directly into the DB
+      db.prepare("UPDATE memory_facts SET updated_at = 'not-a-date' WHERE node_id = ?")
+        .run(node.id);
+
+      // Should not throw; invalid row is returned as-is
+      const facts = mm.getFacts(node.id, 30);
+      expect(facts).toHaveLength(1);
+      expect(facts[0].confidence).toBe(0.9); // original, not NaN
+    });
+  });
+
+  // ─── getFacts — future timestamp guard ───────────────────────────
+
+  describe('getFacts — future timestamp guard', () => {
+    it('returns fact unchanged when updated_at is in the future', () => {
+      const node = mm.upsertNode('person', 'Marco');
+      mm.upsertFact(node.id, 'role', 'cto', 1.0);
+
+      // Set updated_at one year in the future
+      const future = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000);
+      db.prepare("UPDATE memory_facts SET updated_at = ? WHERE node_id = ?")
+        .run(future.toISOString().replace('T', ' ').replace('Z', ''), node.id);
+
+      // daysSinceUpdate < 0 → guard triggers → confidence untouched
+      const facts = mm.getFacts(node.id, 30);
+      expect(facts[0].confidence).toBeCloseTo(1.0, 5);
+    });
+  });
+
+  // ─── decayFacts — halfLifeDays <= 0 guard ────────────────────────
+
+  describe('decayFacts — halfLifeDays <= 0 guard', () => {
+    it('returns 0 and skips decay when halfLifeDays is 0', () => {
+      const node = mm.upsertNode('person', 'Nora');
+      mm.upsertFact(node.id, 'role', 'designer', 0.8);
+
+      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+      db.prepare("UPDATE memory_facts SET updated_at = ? WHERE node_id = ?")
+        .run(thirtyDaysAgo.toISOString().replace('T', ' ').replace('Z', ''), node.id);
+
+      const updated = mm.decayFacts(0);
+      expect(updated).toBe(0); // no rows written
+
+      // Stored confidence must be unchanged
+      const facts = mm.getFacts(node.id);
+      expect(facts[0].confidence).toBeCloseTo(0.8, 5);
+    });
+
+    it('returns 0 and skips decay when halfLifeDays is negative', () => {
+      const node = mm.upsertNode('person', 'Oscar');
+      mm.upsertFact(node.id, 'role', 'engineer', 0.9);
+
+      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+      db.prepare("UPDATE memory_facts SET updated_at = ? WHERE node_id = ?")
+        .run(thirtyDaysAgo.toISOString().replace('T', ' ').replace('Z', ''), node.id);
+
+      const updated = mm.decayFacts(-5);
+      expect(updated).toBe(0);
+
+      const facts = mm.getFacts(node.id);
+      expect(facts[0].confidence).toBeCloseTo(0.9, 5);
+    });
+  });
+
+  // ─── HALF_LIFE_DAYS constant ──────────────────────────────────────
+
+  describe('HALF_LIFE_DAYS constant', () => {
+    it('is exported with the canonical value of 30 days', () => {
+      expect(HALF_LIFE_DAYS).toBe(30);
     });
   });
 
