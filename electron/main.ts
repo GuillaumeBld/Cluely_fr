@@ -1186,6 +1186,10 @@ export class AppState {
     return this.memoryManager;
   }
 
+  public getLunrIndexer(): LunrIndexer {
+    return this.lunrIndexer
+  }
+
   public getBackgroundAgent(): BackgroundAgent | null {
     return this.backgroundAgent;
   }

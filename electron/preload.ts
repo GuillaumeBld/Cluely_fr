@@ -7,6 +7,7 @@ interface ElectronAPI {
     height: number
   }) => Promise<void>
   getRecognitionLanguages: () => Promise<Record<string, any>>
+  searchTranscript: (query: string) => Promise<Array<{ turn_id: string; speaker: string; text: string; timestamp: number; meeting_id: string }>>
   getScreenshots: () => Promise<Array<{ path: string; preview: string }>>
   deleteScreenshot: (
     path: string
@@ -230,6 +231,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   updateContentDimensions: (dimensions: { width: number; height: number }) =>
     ipcRenderer.invoke("update-content-dimensions", dimensions),
   getRecognitionLanguages: () => ipcRenderer.invoke("get-recognition-languages"),
+  searchTranscript: (query: string) => ipcRenderer.invoke("transcript-search", query),
   takeScreenshot: () => ipcRenderer.invoke("take-screenshot"),
   takeSelectiveScreenshot: () => ipcRenderer.invoke("take-selective-screenshot"),
   getScreenshots: () => ipcRenderer.invoke("get-screenshots"),

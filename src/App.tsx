@@ -12,6 +12,7 @@ import UpdateBanner from "./components/UpdateBanner"
 import { SupportToaster } from "./components/SupportToaster"
 import { analytics } from "./lib/analytics/analytics.service"
 import { LanguageProvider } from "./i18n"
+import { TranscriptSearchOverlay } from "./components/TranscriptSearchOverlay"
 
 const queryClient = new QueryClient()
 
@@ -152,6 +153,7 @@ const App: React.FC = () => {
               <NativelyInterface
                 onEndMeeting={handleEndMeeting}
               />
+              <TranscriptSearchOverlay />
               <ToastViewport />
             </ToastProvider>
           </QueryClientProvider>

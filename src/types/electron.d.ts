@@ -71,6 +71,7 @@ export interface ElectronAPI {
   getOutputDevices: () => Promise<Array<{ id: string; name: string }>>
   setRecognitionLanguage: (key: string) => Promise<{ success: boolean; error?: string }>
   getRecognitionLanguages: () => Promise<Record<string, any>>
+  searchTranscript: (query: string) => Promise<Array<{ turn_id: string; speaker: string; text: string; timestamp: number; meeting_id: string }>>
 
   getNativeAudioStatus: () => Promise<{ connected: boolean }>
 
