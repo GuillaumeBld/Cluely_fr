@@ -10,10 +10,19 @@ export interface DecisionCapturedEvent {
   turn_id: string;
 }
 
+export interface TokenAnomalyEvent {
+  meeting_id: string;
+  token_count: number;
+  rolling_avg: number;
+  threshold_multiple: number;
+  timestamp: number;
+}
+
 type BusEvents = {
   "decision:captured": DecisionCapturedEvent;
   "meeting:started": { meeting_id: string };
   "meeting:ended": { meeting_id: string };
+  "token:anomaly": TokenAnomalyEvent;
 };
 
 class IpcEventBusClass extends EventEmitter {
