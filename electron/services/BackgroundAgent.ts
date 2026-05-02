@@ -89,16 +89,18 @@ export class BackgroundAgent {
     }
 
     const drafts: WorkflowDraft[] = [];
+    let events: Awaited<ReturnType<typeof this.calendarSource.getUpcomingEvents>> = [];
+    const now = Date.now();
 
     // 1. Calendar scan — look for events starting within 5 minutes
     try {
       this.auditLog.append({ dataType: 'calendar', purpose: 'pre-meeting-scan' });
-      const events = await this.calendarSource.getUpcomingEvents(true);
-      const now = Date.now();
+      events = await this.calendarSource.getUpcomingEvents(true);
 
       for (const event of events) {
         const startMs = new Date(event.startTime).getTime();
         const diff = startMs - now;
+
         if (diff >= 0 && diff <= PRE_BRIEF_WINDOW_MS) {
           // Existing broadcast (keep for backward compat)
           this.broadcast('agent:pre-brief-ready', {
