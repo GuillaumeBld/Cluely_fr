@@ -104,6 +104,7 @@ import { DashboardPoller } from './services/DashboardPoller'
 import { DailySummaryScheduler } from './services/DailySummaryScheduler'
 import { DailySummaryLLM } from './llm/DailySummaryLLM'
 import { TokenUsageTracker } from "./services/TokenUsageTracker"
+import { ProactiveAdviceEngine } from "./services/ProactiveAdviceEngine"
 import { getAgentConfig, setAgentIntervalMs } from "./config/agentConfig"
 
 export class AppState {
@@ -133,6 +134,7 @@ export class AppState {
   private backgroundAgent: BackgroundAgent | null = null
   private dashboardPoller: DashboardPoller | null = null
   private dailySummaryScheduler: DailySummaryScheduler | null = null
+  private proactiveAdviceEngine: ProactiveAdviceEngine | null = null
   private _healthChunkWriter: import('./services/HealthChunkWriter').HealthChunkWriter | null = null
   private tokenUsageTracker: TokenUsageTracker = new TokenUsageTracker()
   private activeMeetingId: string = ''
@@ -199,6 +201,15 @@ export class AppState {
 
 
 
+
+    // Initialize ProactiveAdviceEngine (must be after ProcessingHelper for LLMHelper access)
+    this.proactiveAdviceEngine = new ProactiveAdviceEngine(
+      this.lunrIndexer,
+      this.processingHelper.getLLMHelper(),
+    );
+    IpcEventBus.onTyped('proactive:nudge', (payload) => {
+      this.broadcast('proactive:nudge', payload);
+    });
 
     // Initialize IntelligenceManager with LLMHelper
     this.intelligenceManager = new IntelligenceManager(this.processingHelper.getLLMHelper())

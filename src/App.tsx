@@ -13,6 +13,7 @@ import { SupportToaster } from "./components/SupportToaster"
 import { analytics } from "./lib/analytics/analytics.service"
 import { LanguageProvider } from "./i18n"
 import { TranscriptSearchOverlay } from "./components/TranscriptSearchOverlay"
+import { ProactiveNudgeToast } from "./components/ProactiveNudgeToast"
 
 const queryClient = new QueryClient()
 
@@ -154,6 +155,7 @@ const App: React.FC = () => {
                 onEndMeeting={handleEndMeeting}
               />
               <TranscriptSearchOverlay />
+              <ProactiveNudgeToast />
               <ToastViewport />
             </ToastProvider>
           </QueryClientProvider>
