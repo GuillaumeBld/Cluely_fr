@@ -136,6 +136,7 @@ export class AppState {
   private memoryGraphWriter: MemoryGraphWriter = new MemoryGraphWriter()
   private attendeeTracker: AttendeeTracker = new AttendeeTracker(this.lunrIndexer)
   private agentStateManager: AgentStateManager = new AgentStateManager()
+  private patternLearner: import('./services/PatternLearner').PatternLearner | null = null
   private backgroundAgent: BackgroundAgent | null = null
   private dashboardPoller: DashboardPoller | null = null
   private dailySummaryScheduler: DailySummaryScheduler | null = null
@@ -229,6 +230,15 @@ export class AppState {
 
     // Initialize MemoryManager (separate memory.db for graph + facts)
     this.memoryManager = MemoryManager.getInstance()
+
+    // Initialize PatternLearner (macro-learning service)
+    try {
+      const { PatternLearner } = require('./services/PatternLearner');
+      this.patternLearner = new PatternLearner(this.memoryManager.getDb());
+      console.log('[AppState] PatternLearner initialized');
+    } catch (err) {
+      console.error('[AppState] Failed to initialize PatternLearner:', err);
+    }
 
     // Register IPC handlers for memory graph queries
     registerMemoryHandlers()
@@ -1260,6 +1270,10 @@ export class AppState {
     return this.attendeeTracker
   }
 
+  public getPatternLearner(): import('./services/PatternLearner').PatternLearner | null {
+    return this.patternLearner;
+  }
+
   public getBackgroundAgent(): BackgroundAgent | null {
     return this.backgroundAgent;
   }
@@ -2136,6 +2150,11 @@ async function initializeApp() {
       appState.getWebSocketEmitter()?.stop();
     } catch (e) {
       console.error('[Main] Failed to stop WebSocketEmitter:', e);
+    }
+    try {
+      appState.getPatternLearner()?.dispose();
+    } catch (e) {
+      console.error('[Main] Failed to dispose PatternLearner:', e);
     }
     try {
       MulticaManager.getInstance().stop();

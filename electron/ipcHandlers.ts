@@ -1963,6 +1963,17 @@ export function initializeIpcHandlers(appState: AppState): void {
     CredentialsManager.getInstance(),
   );
 
+  // Macro Learning handlers
+  const { registerMacroHandlers } = require('../src/ipc/macroHandlers');
+  registerMacroHandlers({ safeHandle }, appState.getMemoryManager().getDb());
+
+  // PatternLearner observe — called after a workflow is dispatched/approved.
+  // If PatternLearner failed to initialize, silently no-op (init error already logged in AppState).
+  safeHandle('macro:observe', async (_event: any, opts: unknown) => {
+    appState.getPatternLearner()?.observe(opts as import('../src/services/MacroLearner').MeetingRow);
+    return { success: true };
+  });
+
   // WebSocket port configuration
   safeHandle('ws:set-port', async (_, port: number) => {
     try {
