@@ -272,6 +272,13 @@ export const DDL_DECISIONS_MEETING_INDEX = `
 CREATE INDEX IF NOT EXISTS idx_decisions_meeting ON decisions(meeting_id);
 `;
 
+export const DDL_FACTS_VEC = `
+CREATE VIRTUAL TABLE IF NOT EXISTS memory_facts_vec USING vec0(
+  fact_id INTEGER PRIMARY KEY,
+  embedding float[768] distance_metric=cosine
+);
+`;
+
 export interface Goal {
   id: string;
   title: string;
@@ -313,4 +320,9 @@ export const ALL_DDL = [
   DDL_DECISIONS,
   DDL_DECISIONS_GOAL_INDEX,
   DDL_DECISIONS_MEETING_INDEX,
+] as const;
+
+/** DDL that requires sqlite-vec extension to be loaded. Run separately after ALL_DDL. */
+export const VEC_DDL = [
+  DDL_FACTS_VEC,
 ] as const;

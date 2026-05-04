@@ -236,6 +236,10 @@ interface ElectronAPI {
   goalList: () => Promise<Array<{ id: string; title: string; description: string; parent_id: string | null; created_at: number; completed_at: number | null }>>;
   goalComplete: (id: string) => Promise<{ success: boolean; error?: string }>;
   goalPreCallHint: (goalId: string) => Promise<Array<{ text: string; meeting_id: string; goal_id: string; meeting_date: string }>>;
+  memoryFindSimilar: (text: string, k?: number, kindFilter?: string) =>
+    Promise<{ success: true; results: Array<{ id: number; node_id: string; key: string; value: string; confidence: number; source: string; node_label: string; node_kind: string; distance: number }> } | { success: false; error: string } | { error: string }>;
+  memoryEmbedFact: (factId: number, text: string) =>
+    Promise<{ success: boolean; error?: string }>;
 }
 
 export const PROCESSING_EVENTS = {
@@ -922,4 +926,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
   goalList: () => ipcRenderer.invoke('goal:list'),
   goalComplete: (id: string) => ipcRenderer.invoke('goal:complete', id),
   goalPreCallHint: (goalId: string) => ipcRenderer.invoke('goal:pre-call-hint', goalId),
+  memoryFindSimilar: (text: string, k?: number, kindFilter?: string) =>
+    ipcRenderer.invoke('memory:find-similar', text, k, kindFilter),
+  memoryEmbedFact: (factId: number, text: string) =>
+    ipcRenderer.invoke('memory:embed-fact', factId, text),
 } as ElectronAPI)
