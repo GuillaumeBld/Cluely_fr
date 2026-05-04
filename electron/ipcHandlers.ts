@@ -13,6 +13,7 @@ import { ENGLISH_VARIANTS } from "./config/languages"
 import { registerDashboardHandlers } from './ipc/dashboardHandlers';
 import { registerDailySummaryHandlers } from './ipc/dailySummaryHandlers';
 import { registerCostHandlers } from './ipc/costHandlers';
+import { registerContextHandlers } from './ipc/contextHandlers';
 import { CredentialsManager } from './services/CredentialsManager';
 import { setWsPort } from './config/wsConfig';
 
@@ -21,6 +22,9 @@ export function initializeIpcHandlers(appState: AppState): void {
     ipcMain.removeHandler(channel);
     ipcMain.handle(channel, listener);
   };
+
+  // Project Context Switcher handlers
+  registerContextHandlers();
 
   // --- NEW Test Helper ---
   safeHandle("test-release-fetch", async () => {

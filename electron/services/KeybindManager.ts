@@ -35,6 +35,9 @@ export const DEFAULT_KEYBINDS: KeybindConfig[] = [
 
     // Transcript
     { id: 'transcript:search', label: 'Search Transcript', accelerator: 'CommandOrControl+F', isGlobal: false, defaultAccelerator: 'CommandOrControl+F' },
+
+    // Project Context
+    { id: 'general:context-switcher', label: 'Open Project Switcher', accelerator: 'CommandOrControl+Shift+P', isGlobal: true, defaultAccelerator: 'CommandOrControl+Shift+P' },
 ];
 
 export class KeybindManager {
@@ -131,8 +134,19 @@ export class KeybindManager {
     public registerGlobalShortcuts() {
         globalShortcut.unregisterAll();
 
-        // Register any other global shortcuts if they exist in the future
-        // Currently, we have removed the only global shortcut (toggle-app)
+        // Register global keybinds
+        const contextSwitcherKb = this.keybinds.get('general:context-switcher');
+        if (contextSwitcherKb) {
+            try {
+                globalShortcut.register(contextSwitcherKb.accelerator, () => {
+                    BrowserWindow.getAllWindows()
+                        .find(w => !w.isDestroyed())
+                        ?.webContents.send('project:open-palette');
+                });
+            } catch (err) {
+                console.error('[KeybindManager] Failed to register context-switcher shortcut:', err);
+            }
+        }
 
         this.updateMenu();
     }

@@ -254,6 +254,14 @@ interface ElectronAPI {
   macroOverride: (meetingId: string) => Promise<{ meetingId: string; overridden: boolean }>;
   macroObserve: (row: { id: string; project_id: string; meeting_type: string; template_id: string; dispatch_target: string }) =>
     Promise<{ success: boolean }>;
+
+  // Project Context Switcher API
+  listProjects: (labelLike?: string) => Promise<Array<{ id: string; kind: string; label: string; metadata: string; created_at: string; updated_at: string }>>
+  switchProject: (projectId: string, label: string) => Promise<{ success: boolean; error?: string }>
+  getActiveProject: () => Promise<{ projectId: string | null; label: string | null }>
+  clearActiveProject: () => Promise<{ success: boolean }>
+  onProjectContextChanged: (callback: (data: { projectId: string | null; label: string | null }) => void) => () => void
+  onOpenProjectPalette: (callback: () => void) => () => void
 }
 
 export const PROCESSING_EVENTS = {
@@ -962,4 +970,20 @@ contextBridge.exposeInMainWorld("electronAPI", {
   macroOverride: (meetingId: string) => ipcRenderer.invoke('macro:override', { meetingId }),
   macroObserve: (row: { id: string; project_id: string; meeting_type: string; template_id: string; dispatch_target: string }) =>
     ipcRenderer.invoke('macro:observe', row),
+
+  // Project Context Switcher API
+  listProjects: (labelLike?: string) => ipcRenderer.invoke('project:list', labelLike),
+  switchProject: (projectId: string, label: string) => ipcRenderer.invoke('project:switch', projectId, label),
+  getActiveProject: () => ipcRenderer.invoke('project:get-active'),
+  clearActiveProject: () => ipcRenderer.invoke('project:clear'),
+  onProjectContextChanged: (callback: (data: { projectId: string | null; label: string | null }) => void) => {
+    const handler = (_event: any, data: any) => callback(data);
+    ipcRenderer.on('project:context-changed', handler);
+    return () => ipcRenderer.removeListener('project:context-changed', handler);
+  },
+  onOpenProjectPalette: (callback: () => void) => {
+    const handler = () => callback();
+    ipcRenderer.on('project:open-palette', handler);
+    return () => ipcRenderer.removeListener('project:open-palette', handler);
+  },
 } as ElectronAPI)
