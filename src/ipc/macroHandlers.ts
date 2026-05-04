@@ -27,7 +27,6 @@ export function registerMacroHandlers(
   registrar.safeHandle(
     'macro:dismiss',
     async () => {
-      // No-op for now — no "don't ask again" persistence in this tranche
       return { success: true };
     },
   );
@@ -36,9 +35,6 @@ export function registerMacroHandlers(
     'macro:override',
     async (_event: unknown, opts: unknown) => {
       const { meetingId } = opts as { meetingId: string };
-      // Override is handled in-memory by PostMeetingProcessor via an override set.
-      // This handler serves as the IPC entry point — the actual flag is managed
-      // by the caller who maintains the override state.
       return { meetingId, overridden: true };
     },
   );

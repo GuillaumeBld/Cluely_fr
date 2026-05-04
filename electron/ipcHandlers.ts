@@ -1970,13 +1970,7 @@ export function initializeIpcHandlers(appState: AppState): void {
   // PatternLearner observe — called after a workflow is dispatched/approved.
   // If PatternLearner failed to initialize, silently no-op (init error already logged in AppState).
   safeHandle('macro:observe', async (_event: any, opts: unknown) => {
-    const { id, project_id, meeting_type, template_id, dispatch_target } = opts as {
-      id: string; project_id: string; meeting_type: string; template_id: string; dispatch_target: string;
-    };
-    const patternLearner = appState.getPatternLearner();
-    if (patternLearner) {
-      patternLearner.observe({ id, project_id, meeting_type, template_id, dispatch_target });
-    }
+    appState.getPatternLearner()?.observe(opts as import('../src/services/MacroLearner').MeetingRow);
     return { success: true };
   });
 

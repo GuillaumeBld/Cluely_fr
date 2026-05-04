@@ -65,6 +65,26 @@ export function ApprovalTray() {
     }
   };
 
+  const handleMacroConfirm = async () => {
+    try {
+      await window.electronAPI?.macroConfirm(macroProposal!);
+    } catch (err) {
+      console.error('[ApprovalTray] macro:confirm failed:', err);
+    } finally {
+      setMacroProposal(null);
+    }
+  };
+
+  const handleMacroDismiss = async () => {
+    try {
+      await window.electronAPI?.macroDismiss();
+    } catch (err) {
+      console.error('[ApprovalTray] macro:dismiss failed:', err);
+    } finally {
+      setMacroProposal(null);
+    }
+  };
+
   if (drafts.length === 0 && !macroProposal) return null;
 
   return (
@@ -72,24 +92,8 @@ export function ApprovalTray() {
       {macroProposal && (
         <MacroProposalCard
           proposal={macroProposal}
-          onConfirm={async () => {
-            try {
-              await window.electronAPI?.macroConfirm(macroProposal);
-            } catch (err) {
-              console.error('[ApprovalTray] macro:confirm failed:', err);
-            } finally {
-              setMacroProposal(null);
-            }
-          }}
-          onDismiss={async () => {
-            try {
-              await window.electronAPI?.macroDismiss();
-            } catch (err) {
-              console.error('[ApprovalTray] macro:dismiss failed:', err);
-            } finally {
-              setMacroProposal(null);
-            }
-          }}
+          onConfirm={handleMacroConfirm}
+          onDismiss={handleMacroDismiss}
         />
       )}
       {drafts.length > 0 && <h3>Action Items for Approval</h3>}

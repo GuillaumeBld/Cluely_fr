@@ -5,11 +5,10 @@ import { MacroLearner, MeetingRow } from '../../src/services/MacroLearner';
 
 export class PatternLearner {
   private macroLearner: MacroLearner;
-  private _handler = (_payload: { meeting_id: string }) => {
-    // meeting:ended carries only meeting_id; observe() must be called
-    // explicitly by the dispatch path with full MeetingRow.
-    // This handler is a no-op hook for future extension.
-  };
+  // Retained as a stable reference for IpcEventBus.offTyped in dispose().
+  // observe() must be called explicitly by the dispatch path with full MeetingRow —
+  // the meeting:ended event carries only meeting_id, not the full row.
+  private _handler = (_payload: { meeting_id: string }) => {};
 
   constructor(private db: Database.Database) {
     const store = {
