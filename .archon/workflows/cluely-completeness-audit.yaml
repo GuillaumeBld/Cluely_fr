@@ -1,0 +1,143 @@
+name: cluely-completeness-audit
+description: |
+  Full independent audit of the Cluely_fr Electron app against the "100% finished product"
+  claim. Runs four parallel audit lanes then synthesises a verdict with a punch list of any
+  remaining gaps.
+
+nodes:
+  # ── Lane 1: Build + type-check ──────────────────────────────────────────────
+  - id: build-check
+    bash: |
+      set -e
+      cd /Volumes/SanDisk/dev/app-support/Cluely_fr
+      echo "=== TypeScript ===" && npx tsc --noEmit 2>&1 | head -30 || true
+      echo "=== Vite build ===" && npm run build 2>&1 | tail -15
+
+  # ── Lane 2: Test suite ───────────────────────────────────────────────────────
+  - id: test-suite
+    bash: |
+      cd /Volumes/SanDisk/dev/app-support/Cluely_fr
+      node_modules/.bin/vitest run 2>&1 | tail -10
+
+  # ── Lane 3: IPC surface audit (preload ↔ handlers ↔ types) ──────────────────
+  - id: ipc-audit
+    prompt: |
+      You are auditing the IPC surface of an Electron app for completeness.
+
+      Read the following files in full:
+      - /Volumes/SanDisk/dev/app-support/Cluely_fr/electron/preload.ts
+      - /Volumes/SanDisk/dev/app-support/Cluely_fr/src/types/electron.d.ts
+      - /Volumes/SanDisk/dev/app-support/Cluely_fr/electron/ipcHandlers.ts
+      - /Volumes/SanDisk/dev/app-support/Cluely_fr/electron/ipc/attendeeHandlers.ts
+      - /Volumes/SanDisk/dev/app-support/Cluely_fr/electron/ipc/contextHandlers.ts
+      - /Volumes/SanDisk/dev/app-support/Cluely_fr/electron/ipc/costHandlers.ts
+      - /Volumes/SanDisk/dev/app-support/Cluely_fr/electron/ipc/dailySummaryHandlers.ts
+      - /Volumes/SanDisk/dev/app-support/Cluely_fr/electron/ipc/dashboardHandlers.ts
+      - /Volumes/SanDisk/dev/app-support/Cluely_fr/electron/ipc/memoryHandlers.ts
+
+      For every channel/method exposed in preload.ts, verify:
+      1. A matching ipcMain.handle/on exists in one of the handler files
+      2. The type in electron.d.ts matches the preload signature
+
+      List only GAPS — channels exposed in preload with no handler, or typed differently.
+      If no gaps: output "IPC SURFACE: CLEAN".
+
+  # ── Lane 4: Feature completeness — every designed subsystem has a runtime caller ──
+  - id: feature-completeness
+    prompt: |
+      You are doing a deep feature-completeness audit on a production Electron AI meeting assistant.
+
+      The app's designed features (all should be implemented AND called at runtime):
+      1. Audio capture → STT → transcript pipeline
+      2. IntelligenceManager: recap, action items, follow-up questions
+      3. Post-meeting pipeline: PostMeetingPipeline → PostMeetingProcessor + WorkflowDrafter → ApprovalTray
+      4. Decision ledger (DecisionLedger, LedgerQueryService)
+      5. Memory graph: relation extraction, conflict detection, goal alignment
+      6. Goal hierarchy: goal:create/list/complete IPC, GoalPanel UI mounted
+      7. Pre-meeting context loader: PreMeetingOrchestrator triggered on hermes:calendar-event
+      8. HermesCore event bus: emits meeting-started/ended/email-context/calendar-event from main lifecycle
+      9. HermesObserver pattern detector: triggered after meeting ends
+      10. Local-corpus RAG: CorpusIndexer, CorpusRetriever wired to IntelligenceManager
+      11. Approval-gated workflows: ApprovalTray mounted, approval:approve dispatches to Archon
+      12. Archon URL configurable: archon:set-url/get-url IPC + Settings UI field
+      13. WebSocket streaming: WebSocketEmitter subscribes to IpcEventBus events
+      14. Token anomaly alerts: TokenUsageTracker → health:token-anomaly → preload → UI toast
+      15. Cost tracking: CostDashboard, DailySummary, BackgroundCostTracker
+      16. Conflict resolution UI: ConflictCard mounted in Launcher
+      17. Dispatch macros: MacroLearner, MacroRunner, dispatch_macros table
+      18. Project context switcher: project:list/switch/get-active/clear IPC + ProjectContextPalette
+      19. Attendee profiling: AttendeeProfiler, AttendeeTracker, attendee:get-all IPC
+      20. Test suite: vitest wired, npm test script, 528 tests passing
+
+      For each feature, check the relevant source files and confirm it is:
+      - Implemented (code exists)
+      - Connected (called from a runtime entry point, not dead code)
+      - Exposed to UI if it has a UI dimension
+
+      Key files to read:
+      - /Volumes/SanDisk/dev/app-support/Cluely_fr/electron/main.ts (lines 1-200, 1000-1200, 2100-2200)
+      - /Volumes/SanDisk/dev/app-support/Cluely_fr/electron/IntelligenceManager.ts (last 100 lines)
+      - /Volumes/SanDisk/dev/app-support/Cluely_fr/electron/services/PostMeetingPipeline.ts
+      - /Volumes/SanDisk/dev/app-support/Cluely_fr/src/components/Launcher.tsx (lines 180-280, 500-540)
+      - /Volumes/SanDisk/dev/app-support/Cluely_fr/electron/preload.ts (last 100 lines)
+      - /Volumes/SanDisk/dev/app-support/Cluely_fr/package.json
+
+      Output format — for each of the 20 features:
+      ✅ [N] Feature name — one-line confirmation
+      OR
+      ❌ [N] Feature name — specific gap found
+
+      End with a summary: "VERDICT: X/20 features confirmed complete. Gaps: [list or none]"
+
+  # ── Lane 5: Open issues + dead code scan ───────────────────────────────────
+  - id: issues-and-dead-code
+    bash: |
+      cd /Volumes/SanDisk/dev/app-support/Cluely_fr
+      echo "=== Open GitHub Issues ==="
+      gh issue list --state open 2>/dev/null || echo "(gh not available)"
+      echo ""
+      echo "=== TODO/FIXME/stub/placeholder in core files ==="
+      grep -rn "TODO\|FIXME\|HACK\|stub\|placeholder\|\bNYI\b\|not implemented" \
+        electron/main.ts electron/IntelligenceManager.ts electron/ipcHandlers.ts \
+        electron/services/PostMeetingPipeline.ts \
+        electron/services/WorkflowDrafter.ts \
+        electron/services/ArchonDispatcher.ts \
+        2>/dev/null | grep -v "^Binary\|node_modules" | grep -v "//.*TODO.*doc\|//.*placeholder.*meeting" | head -30
+      echo ""
+      echo "=== Untracked / uncommitted files ==="
+      git status --short
+
+  # ── Synthesis ────────────────────────────────────────────────────────────────
+  - id: verdict
+    prompt: |
+      You are producing the final completeness verdict for the Cluely_fr AI meeting assistant.
+
+      Inputs from the four audit lanes:
+      BUILD CHECK:
+      $build-check.output
+
+      TEST SUITE:
+      $test-suite.output
+
+      IPC AUDIT:
+      $ipc-audit.output
+
+      FEATURE COMPLETENESS:
+      $feature-completeness.output
+
+      ISSUES AND DEAD CODE:
+      $issues-and-dead-code.output
+
+      Synthesise a concise final report with these sections:
+      1. **Build & Types** — pass/fail
+      2. **Test Suite** — X/Y passing, any genuine failures
+      3. **IPC Surface** — any gaps
+      4. **Feature Completeness** — X/20 confirmed, any gaps
+      5. **Open Issues** — list any blocking ones
+      6. **Dead Code / Stubs** — any live stubs that would break at runtime
+      7. **Overall Verdict** — one of: COMPLETE / COMPLETE WITH MINOR GAPS / INCOMPLETE
+         If not COMPLETE, list exactly what must still be done.
+
+      Be precise. Do not give benefit of the doubt — if something cannot be confirmed from
+      the code, call it out as UNVERIFIED.
+    depends_on: [build-check, test-suite, ipc-audit, feature-completeness, issues-and-dead-code]

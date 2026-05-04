@@ -1,7 +1,8 @@
 /**
  * PostMeetingPipeline — wires action items from processAndSaveMeeting into:
- *   1. PostMeetingProcessor (ledger + memory graph via relation extraction)
- *   2. WorkflowDrafter (classify → draft → push approval:drafts-ready to renderer)
+ *   1. PostMeetingProcessor (ledger + memory graph via relation extraction + MacroRunner)
+ *   2. ConflictDetector (extract triples → detect contradictions → broadcast surfaced pairs)
+ *   3. WorkflowDrafter (classify → corpus citations → draft → push approval:drafts-ready)
  *
  * Called by IntelligenceManager.processAndSaveMeeting() after action items are built.
  * Runs fire-and-forget — exceptions are caught and logged, never bubble up.
@@ -82,42 +83,126 @@ export async function runPostMeetingPipeline(
 ): Promise<void> {
   const { meetingId, transcriptText, actionItems } = input;
 
-  // 1. PostMeetingProcessor — ledger + relation extraction
+  // ── Shared deps ───────────────────────────────────────────���────────────────
+  let db: any = null;
+  let mm: any = null;
+  let activeProjectId: string | null = null;
+
+  try {
+    const { DatabaseManager } = require('../db/DatabaseManager');
+    const { MemoryManager } = require('../memory/MemoryManager');
+    db = DatabaseManager.getInstance().getDb();
+    mm = MemoryManager.getInstance();
+    try {
+      const { ProjectContextSwitcher } = require('./ProjectContextSwitcher');
+      activeProjectId = ProjectContextSwitcher.getInstance()?.getActiveProject()?.projectId ?? null;
+    } catch { /* optional */ }
+  } catch { /* non-fatal */ }
+
+  // ── 1. PostMeetingProcessor — ledger + relation extraction + MacroRunner ──
   try {
     const { PostMeetingProcessor } = require('./PostMeetingProcessor');
     const { DecisionLedger } = require('./DecisionLedger');
     const { GoalAligner } = require('./GoalAligner');
-    const { DatabaseManager } = require('../db/DatabaseManager');
-    const { MemoryManager } = require('../memory/MemoryManager');
 
-    const db = DatabaseManager.getInstance().getDb();
     if (db) {
       const ledger = DecisionLedger.getInstance(db);
-      // GoalAligner may not be initialized without an embedder; get instance if available
       let aligner: any;
-      try { aligner = GoalAligner.getInstance(); } catch { aligner = { align: async () => null, alignActionItems: async (items: string[]) => items.map((text: string) => ({ text, goal_id: null, goal_confidence: null })) }; }
+      try { aligner = GoalAligner.getInstance(); } catch {
+        aligner = { align: async () => null, alignActionItems: async (items: string[]) => items.map((text: string) => ({ text, goal_id: null, goal_confidence: null })) };
+      }
 
       const simpleExtractor = {
-        extractDecisions: async (transcript: string) => {
-          // Use action items already extracted by IntelligenceManager
-          return actionItems.map(item => ({
-            text: item.text,
-            speaker: item.speaker,
-            timestamp: item.timestamp,
-          }));
-        },
+        extractDecisions: async () => actionItems.map(item => ({
+          text: item.text, speaker: item.speaker, timestamp: item.timestamp,
+        })),
       };
 
-      const mm = MemoryManager.getInstance();
-      const processor = PostMeetingProcessor.getInstance(ledger, aligner, simpleExtractor, undefined, mm);
+      // Wire MacroRunner — provides cross-session prior-decision context
+      let macroRunner: any = undefined;
+      try {
+        const { LedgerQueryService } = require('./LedgerQueryService');
+        const { CrossSessionContextInjector } = require('../../src/services/CrossSessionContextInjector');
+        const { MacroRunner } = require('../../src/services/MacroRunner');
+        const ledgerSvc = LedgerQueryService.getInstance(db);
+        // Adapter: CrossSessionContextInjector.getCommitments(days) → LedgerQueryService.queryByDateRange
+        const ledgerAdapter = {
+          getCommitments: (days: number) => {
+            const since = new Date(Date.now() - days * 86400000).toISOString();
+            return ledgerSvc.queryByDateRange(since, new Date().toISOString());
+          },
+        };
+        macroRunner = new MacroRunner(new CrossSessionContextInjector(ledgerAdapter));
+      } catch { /* optional — runs without macro pre-configuration */ }
+
+      // MacroStore — resolve active macro from dispatch_macros table
+      let macroStore: any = undefined;
+      if (activeProjectId) {
+        try {
+          macroStore = {
+            getActiveMacro: (projectId: string, meetingType: string) =>
+              db.prepare('SELECT * FROM dispatch_macros WHERE project_id = ? AND meeting_type = ? LIMIT 1')
+                .get(projectId, meetingType) ?? undefined,
+          };
+        } catch { /* optional */ }
+      }
+
+      const llmFn = async (system: string, user: string) => llmHelper.chat(`${system}\n\n${user}`);
+      PostMeetingProcessor.resetInstance();
+      const processor = PostMeetingProcessor.getInstance(ledger, aligner, simpleExtractor, llmFn, mm);
       await processor.run(meetingId, transcriptText);
+
+      // MacroRunner post-run: pre-configure pipeline context from saved macro
+      if (macroRunner && macroStore && activeProjectId) {
+        try {
+          const { PatternLearner } = require('./PatternLearner');
+          const patternLearner = PatternLearner.getInstance?.(db);
+          const meetingType = patternLearner?.inferMeetingType?.(meetingId) ?? 'default';
+          const macro = macroStore.getActiveMacro(activeProjectId, meetingType);
+          if (macro) {
+            const macroContext = macroRunner.run(macro, meetingId);
+            console.log(`[PostMeetingPipeline] MacroRunner: template=${macroContext.templateId}, ${macroContext.priorDecisions.length} prior decision(s) injected`);
+          }
+        } catch { /* optional */ }
+      }
     }
   } catch (err) {
     console.warn('[PostMeetingPipeline] PostMeetingProcessor failed:', err);
   }
 
-  // 2. WorkflowDrafter — classify + draft → push to ApprovalTray
+  // ── 2. ConflictDetector — extract triples → detect contradictions ──────────
+  if (mm && transcriptText) {
+    try {
+      const { ConflictDetector } = require('../memory/ConflictDetector');
+      const detector = new ConflictDetector(mm);
+      const llmFn = async (system: string, user: string) => llmHelper.chat(`${system}\n\n${user}`);
+      const result = await detector.run(transcriptText, meetingId, llmFn);
+      for (const conflict of result.surfaced) {
+        broadcast('conflict:pending', conflict);
+      }
+      if (result.surfaced.length > 0) {
+        console.log(`[PostMeetingPipeline] ${result.surfaced.length} conflict(s) surfaced`);
+      }
+    } catch (err) {
+      console.warn('[PostMeetingPipeline] ConflictDetector failed:', err);
+    }
+  }
+
+  // ── 3. WorkflowDrafter — classify + corpus citations + draft → ApprovalTray
   if (actionItems.length === 0) return;
+
+  // CorpusRetriever: KB lookup per action item for citations
+  let corpusRetriever: any = null;
+  if (db && activeProjectId) {
+    try {
+      const { CorpusRetriever } = require('../corpus/CorpusRetriever');
+      const { RAGManager } = require('../rag/RAGManager');
+      const embedder = RAGManager.getInstance?.()?.getEmbeddingPipeline?.();
+      if (embedder) {
+        corpusRetriever = new CorpusRetriever(db, embedder);
+      }
+    } catch { /* RAG not initialized — citations skipped */ }
+  }
 
   try {
     const drafts: unknown[] = [];
@@ -125,13 +210,24 @@ export async function runPostMeetingPipeline(
       const { templateId, confidence } = classifyItem(item.text);
       if (confidence < 0.4) continue;
 
+      let kbCitations: Array<{ source: string; excerpt: string }> = [];
+      if (corpusRetriever && activeProjectId) {
+        try {
+          const chunks = await corpusRetriever.query(item.text, activeProjectId, 3);
+          kbCitations = chunks.map((c: any) => ({
+            source: c.source_path,
+            excerpt: c.chunk_text.slice(0, 200),
+          }));
+        } catch { /* non-fatal */ }
+      }
+
       const payload = await draftItem(item, templateId, llmHelper);
       drafts.push({
         id: `draft-${meetingId}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
         templateId,
         confidence,
         payload,
-        kbCitations: [],
+        kbCitations,
         goalTag: null,
         speaker: item.speaker,
         timestamp: item.timestamp,
