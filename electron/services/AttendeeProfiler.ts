@@ -4,7 +4,9 @@ import { MemoryManager } from '../memory/MemoryManager';
 export interface AttendeeProfile {
   email: string;
   recentEmails: EmailMessage[];
+  /** Open action items from the memory graph (`works_on` edges). Empty if no graph entry exists. */
   openItems: string[];
+  /** Prior decisions from the memory graph (`decided`/`discussed` edges). Empty if no graph entry exists. */
   priorDecisions: string[];
 }
 

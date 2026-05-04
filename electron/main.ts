@@ -2099,6 +2099,11 @@ async function initializeApp() {
       console.error('[Main] Failed to stop DailySummaryScheduler:', e);
     }
     try {
+      appState.getAttendeeTracker().destroy();
+    } catch (e) {
+      console.error('[Main] Failed to destroy AttendeeTracker:', e);
+    }
+    try {
       MulticaManager.getInstance().stop();
     } catch (e) {
       console.error('[Main] Failed to stop MulticaManager:', e);

@@ -19,10 +19,12 @@
   - `GoalAligner.ts` -- embedding cosine-similarity alignment of action items to goals
   - `GoalHintBuilder.ts` -- pre-call hint builder; wraps DatabaseManager.getOpenActionItemsByGoal
   - `DecisionQuery.ts` -- structured query for commitment/decision edges within a date range
-- `electron/ipcHandlers.ts` -- all IPC handler registrations (goal:create, goal:list, goal:complete, goal:pre-call-hint, and many more)
+- `electron/ipcHandlers.ts` -- legacy monolith for memory/goal IPC registrations (goal:create, goal:list, goal:complete, goal:pre-call-hint, and many more)
+- `electron/ipc/` -- modular IPC handler files; each exports a `register*Handlers(service)` function called from `AppState.initialize()` in `main.ts`
+  - `attendeeHandlers.ts` -- `attendee:get-all`
 - `electron/preload.ts` -- exposes `window.electronAPI` bindings to the renderer
 - `electron/config/` -- agent configuration (agentConfig)
-- `electron/services/` -- mid-call decision capture layer (IpcEventBus, LunrIndexer, SlidingWindowAnalyzer, TaskGeneratorBuffer, MemoryGraphWriter) and background agent (BackgroundAgent, AgentStateManager, CommitmentStalenessChecker, PermissionsAuditLog)
+- `electron/services/` -- mid-call decision capture layer (IpcEventBus, LunrIndexer, SlidingWindowAnalyzer, TaskGeneratorBuffer, MemoryGraphWriter, AttendeeTracker) and background agent (BackgroundAgent, AgentStateManager, CommitmentStalenessChecker, PermissionsAuditLog)
 - `electron/corpus/` -- local-corpus RAG: file + git-history indexing, embedding-based retrieval, freshness guard
   - Config: `corpus.json` in Electron userData directory (no UI; file-based only)
 - `src/services/` -- post-meeting pipeline (RecapLLM, WorkflowClassifier, WorkflowDrafter, PostMeetingProcessor, ArchonDispatcher)

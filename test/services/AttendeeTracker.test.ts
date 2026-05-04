@@ -166,4 +166,53 @@ describe('AttendeeTracker', () => {
 
     offSpy.mockRestore();
   });
+
+  it('enrich includes inbound edges as relations with direction=inbound', () => {
+    const manager = mm.upsertNode('person', 'Henry');
+    const hanna = mm.upsertNode('person', 'Hanna');
+    mm.proposeEdge(hanna.id, manager.id, 'reports_to', 0.9, 'meeting-0', 'Hanna reports to Henry');
+
+    (mockIndexer.allTurns as ReturnType<typeof vi.fn>).mockReturnValue([makeTurn('Henry')]);
+
+    startMeeting();
+    vi.advanceTimersByTime(5000);
+
+    const cards = tracker.getAttendees();
+    const inbound = cards[0].relations.filter(r => r.direction === 'inbound');
+    expect(inbound.length).toBeGreaterThanOrEqual(1);
+    expect(inbound[0].predicate).toBe('reports_to');
+    expect(inbound[0].direction).toBe('inbound');
+  });
+
+  it('enrich populates facts from MemoryManager.getFacts', () => {
+    const person = mm.upsertNode('person', 'Iris');
+    mm.upsertFact(person.id, 'role', 'Engineering Manager');
+
+    (mockIndexer.allTurns as ReturnType<typeof vi.fn>).mockReturnValue([makeTurn('Iris')]);
+
+    startMeeting();
+    vi.advanceTimersByTime(5000);
+
+    const cards = tracker.getAttendees();
+    expect(cards[0].facts.length).toBeGreaterThanOrEqual(1);
+    const roleFact = cards[0].facts.find(f => f.key === 'role');
+    expect(roleFact?.value).toBe('Engineering Manager');
+  });
+
+  it('stop clears the interval so new speakers are not detected after meeting:ended', () => {
+    (mockIndexer.allTurns as ReturnType<typeof vi.fn>).mockReturnValue([makeTurn('Jack')]);
+
+    startMeeting();
+    vi.advanceTimersByTime(5000);
+    expect(tracker.getAttendees()).toHaveLength(1);
+
+    IpcEventBus.emitTyped('meeting:ended', { meeting_id: 'meeting-1' });
+
+    // Add new speaker after meeting ended — should NOT be enriched
+    (mockIndexer.allTurns as ReturnType<typeof vi.fn>).mockReturnValue([makeTurn('Jack'), makeTurn('Karen')]);
+    vi.advanceTimersByTime(5000);
+
+    // Only Jack was detected before meeting ended; Karen was added after stop
+    expect(tracker.getAttendees()).toHaveLength(1);
+  });
 });
