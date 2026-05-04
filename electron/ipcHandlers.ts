@@ -14,6 +14,7 @@ import { registerDashboardHandlers } from './ipc/dashboardHandlers';
 import { registerDailySummaryHandlers } from './ipc/dailySummaryHandlers';
 import { registerCostHandlers } from './ipc/costHandlers';
 import { CredentialsManager } from './services/CredentialsManager';
+import { setWsPort } from './config/wsConfig';
 
 export function initializeIpcHandlers(appState: AppState): void {
   const safeHandle = (channel: string, listener: (event: any, ...args: any[]) => Promise<any> | any) => {
@@ -1961,4 +1962,20 @@ export function initializeIpcHandlers(appState: AppState): void {
     appState.getMeetingCostTracker(),
     CredentialsManager.getInstance(),
   );
+
+  // WebSocket port configuration
+  safeHandle('ws:set-port', async (_, port: number) => {
+    try {
+      setWsPort(port);
+      const emitter = appState.getWebSocketEmitter();
+      if (emitter) {
+        emitter.stop();
+        emitter.start(port);
+      }
+      return { success: true };
+    } catch (err: any) {
+      console.error('[IpcHandlers] ws:set-port failed:', err);
+      return { success: false, error: err.message };
+    }
+  });
 }

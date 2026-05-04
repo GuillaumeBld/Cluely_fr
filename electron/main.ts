@@ -140,6 +140,7 @@ export class AppState {
   private _healthChunkWriter: import('./services/HealthChunkWriter').HealthChunkWriter | null = null
   private tokenUsageTracker: TokenUsageTracker = new TokenUsageTracker()
   private meetingCostTracker: MeetingCostTracker | null = null
+  private webSocketEmitter: import('./services/WebSocketEmitter').WebSocketEmitter | null = null
   private activeMeetingId: string = ''
   private turnCounter: number = 0
 
@@ -595,11 +596,20 @@ export class AppState {
 
           // Feed final transcripts to decision capture indexer
           if (segment.isFinal && segment.text.trim()) {
+            const turnId = `interviewer_${++this.turnCounter}`;
             this.lunrIndexer.addTurn({
-              turn_id: `interviewer_${++this.turnCounter}`,
+              turn_id: turnId,
               speaker: 'interviewer',
               text: segment.text,
               timestamp: Date.now(),
+              meeting_id: this.activeMeetingId,
+            });
+            IpcEventBus.emitTyped('transcript:turn', {
+              turn_id: turnId,
+              speaker: 'interviewer',
+              text: segment.text,
+              timestamp: Date.now(),
+              final: true,
               meeting_id: this.activeMeetingId,
             });
           }
@@ -683,11 +693,20 @@ export class AppState {
 
           // Feed final transcripts to decision capture indexer
           if (segment.isFinal && segment.text.trim()) {
+            const turnId = `user_${++this.turnCounter}`;
             this.lunrIndexer.addTurn({
-              turn_id: `user_${++this.turnCounter}`,
+              turn_id: turnId,
               speaker: 'user',
               text: segment.text,
               timestamp: Date.now(),
+              meeting_id: this.activeMeetingId,
+            });
+            IpcEventBus.emitTyped('transcript:turn', {
+              turn_id: turnId,
+              speaker: 'user',
+              text: segment.text,
+              timestamp: Date.now(),
+              final: true,
               meeting_id: this.activeMeetingId,
             });
           }
@@ -1249,6 +1268,10 @@ export class AppState {
 
   public getMeetingCostTracker(): MeetingCostTracker | null {
     return this.meetingCostTracker;
+  }
+
+  public getWebSocketEmitter(): import('./services/WebSocketEmitter').WebSocketEmitter | null {
+    return this.webSocketEmitter;
   }
 
   public getView(): "queue" | "solutions" {
@@ -2047,6 +2070,17 @@ async function initializeApp() {
       console.error('[Main] Failed to start DailySummaryScheduler:', e);
     }
 
+    // Initialize WebSocketEmitter
+    try {
+      const { WebSocketEmitter } = require('./services/WebSocketEmitter');
+      const wsEmitter = new WebSocketEmitter();
+      appState['webSocketEmitter'] = wsEmitter;
+      wsEmitter.start();
+      console.log('[Main] WebSocketEmitter started');
+    } catch (e) {
+      console.error('[Main] Failed to start WebSocketEmitter:', e);
+    }
+
     // Note: We do NOT force dock show here anymore, respecting stealth mode.
   })
 
@@ -2087,6 +2121,11 @@ async function initializeApp() {
       appState.getDailySummaryScheduler()?.stop();
     } catch (e) {
       console.error('[Main] Failed to stop DailySummaryScheduler:', e);
+    }
+    try {
+      appState.getWebSocketEmitter()?.stop();
+    } catch (e) {
+      console.error('[Main] Failed to stop WebSocketEmitter:', e);
     }
     try {
       MulticaManager.getInstance().stop();
