@@ -138,6 +138,7 @@ export class AppState {
   private agentStateManager: AgentStateManager = new AgentStateManager()
   private patternLearner: import('./services/PatternLearner').PatternLearner | null = null
   private backgroundAgent: BackgroundAgent | null = null
+  private hermesObserver: import('./services/HermesObserver').HermesObserver | null = null
   private dashboardPoller: DashboardPoller | null = null
   private dailySummaryScheduler: DailySummaryScheduler | null = null
   private proactiveAdviceEngine: ProactiveAdviceEngine | null = null
@@ -1278,6 +1279,10 @@ export class AppState {
     return this.backgroundAgent;
   }
 
+  public getHermesObserver(): import('./services/HermesObserver').HermesObserver | null {
+    return this.hermesObserver;
+  }
+
   public getDashboardPoller(): DashboardPoller | null {
     return this.dashboardPoller;
   }
@@ -1958,6 +1963,28 @@ async function initializeApp() {
       console.error('[Main] Failed to initialize CalendarManager:', e);
     }
 
+    // Start HermesObserver (meta-agent: cross-session pattern detector)
+    try {
+      const { HermesObserver } = require('./services/HermesObserver');
+      const { HermesDrafter } = require('./services/HermesDrafter');
+      const { CredentialsManager: CM } = require('./services/CredentialsManager');
+      const llmHelper = appState.processingHelper.getLLMHelper();
+      const hermesCfg = CM.getInstance().getHermesObserverConfig();
+      const hermesDrafter = new HermesDrafter(llmHelper);
+      const hermesObs = new HermesObserver(
+        appState['agentStateManager'],
+        hermesCfg.intervalMs,
+        hermesDrafter,
+      );
+      hermesObs.setEnabled(hermesCfg.enabled);
+      hermesObs.setSensitivity(hermesCfg.sensitivity);
+      appState['hermesObserver'] = hermesObs;
+      hermesObs.start();
+      console.log(`[Main] HermesObserver started (interval: ${hermesCfg.intervalMs}ms, sensitivity: ${hermesCfg.sensitivity})`);
+    } catch (hermesErr) {
+      console.error('[Main] Failed to start HermesObserver:', hermesErr);
+    }
+
     // Initialize Hermes orchestrator (Interpretation A — Inner Cluely Operator)
     try {
       const { HermesCore } = require('./hermes');
@@ -1999,6 +2026,37 @@ async function initializeApp() {
     ipcMain.handle('agent:get-settings', () => {
       const { CredentialsManager } = require('./services/CredentialsManager');
       return CredentialsManager.getInstance().getBackgroundAgentConfig();
+    });
+
+    // IPC: hermes:set-enabled
+    ipcMain.handle('hermes:set-enabled', (_event, enabled: boolean) => {
+      const { CredentialsManager } = require('./services/CredentialsManager');
+      CredentialsManager.getInstance().setHermesObserverEnabled(enabled);
+      appState.getHermesObserver()?.setEnabled(enabled);
+      return { enabled };
+    });
+
+    // IPC: hermes:set-sensitivity
+    ipcMain.handle('hermes:set-sensitivity', (_event, sensitivity: number) => {
+      const { CredentialsManager } = require('./services/CredentialsManager');
+      CredentialsManager.getInstance().setHermesObserverSensitivity(sensitivity);
+      appState.getHermesObserver()?.setSensitivity(sensitivity);
+      return { sensitivity };
+    });
+
+    // IPC: hermes:set-interval
+    ipcMain.handle('hermes:set-interval', (_event, ms: number) => {
+      const { CredentialsManager } = require('./services/CredentialsManager');
+      CredentialsManager.getInstance().setHermesObserverIntervalMs(ms);
+      const obs = appState.getHermesObserver();
+      if (obs) obs.setInterval(ms);
+      return { intervalMs: ms };
+    });
+
+    // IPC: hermes:get-settings
+    ipcMain.handle('hermes:get-settings', () => {
+      const { CredentialsManager } = require('./services/CredentialsManager');
+      return CredentialsManager.getInstance().getHermesObserverConfig();
     });
 
     // Recover unprocessed meetings (persistence check)
