@@ -246,6 +246,14 @@ interface ElectronAPI {
     Promise<{ success: true; results: Array<{ id: number; node_id: string; key: string; value: string; confidence: number; source: string; node_label: string; node_kind: string; distance: number }> } | { success: false; error: string } | { error: string }>;
   memoryEmbedFact: (factId: number, text: string) =>
     Promise<{ success: boolean; error?: string }>;
+
+  // Macro Learning API
+  macroConfirm: (proposal: { projectId: string; meetingType: string; templateId: string; dispatchTarget: string }) =>
+    Promise<{ success: boolean }>;
+  macroDismiss: () => Promise<{ success: boolean }>;
+  macroOverride: (meetingId: string) => Promise<{ meetingId: string; overridden: boolean }>;
+  macroObserve: (row: { id: string; project_id: string; meeting_type: string; template_id: string; dispatch_target: string }) =>
+    Promise<{ success: boolean }>;
 }
 
 export const PROCESSING_EVENTS = {
@@ -946,4 +954,12 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.invoke('memory:find-similar', text, k, kindFilter),
   memoryEmbedFact: (factId: number, text: string) =>
     ipcRenderer.invoke('memory:embed-fact', factId, text),
+
+  // Macro Learning API
+  macroConfirm: (proposal: { projectId: string; meetingType: string; templateId: string; dispatchTarget: string }) =>
+    ipcRenderer.invoke('macro:confirm', { proposal }),
+  macroDismiss: () => ipcRenderer.invoke('macro:dismiss'),
+  macroOverride: (meetingId: string) => ipcRenderer.invoke('macro:override', { meetingId }),
+  macroObserve: (row: { id: string; project_id: string; meeting_type: string; template_id: string; dispatch_target: string }) =>
+    ipcRenderer.invoke('macro:observe', row),
 } as ElectronAPI)
