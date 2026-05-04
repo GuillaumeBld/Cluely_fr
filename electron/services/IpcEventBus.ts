@@ -36,8 +36,8 @@ export interface TranscriptTurnPayload {
   turn_id: string;
   speaker: 'interviewer' | 'user';
   text: string;
-  timestamp: number;
-  final: boolean;
+  timestamp: number; // ms since epoch
+  final: boolean; // always true currently; reserved for partial-turn streaming
   meeting_id: string;
 }
 

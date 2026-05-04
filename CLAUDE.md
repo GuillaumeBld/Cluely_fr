@@ -19,10 +19,10 @@
   - `GoalAligner.ts` -- embedding cosine-similarity alignment of action items to goals
   - `GoalHintBuilder.ts` -- pre-call hint builder; wraps DatabaseManager.getOpenActionItemsByGoal
   - `DecisionQuery.ts` -- structured query for commitment/decision edges within a date range
-- `electron/ipcHandlers.ts` -- all IPC handler registrations (goal:create, goal:list, goal:complete, goal:pre-call-hint, and many more)
+- `electron/ipcHandlers.ts` -- all IPC handler registrations (goal:create, goal:list, goal:complete, goal:pre-call-hint, ws:set-port, and many more)
 - `electron/preload.ts` -- exposes `window.electronAPI` bindings to the renderer
-- `electron/config/` -- agent configuration (agentConfig)
-- `electron/services/` -- mid-call decision capture layer (IpcEventBus, LunrIndexer, SlidingWindowAnalyzer, TaskGeneratorBuffer, MemoryGraphWriter) and background agent (BackgroundAgent, AgentStateManager, CommitmentStalenessChecker, PermissionsAuditLog)
+- `electron/config/` -- agent configuration (`agentConfig`); WebSocket port config (`wsConfig.ts` — default port 8765, range 1024–65535, runtime-mutable via `ws:set-port` IPC)
+- `electron/services/` -- mid-call decision capture layer (IpcEventBus, LunrIndexer, SlidingWindowAnalyzer, TaskGeneratorBuffer, MemoryGraphWriter) and background agent (BackgroundAgent, AgentStateManager, CommitmentStalenessChecker, PermissionsAuditLog); real-time broadcast layer (WebSocketEmitter — forwards IpcEventBus events to WebSocket clients on configurable port)
 - `electron/corpus/` -- local-corpus RAG: file + git-history indexing, embedding-based retrieval, freshness guard
   - Config: `corpus.json` in Electron userData directory (no UI; file-based only)
 - `src/services/` -- post-meeting pipeline (RecapLLM, WorkflowClassifier, WorkflowDrafter, PostMeetingProcessor, ArchonDispatcher)

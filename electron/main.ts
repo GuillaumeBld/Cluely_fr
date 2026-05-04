@@ -594,21 +594,22 @@ export class AppState {
             confidence: segment.confidence
           });
 
-          // Feed final transcripts to decision capture indexer
+          // Feed final transcripts to decision capture indexer and emit live event
           if (segment.isFinal && segment.text.trim()) {
             const turnId = `interviewer_${++this.turnCounter}`;
+            const ts = Date.now();
             this.lunrIndexer.addTurn({
               turn_id: turnId,
               speaker: 'interviewer',
               text: segment.text,
-              timestamp: Date.now(),
+              timestamp: ts,
               meeting_id: this.activeMeetingId,
             });
             IpcEventBus.emitTyped('transcript:turn', {
               turn_id: turnId,
               speaker: 'interviewer',
               text: segment.text,
-              timestamp: Date.now(),
+              timestamp: ts,
               final: true,
               meeting_id: this.activeMeetingId,
             });
@@ -691,21 +692,22 @@ export class AppState {
             confidence: segment.confidence
           });
 
-          // Feed final transcripts to decision capture indexer
+          // Feed final transcripts to decision capture indexer and emit live event
           if (segment.isFinal && segment.text.trim()) {
             const turnId = `user_${++this.turnCounter}`;
+            const ts = Date.now();
             this.lunrIndexer.addTurn({
               turn_id: turnId,
               speaker: 'user',
               text: segment.text,
-              timestamp: Date.now(),
+              timestamp: ts,
               meeting_id: this.activeMeetingId,
             });
             IpcEventBus.emitTyped('transcript:turn', {
               turn_id: turnId,
               speaker: 'user',
               text: segment.text,
-              timestamp: Date.now(),
+              timestamp: ts,
               final: true,
               meeting_id: this.activeMeetingId,
             });
@@ -2076,7 +2078,6 @@ async function initializeApp() {
       const wsEmitter = new WebSocketEmitter();
       appState['webSocketEmitter'] = wsEmitter;
       wsEmitter.start();
-      console.log('[Main] WebSocketEmitter started');
     } catch (e) {
       console.error('[Main] Failed to start WebSocketEmitter:', e);
     }

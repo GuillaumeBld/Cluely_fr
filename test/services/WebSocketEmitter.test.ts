@@ -22,6 +22,7 @@ vi.mock('ws', () => {
   };
 });
 
+import WebSocket from 'ws';
 import { WebSocketEmitter } from '../../electron/services/WebSocketEmitter';
 import { IpcEventBus } from '../../electron/services/IpcEventBus';
 
@@ -67,7 +68,7 @@ describe('WebSocketEmitter', () => {
   it('broadcasts event to connected OPEN clients', () => {
     emitter.start(9999);
     const sendSpy = vi.fn();
-    mockClients.add({ readyState: 1, send: sendSpy }); // OPEN = 1
+    mockClients.add({ readyState: 1, send: sendSpy, terminate: vi.fn() }); // OPEN = 1
 
     IpcEventBus.emitTyped('proactive:nudge', {
       message: 'test nudge',
@@ -86,8 +87,8 @@ describe('WebSocketEmitter', () => {
     emitter.start(9999);
     const openSend = vi.fn();
     const closedSend = vi.fn();
-    mockClients.add({ readyState: 1, send: openSend });   // OPEN
-    mockClients.add({ readyState: 3, send: closedSend });  // CLOSED
+    mockClients.add({ readyState: 1, send: openSend, terminate: vi.fn() });   // OPEN
+    mockClients.add({ readyState: 3, send: closedSend, terminate: vi.fn() });  // CLOSED
 
     IpcEventBus.emitTyped('meeting:started', { meeting_id: 'mtg-1' });
 
@@ -99,7 +100,7 @@ describe('WebSocketEmitter', () => {
     emitter.start(9999);
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const failingSend = vi.fn().mockImplementation(() => { throw new Error('broken pipe'); });
-    mockClients.add({ readyState: 1, send: failingSend });
+    mockClients.add({ readyState: 1, send: failingSend, terminate: vi.fn() });
 
     // Should not throw
     expect(() => {
@@ -116,7 +117,7 @@ describe('WebSocketEmitter', () => {
   it('forwards transcript:turn events', () => {
     emitter.start(9999);
     const sendSpy = vi.fn();
-    mockClients.add({ readyState: 1, send: sendSpy });
+    mockClients.add({ readyState: 1, send: sendSpy, terminate: vi.fn() });
 
     IpcEventBus.emitTyped('transcript:turn', {
       turn_id: 'interviewer_1',
@@ -136,7 +137,7 @@ describe('WebSocketEmitter', () => {
   it('forwards notes:updated events', () => {
     emitter.start(9999);
     const sendSpy = vi.fn();
-    mockClients.add({ readyState: 1, send: sendSpy });
+    mockClients.add({ readyState: 1, send: sendSpy, terminate: vi.fn() });
 
     IpcEventBus.emitTyped('notes:updated', {
       meeting_id: 'mtg-1',
@@ -154,7 +155,7 @@ describe('WebSocketEmitter', () => {
   it('forwards decision:captured events', () => {
     emitter.start(9999);
     const sendSpy = vi.fn();
-    mockClients.add({ readyState: 1, send: sendSpy });
+    mockClients.add({ readyState: 1, send: sendSpy, terminate: vi.fn() });
 
     IpcEventBus.emitTyped('decision:captured', {
       type: 'commitment',
@@ -172,15 +173,47 @@ describe('WebSocketEmitter', () => {
   });
 
   it('unregisters IpcEventBus listeners on stop()', () => {
+    const offSpy = vi.spyOn(IpcEventBus, 'offTyped');
     emitter.start(9999);
     emitter.stop();
+    expect(offSpy).toHaveBeenCalledWith('transcript:turn', expect.any(Function));
+    expect(offSpy).toHaveBeenCalledWith('proactive:nudge', expect.any(Function));
+    expect(offSpy).toHaveBeenCalledWith('notes:updated', expect.any(Function));
+    expect(offSpy).toHaveBeenCalledWith('decision:captured', expect.any(Function));
+    expect(offSpy).toHaveBeenCalledWith('meeting:started', expect.any(Function));
+    expect(offSpy).toHaveBeenCalledWith('meeting:ended', expect.any(Function));
+    offSpy.mockRestore();
+  });
 
-    const sendSpy = vi.fn();
-    // Re-create clients set since stop() nulled the server
-    // Emitting should not broadcast since listeners were removed
-    const listenerCount = IpcEventBus.listenerCount('proactive:nudge');
-    // After stop, the emitter's listener should be gone
-    // (other tests may have listeners, so check relative to what we expect)
-    expect(listenerCount).toBe(0);
+  it('start() with no port uses getWsConfig().port (default 8765)', () => {
+    emitter.start();
+    expect(WebSocket.Server).toHaveBeenCalledWith({ port: 8765 });
+  });
+
+  it('stop() terminates all connected clients before closing', () => {
+    emitter.start(9999);
+    const terminateSpy1 = vi.fn();
+    const terminateSpy2 = vi.fn();
+    mockClients.add({ readyState: 1, send: vi.fn(), terminate: terminateSpy1 });
+    mockClients.add({ readyState: 3, send: vi.fn(), terminate: terminateSpy2 });
+    emitter.stop();
+    expect(terminateSpy1).toHaveBeenCalledTimes(1);
+    expect(terminateSpy2).toHaveBeenCalledTimes(1);
+    expect(mockClose).toHaveBeenCalled();
+  });
+
+  it('start() propagates errors (EADDRINUSE) to caller', () => {
+    const eaddrinuse = Object.assign(new Error('bind EADDRINUSE :::9999'), { code: 'EADDRINUSE' });
+    (WebSocket.Server as ReturnType<typeof vi.fn>).mockImplementationOnce(() => { throw eaddrinuse; });
+    expect(() => emitter.start(9999)).toThrow('bind EADDRINUSE :::9999');
+  });
+
+  it('start() failure leaves no IpcEventBus listeners registered', () => {
+    const onSpy = vi.spyOn(IpcEventBus, 'onTyped');
+    const eaddrinuse = Object.assign(new Error('bind EADDRINUSE :::9999'), { code: 'EADDRINUSE' });
+    (WebSocket.Server as ReturnType<typeof vi.fn>).mockImplementationOnce(() => { throw eaddrinuse; });
+    try { emitter.start(9999); } catch { /* expected */ }
+    expect(onSpy).not.toHaveBeenCalled();
+    onSpy.mockRestore();
   });
 });

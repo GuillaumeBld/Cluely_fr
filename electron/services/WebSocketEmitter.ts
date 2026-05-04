@@ -16,24 +16,20 @@ export class WebSocketEmitter {
   start(port?: number): void {
     this.stop();
     const resolvedPort = port ?? getWsConfig().port;
-    try {
-      this.wss = new WebSocket.Server({ port: resolvedPort });
-      this.wss.on('connection', (ws) => {
-        console.log('[WebSocketEmitter] Client connected');
-        ws.on('close', () => console.log('[WebSocketEmitter] Client disconnected'));
-      });
-      this.wss.on('error', (err) => console.error('[WebSocketEmitter] Server error:', err));
-      console.log(`[WebSocketEmitter] Listening on port ${resolvedPort}`);
-      // Subscribe to events
-      IpcEventBus.onTyped('transcript:turn', this._onTranscript);
-      IpcEventBus.onTyped('proactive:nudge', this._onNudge);
-      IpcEventBus.onTyped('notes:updated', this._onNotes);
-      IpcEventBus.onTyped('decision:captured', this._onDecision);
-      IpcEventBus.onTyped('meeting:started', this._onMeetingStarted);
-      IpcEventBus.onTyped('meeting:ended', this._onMeetingEnded);
-    } catch (err) {
-      console.error('[WebSocketEmitter] Failed to start:', err);
-    }
+    // Let errors propagate — callers (main.ts, ws:set-port handler) already have try/catch
+    this.wss = new WebSocket.Server({ port: resolvedPort });
+    this.wss.on('connection', (ws) => {
+      console.log('[WebSocketEmitter] Client connected');
+      ws.on('close', () => console.log('[WebSocketEmitter] Client disconnected'));
+    });
+    this.wss.on('error', (err) => console.error('[WebSocketEmitter] Server error:', err));
+    console.log(`[WebSocketEmitter] Listening on port ${resolvedPort}`);
+    IpcEventBus.onTyped('transcript:turn', this._onTranscript);
+    IpcEventBus.onTyped('proactive:nudge', this._onNudge);
+    IpcEventBus.onTyped('notes:updated', this._onNotes);
+    IpcEventBus.onTyped('decision:captured', this._onDecision);
+    IpcEventBus.onTyped('meeting:started', this._onMeetingStarted);
+    IpcEventBus.onTyped('meeting:ended', this._onMeetingEnded);
   }
 
   stop(): void {
@@ -44,6 +40,8 @@ export class WebSocketEmitter {
     IpcEventBus.offTyped('meeting:started', this._onMeetingStarted);
     IpcEventBus.offTyped('meeting:ended', this._onMeetingEnded);
     if (this.wss) {
+      // Force-terminate clients so the OS port is freed synchronously before close()
+      this.wss.clients.forEach(client => client.terminate());
       this.wss.close();
       this.wss = null;
       console.log('[WebSocketEmitter] Stopped');

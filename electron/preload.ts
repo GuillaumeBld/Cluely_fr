@@ -922,4 +922,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   goalList: () => ipcRenderer.invoke('goal:list'),
   goalComplete: (id: string) => ipcRenderer.invoke('goal:complete', id),
   goalPreCallHint: (goalId: string) => ipcRenderer.invoke('goal:pre-call-hint', goalId),
+
+  // WebSocket configuration
+  setWsPort: (port: number) => ipcRenderer.invoke('ws:set-port', port),
 } as ElectronAPI)
