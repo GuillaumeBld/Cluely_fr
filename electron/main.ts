@@ -110,6 +110,7 @@ import { ProactiveAdviceEngine } from "./services/ProactiveAdviceEngine"
 import { AttendeeTracker } from "./services/AttendeeTracker"
 import { registerAttendeeHandlers } from "./ipc/attendeeHandlers"
 import { getAgentConfig, setAgentIntervalMs } from "./config/agentConfig"
+import type { HermesObserver } from './services/HermesObserver'
 
 export class AppState {
   private static instance: AppState | null = null
@@ -137,7 +138,7 @@ export class AppState {
   private attendeeTracker: AttendeeTracker = new AttendeeTracker(this.lunrIndexer)
   private agentStateManager: AgentStateManager = new AgentStateManager()
   private backgroundAgent: BackgroundAgent | null = null
-  private hermesObserver: import('./services/HermesObserver').HermesObserver | null = null
+  private hermesObserver: HermesObserver | null = null
   private dashboardPoller: DashboardPoller | null = null
   private dailySummaryScheduler: DailySummaryScheduler | null = null
   private proactiveAdviceEngine: ProactiveAdviceEngine | null = null
@@ -1265,7 +1266,7 @@ export class AppState {
     return this.backgroundAgent;
   }
 
-  public getHermesObserver(): import('./services/HermesObserver').HermesObserver | null {
+  public getHermesObserver(): HermesObserver | null {
     return this.hermesObserver;
   }
 
@@ -2035,8 +2036,10 @@ async function initializeApp() {
       const { CredentialsManager } = require('./services/CredentialsManager');
       CredentialsManager.getInstance().setHermesObserverIntervalMs(ms);
       const obs = appState.getHermesObserver();
-      if (obs) obs.setInterval(ms);
-      return { intervalMs: ms };
+      // Use the clamped value from config to keep observer and persistence in sync
+      const { intervalMs } = CredentialsManager.getInstance().getHermesObserverConfig();
+      if (obs) obs.setInterval(intervalMs);
+      return { intervalMs };
     });
 
     // IPC: hermes:get-settings

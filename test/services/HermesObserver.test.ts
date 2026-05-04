@@ -138,4 +138,24 @@ describe('HermesObserver', () => {
     observer.stop();
     expect((observer as any).timer).toBeNull();
   });
+
+  it('setSensitivity clamps values below 0 to 0', () => {
+    observer.setSensitivity(-1);
+    expect(observer.getSensitivity()).toBe(0);
+  });
+
+  it('setSensitivity clamps values above 1 to 1', () => {
+    observer.setSensitivity(5);
+    expect(observer.getSensitivity()).toBe(1);
+  });
+
+  it('does not broadcast when drafter is null even if patterns exist', async () => {
+    const obs = new HermesObserver(stateManager, 60000, null);
+    vi.spyOn(obs as any, '_detectPatterns').mockReturnValue([
+      { kind: 'recurring-blocker', label: 'x', score: 0.9, occurrences: 5 },
+    ]);
+    await obs._runCycle();
+    expect(mockSend).not.toHaveBeenCalled();
+    obs.stop();
+  });
 });

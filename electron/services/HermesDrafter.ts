@@ -19,6 +19,8 @@ Pattern: ${trigger}
 Respond in JSON only, no markdown, no explanation:
 {"title":"<short title>","templateId":"<one of: follow-up-email|code-task|research-task|meeting-schedule|document-update>","description":"<1-2 sentences>","steps":["step1","step2","step3"],"confidence":<0.0-1.0>}`;
 
+// Static estimate used for budget accounting — actual prompt is ~300 tokens,
+// response ~400; replace with real usage once LLMHelper exposes token counts.
 const TOKENS_PER_HERMES_DRAFT_ESTIMATE = 700;
 
 export class HermesDrafter {

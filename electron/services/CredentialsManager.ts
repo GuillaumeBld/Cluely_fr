@@ -83,6 +83,7 @@ export interface StoredCredentials {
 
 export class CredentialsManager {
     private static instance: CredentialsManager;
+    private static readonly MIN_HERMES_INTERVAL_MS = 60_000; // 1-minute floor to prevent runaway LLM polling
     private credentials: StoredCredentials = {};
 
     private constructor() {
@@ -329,13 +330,18 @@ export class CredentialsManager {
     }
 
     public setHermesObserverIntervalMs(ms: number): void {
-        this.credentials.hermesObserver = { ...this.getHermesObserverConfig(), intervalMs: ms };
+        // Enforce a 1-minute floor to prevent runaway LLM polling if 0 or NaN is passed.
+        const safe = Math.max(CredentialsManager.MIN_HERMES_INTERVAL_MS, ms || 0);
+        this.credentials.hermesObserver = { ...this.getHermesObserverConfig(), intervalMs: safe };
         this.saveCredentials();
+        console.log(`[CredentialsManager] HermesObserver intervalMs: ${safe}`);
     }
 
     public setHermesObserverSensitivity(s: number): void {
-        this.credentials.hermesObserver = { ...this.getHermesObserverConfig(), sensitivity: Math.max(0, Math.min(1, s)) };
+        const clamped = Math.max(0, Math.min(1, s));
+        this.credentials.hermesObserver = { ...this.getHermesObserverConfig(), sensitivity: clamped };
         this.saveCredentials();
+        console.log(`[CredentialsManager] HermesObserver sensitivity: ${clamped}`);
     }
 
     public getGlobalDailyBudgetCents(): number | null {

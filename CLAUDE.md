@@ -19,10 +19,13 @@
   - `GoalAligner.ts` -- embedding cosine-similarity alignment of action items to goals
   - `GoalHintBuilder.ts` -- pre-call hint builder; wraps DatabaseManager.getOpenActionItemsByGoal
   - `DecisionQuery.ts` -- structured query for commitment/decision edges within a date range
-- `electron/ipcHandlers.ts` -- all IPC handler registrations (goal:create, goal:list, goal:complete, goal:pre-call-hint, and many more)
+- `electron/ipcHandlers.ts` -- most IPC handler registrations (goal:create, goal:list, goal:complete, goal:pre-call-hint, and many more); service-startup handlers (background-agent:*, hermes:set-enabled, hermes:set-sensitivity, hermes:set-interval, hermes:get-settings) are registered in `electron/main.ts`
 - `electron/preload.ts` -- exposes `window.electronAPI` bindings to the renderer
 - `electron/config/` -- agent configuration (agentConfig)
-- `electron/services/` -- mid-call decision capture layer (IpcEventBus, LunrIndexer, SlidingWindowAnalyzer, TaskGeneratorBuffer, MemoryGraphWriter) and background agent (BackgroundAgent, AgentStateManager, CommitmentStalenessChecker, PermissionsAuditLog)
+- `electron/services/` -- mid-call decision capture layer (IpcEventBus, LunrIndexer, SlidingWindowAnalyzer, TaskGeneratorBuffer, MemoryGraphWriter) and background agents (BackgroundAgent, AgentStateManager, CommitmentStalenessChecker, PermissionsAuditLog, HermesObserver, HermesDrafter)
+  - `HermesObserver.ts` -- cross-session pattern detector; polls SQLite on a configurable interval; detects recurring blockers, goal drift, contradictions; broadcasts `approval:drafts-ready`
+  - `HermesDrafter.ts` -- LLM drafter for `HermesPattern` → `WorkflowDraft` with `source:'hermes-pattern'`
+- `electron/services/CredentialsManager.ts` -- persisted credentials and per-service runtime config (BackgroundAgentConfig, HermesObserverConfig); new services should add a typed config interface and DEFAULT_* constant here
 - `electron/corpus/` -- local-corpus RAG: file + git-history indexing, embedding-based retrieval, freshness guard
   - Config: `corpus.json` in Electron userData directory (no UI; file-based only)
 - `src/services/` -- post-meeting pipeline (RecapLLM, WorkflowClassifier, WorkflowDrafter, PostMeetingProcessor, ArchonDispatcher)
