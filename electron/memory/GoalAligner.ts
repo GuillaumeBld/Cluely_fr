@@ -13,6 +13,11 @@ interface GoalRow {
   embedding: Buffer | null;
 }
 
+/**
+ * Minimum cosine similarity for an action item to be assigned to a goal.
+ * Lower than CONFIDENCE_GATE (0.7) in MemoryManager because action-item → goal alignment
+ * uses shorter text and expects somewhat noisier embeddings than graph edge proposals.
+ */
 const GOAL_CONFIDENCE_THRESHOLD = 0.65;
 
 /**
@@ -45,6 +50,11 @@ export class GoalAligner {
     private embeddingPipeline: EmbeddingPipeline,
   ) {}
 
+  /**
+   * Tag each action item with the best-matching active goal.
+   * @param items - Plain-text action items to align.
+   * @param _meetingId - Reserved for future per-meeting context weighting; unused today.
+   */
   async alignActionItems(items: string[], _meetingId: string): Promise<TaggedActionItem[]> {
     const goals = this.db.prepare(
       'SELECT id, title, embedding FROM goals WHERE completed_at IS NULL AND embedding IS NOT NULL'

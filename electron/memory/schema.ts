@@ -3,9 +3,13 @@
 
 /**
  * Node kinds allowed in the memory graph.
- * Extensible: add new literal members as needed.
+ * Add new kinds here — RelationExtractor.ts picks them up automatically via NODE_KINDS.
  */
-export type NodeKind = 'person' | 'topic' | 'organization' | 'project' | 'meeting' | 'decision' | 'goal' | 'commitment';
+export const NODE_KINDS = [
+  'person', 'topic', 'organization', 'project', 'meeting', 'decision', 'goal', 'commitment',
+] as const;
+
+export type NodeKind = typeof NODE_KINDS[number];
 
 /**
  * Predicate labels for typed edges between nodes.

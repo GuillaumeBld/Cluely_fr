@@ -91,7 +91,7 @@ export interface ElectronAPI {
   getRecentMeetings: () => Promise<Array<{ id: string; title: string; date: string; duration: string; summary: string }>>
   getMeetingDetails: (id: string) => Promise<any>
   updateMeetingTitle: (id: string, title: string) => Promise<boolean>
-  updateMeetingSummary: (id: string, updates: { overview?: string, actionItems?: string[], keyPoints?: string[], actionItemsTitle?: string, keyPointsTitle?: string }) => Promise<boolean>
+  updateMeetingSummary: (id: string, updates: { overview?: string, actionItems?: (string | { text: string; goal_id?: string | null })[], keyPoints?: string[], actionItemsTitle?: string, keyPointsTitle?: string }) => Promise<boolean>
   deleteMeeting: (id: string) => Promise<boolean>
   setWindowMode: (mode: 'launcher' | 'overlay') => Promise<void>
 
@@ -201,6 +201,12 @@ export interface ElectronAPI {
   getDonationStatus: () => Promise<{ shouldShow: boolean; hasDonated: boolean; lifetimeShows: number }>;
   markDonationToastShown: () => Promise<{ success: boolean }>;
   setDonationComplete: () => Promise<{ success: boolean }>;
+
+  // Goal Management
+  goalCreate: (opts: { title: string; description?: string; parent_id?: string }) => Promise<{ id: string; title: string } | { error: string }>;
+  goalList: () => Promise<Array<{ id: string; title: string; description: string; parent_id: string | null; created_at: number; completed_at: number | null }>>;
+  goalComplete: (id: string) => Promise<{ success: boolean; error?: string }>;
+  goalPreCallHint: (goalId: string) => Promise<Array<{ text: string; meeting_id: string; goal_id: string; meeting_date: string }>>;
 
   // Keybind Management
   getKeybinds: () => Promise<Array<{ id: string; label: string; accelerator: string; isGlobal: boolean; defaultAccelerator: string }>>

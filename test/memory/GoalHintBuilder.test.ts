@@ -109,4 +109,44 @@ describe('GoalHintBuilder', () => {
     const hints = builder.buildPreCallHint('g1');
     expect(hints).toHaveLength(0);
   });
+
+  it('skips malformed summary_json rows and returns results from valid rows', () => {
+    insertMeeting('m-valid', [
+      { text: 'Valid task', goal_id: 'g1', goal_confidence: 0.9 },
+    ]);
+    // Insert a malformed row directly
+    db.prepare("INSERT INTO meetings (id, title, summary_json) VALUES (?, ?, ?)").run(
+      'm-bad', 'Malformed', '{{{not valid json'
+    );
+
+    const mockDbManager = {
+      getOpenActionItemsByGoal(goalId: string) {
+        const rows = db.prepare(
+          'SELECT id, summary_json, created_at FROM meetings ORDER BY created_at DESC LIMIT 100'
+        ).all() as { id: string; summary_json: string; created_at: string }[];
+
+        const results: { text: string; meeting_id: string; goal_id: string; meeting_date: string }[] = [];
+        for (const row of rows) {
+          try {
+            const data = JSON.parse(row.summary_json || '{}');
+            const items: ActionItem[] = data?.detailedSummary?.actionItems || [];
+            for (const item of items) {
+              if (typeof item === 'object' && item.goal_id === goalId && !item.completed_at) {
+                results.push({ text: item.text, meeting_id: row.id, goal_id: goalId, meeting_date: row.created_at });
+              }
+            }
+          } catch {
+            // Skip malformed rows
+          }
+        }
+        return results;
+      }
+    } as any;
+
+    const builder = new GoalHintBuilder(mockDbManager);
+    const hints = builder.buildPreCallHint('g1');
+    // Malformed row silently skipped; valid row returns its item
+    expect(hints).toHaveLength(1);
+    expect(hints[0].text).toBe('Valid task');
+  });
 });

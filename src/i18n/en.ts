@@ -97,4 +97,12 @@ export const en: Record<TranslationKey, string> = {
   lang_toggle_label: 'Interface language',
   lang_french: 'Français',
   lang_english: 'English',
+
+  // GoalPanel
+  goal_panel_title: 'Goals',
+  goal_new_placeholder: 'New goal…',
+  goal_mark_done: 'Mark as done',
+
+  // PreCallHint
+  goal_open_items: '{n} open action(s) since last meeting',
 };

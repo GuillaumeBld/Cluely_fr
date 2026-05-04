@@ -32,6 +32,7 @@ L'assistant **répond en français** par défaut.
 - **Tableau de bord complet :** Interface complète pour gérer, rechercher et exporter votre historique.
 - **Contexte glissant :** Maintien d'une « fenêtre mémoire » de la conversation pour des réponses plus intelligentes.
 - **Interface 100% française :** Toute l'interface et les réponses de l'IA sont en français.
+- **Hiérarchie d'objectifs :** Créez des objectifs, associez vos actions de réunion à un objectif, et recevez un rappel des engagements ouverts avant chaque réunion.
 
 ---
 

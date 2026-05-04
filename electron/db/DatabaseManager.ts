@@ -273,8 +273,8 @@ export class DatabaseManager {
                     // Convert string[] → ActionItem[]
                     data.detailedSummary.actionItems = items.map((item: string | ActionItem) => normalizeActionItem(item));
                     update.run(JSON.stringify(data), row.id);
-                } catch {
-                    // Skip malformed rows
+                } catch (err) {
+                    console.warn('[DatabaseManager] Skipping malformed row during actionItems migration:', row.id, err);
                 }
             }
         })();
@@ -410,13 +410,9 @@ export class DatabaseManager {
                 ...updates
             };
 
-            // Should likely filter out undefined updates if spread doesn't handle them how we want, 
-            // but spread over undefined is fine. We want to overwrite if provided.
-            // If updates.overview is empty string, it overwrites. 
-            // If updates.overview is undefined, we use ...updates trick:
-            // Actually spread only includes own enumerable properties. If I pass { overview: "new" }, it works.
-
-            // However, we need to be careful not to wipe legacySummary if it exists
+            // Spread only includes own enumerable properties: undefined fields in updates are ignored,
+            // so callers can pass partial updates without wiping unrelated fields.
+            // legacySummary is preserved because it lives at the top level of existingData, not in detailedSummary.
             const newData = {
                 ...existingData,
                 detailedSummary: newDetailed
@@ -594,7 +590,7 @@ export class DatabaseManager {
     public getOpenActionItemsByGoal(goalId: string): { text: string; meeting_id: string; goal_id: string; meeting_date: string }[] {
         if (!this.db) return [];
         const rows = this.db.prepare(
-            'SELECT id, summary_json, created_at FROM meetings ORDER BY created_at DESC'
+            'SELECT id, summary_json, created_at FROM meetings ORDER BY created_at DESC LIMIT 100'
         ).all() as { id: string; summary_json: string; created_at: string }[];
 
         const results: { text: string; meeting_id: string; goal_id: string; meeting_date: string }[] = [];

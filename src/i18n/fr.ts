@@ -95,6 +95,14 @@ export const fr = {
   lang_toggle_label: "Langue de l'interface",
   lang_french: 'Français',
   lang_english: 'English',
+
+  // GoalPanel
+  goal_panel_title: 'Objectifs',
+  goal_new_placeholder: 'Nouveau objectif…',
+  goal_mark_done: 'Marquer comme terminé',
+
+  // PreCallHint
+  goal_open_items: '{n} action(s) ouverte(s) depuis la dernière réunion',
 } as const;
 
 export type TranslationKey = keyof typeof fr;

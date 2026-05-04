@@ -214,6 +214,7 @@ interface ElectronAPI {
   goalCreate: (opts: { title: string; description?: string; parent_id?: string }) => Promise<{ id: string; title: string } | { error: string }>;
   goalList: () => Promise<Array<{ id: string; title: string; description: string; parent_id: string | null; created_at: number; completed_at: number | null }>>;
   goalComplete: (id: string) => Promise<{ success: boolean; error?: string }>;
+  goalPreCallHint: (goalId: string) => Promise<Array<{ text: string; meeting_id: string; goal_id: string; meeting_date: string }>>;
 }
 
 export const PROCESSING_EVENTS = {
@@ -866,4 +867,5 @@ contextBridge.exposeInMainWorld("electronAPI", {
   goalCreate: (opts: { title: string; description?: string; parent_id?: string }) => ipcRenderer.invoke('goal:create', opts),
   goalList: () => ipcRenderer.invoke('goal:list'),
   goalComplete: (id: string) => ipcRenderer.invoke('goal:complete', id),
+  goalPreCallHint: (goalId: string) => ipcRenderer.invoke('goal:pre-call-hint', goalId),
 } as ElectronAPI)

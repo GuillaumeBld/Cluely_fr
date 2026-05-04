@@ -1827,6 +1827,12 @@ export function initializeIpcHandlers(appState: AppState): void {
         }
       }
 
+      if (!embeddingBuf) {
+        // Goal saved without an embedding — GoalAligner will not align action items to this goal
+        // until a re-embed pass runs. Create goals after RAG is ready to avoid silent misalignment.
+        console.warn('[IPC] goal:create: goal saved without embedding; goal-alignment will skip this goal until embeddings are generated.');
+      }
+
       db.prepare(
         'INSERT INTO goals (id, title, description, embedding, parent_id) VALUES (?, ?, ?, ?, ?)'
       ).run(id, title, description || '', embeddingBuf, parent_id || null);
@@ -1852,11 +1858,12 @@ export function initializeIpcHandlers(appState: AppState): void {
   });
 
   safeHandle("goal:complete", async (_, id: string) => {
+    if (typeof id !== 'string' || !id.trim()) return { success: false, error: 'id required' };
     try {
       const { MemoryManager } = require('./memory');
       const db = MemoryManager.getInstance().getDb();
-      db.prepare('UPDATE goals SET completed_at = unixepoch() WHERE id = ?').run(id);
-      return { success: true };
+      const info = db.prepare('UPDATE goals SET completed_at = unixepoch() WHERE id = ?').run(id);
+      return { success: info.changes > 0 };
     } catch (error: any) {
       console.error('[IPC] goal:complete failed:', error);
       return { success: false, error: error.message };
@@ -1911,6 +1918,17 @@ export function initializeIpcHandlers(appState: AppState): void {
     } catch (err: any) {
       console.error('[IPC] conflict:get-resolutions failed:', err);
       return { success: false, error: err.message };
+    }
+  });
+
+  safeHandle("goal:pre-call-hint", async (_, goalId: string) => {
+    if (typeof goalId !== 'string' || !goalId.trim()) return [];
+    try {
+      const { DatabaseManager } = require('./db/DatabaseManager');
+      return DatabaseManager.getInstance().getOpenActionItemsByGoal(goalId);
+    } catch (error: any) {
+      console.error('[IPC] goal:pre-call-hint failed:', error);
+      return [];
     }
   });
 
