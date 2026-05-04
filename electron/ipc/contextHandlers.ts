@@ -5,15 +5,25 @@ import { ProjectContextSwitcher } from '../services/ProjectContextSwitcher';
 export function registerContextHandlers(): void {
   const switcher = ProjectContextSwitcher.getInstance();
 
-  ipcMain.handle('project:list', (_event, labelLike?: string) => {
-    return MemoryManager.getInstance().findNodes('project', labelLike);
+  ipcMain.handle('project:list', async (_event, labelLike?: string) => {
+    try {
+      return await MemoryManager.getInstance().findNodes('project', labelLike);
+    } catch (err: any) {
+      console.error('[project:list]', err);
+      return [];
+    }
   });
 
   ipcMain.handle('project:get-active', () => {
-    return {
-      projectId: switcher.getActiveProjectId(),
-      label: switcher.getActiveProjectLabel(),
-    };
+    try {
+      return {
+        projectId: switcher.getActiveProjectId(),
+        label: switcher.getActiveProjectLabel(),
+      };
+    } catch (err: any) {
+      console.error('[project:get-active]', err);
+      return { projectId: null, label: null };
+    }
   });
 
   ipcMain.handle('project:switch', async (_event, projectId: string, label: string) => {
@@ -27,7 +37,12 @@ export function registerContextHandlers(): void {
   });
 
   ipcMain.handle('project:clear', () => {
-    switcher.clearActive();
-    return { success: true };
+    try {
+      switcher.clearActive();
+      return { success: true };
+    } catch (err: any) {
+      console.error('[project:clear]', err);
+      return { success: false, error: err.message };
+    }
   });
 }

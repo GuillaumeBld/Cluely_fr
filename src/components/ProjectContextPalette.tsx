@@ -20,9 +20,14 @@ export const ProjectContextPalette: React.FC = () => {
   const inputRef = useRef<HTMLInputElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Cancel any pending debounce timer on unmount
+  useEffect(() => {
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  }, []);
+
   // Load initial active project
   useEffect(() => {
-    window.electronAPI?.getActiveProject().then(setActiveProject).catch(() => {});
+    window.electronAPI?.getActiveProject().then(setActiveProject).catch(err => console.error('[ProjectContextPalette] getActiveProject failed:', err));
   }, []);
 
   // Listen for palette open trigger from main process
@@ -57,7 +62,7 @@ export const ProjectContextPalette: React.FC = () => {
   useEffect(() => {
     if (isOpen) {
       setTimeout(() => inputRef.current?.focus(), 50);
-      // Load all projects initially
+      // Fetch full project list on each open so results are always fresh
       fetchProjects('');
     } else {
       setQuery('');
@@ -85,13 +90,22 @@ export const ProjectContextPalette: React.FC = () => {
   }, []);
 
   const handleSelect = async (node: ProjectNode) => {
-    await window.electronAPI?.switchProject(node.id, node.label);
-    setIsOpen(false);
+    try {
+      const result = await window.electronAPI?.switchProject(node.id, node.label);
+      if (result && !result.success) throw new Error(result.error ?? 'Switch failed');
+      setIsOpen(false);
+    } catch (err) {
+      console.error('[ProjectContextPalette] switchProject failed:', err);
+    }
   };
 
   const handleClear = async () => {
-    await window.electronAPI?.clearActiveProject();
-    setIsOpen(false);
+    try {
+      await window.electronAPI?.clearActiveProject();
+      setIsOpen(false);
+    } catch (err) {
+      console.error('[ProjectContextPalette] clearActiveProject failed:', err);
+    }
   };
 
   return (
@@ -152,7 +166,7 @@ export const ProjectContextPalette: React.FC = () => {
 
           {/* Empty state */}
           {!loading && query.trim() && results.length === 0 && (
-            <p className="mt-2 px-3 py-2 text-sm text-gray-500">No projects found</p>
+            <p className="mt-2 px-3 py-2 text-sm text-gray-500">No results for &ldquo;{query}&rdquo;</p>
           )}
           {!loading && !query.trim() && results.length === 0 && (
             <p className="mt-2 px-3 py-2 text-sm text-gray-500">No projects found</p>

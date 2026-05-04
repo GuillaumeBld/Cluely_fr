@@ -2,6 +2,19 @@ import { app, BrowserWindow } from 'electron';
 import path from 'path';
 import fs from 'fs';
 
+/**
+ * Singleton service tracking the currently active project context.
+ *
+ * **Persistence**: state is written to `active-project.json` in the Electron
+ * `userData` directory; loaded at construction time.
+ *
+ * **Events**: every call to `switch()` or `clearActive()` broadcasts
+ * `project:context-changed` to all non-destroyed BrowserWindows so the
+ * renderer can react immediately without polling.
+ *
+ * **Testing**: call `resetInstance()` in `beforeEach`/`afterEach` to tear down
+ * the singleton between tests.
+ */
 export class ProjectContextSwitcher {
   private static instance: ProjectContextSwitcher;
   private activeProjectId: string | null = null;

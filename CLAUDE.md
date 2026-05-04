@@ -19,14 +19,19 @@
   - `GoalAligner.ts` -- embedding cosine-similarity alignment of action items to goals
   - `GoalHintBuilder.ts` -- pre-call hint builder; wraps DatabaseManager.getOpenActionItemsByGoal
   - `DecisionQuery.ts` -- structured query for commitment/decision edges within a date range
-- `electron/ipcHandlers.ts` -- all IPC handler registrations (goal:create, goal:list, goal:complete, goal:pre-call-hint, and many more)
+- `electron/ipcHandlers.ts` -- top-level IPC bootstrap; delegates to domain-specific handler modules in `electron/ipc/`
+- `electron/ipc/` -- domain IPC handler sub-modules registered via `electron/ipcHandlers.ts`:
+  - `contextHandlers.ts` -- `project:list`, `project:switch`, `project:get-active`, `project:clear`
+  - `dashboardHandlers.ts` -- dashboard-related channels
+  - `dailySummaryHandlers.ts` -- daily summary channels
+  - `costHandlers.ts` -- cost/usage channels
 - `electron/preload.ts` -- exposes `window.electronAPI` bindings to the renderer
 - `electron/config/` -- agent configuration (agentConfig)
-- `electron/services/` -- mid-call decision capture layer (IpcEventBus, LunrIndexer, SlidingWindowAnalyzer, TaskGeneratorBuffer, MemoryGraphWriter) and background agent (BackgroundAgent, AgentStateManager, CommitmentStalenessChecker, PermissionsAuditLog); also `PatternLearner` — post-dispatch macro-learning service, records `completed_meetings` and pushes `macro:proposal` events when repeat patterns are detected
+- `electron/services/` -- mid-call decision capture layer (IpcEventBus, LunrIndexer, SlidingWindowAnalyzer, TaskGeneratorBuffer, MemoryGraphWriter) and background agent (BackgroundAgent, AgentStateManager, CommitmentStalenessChecker, PermissionsAuditLog); also `PatternLearner` — post-dispatch macro-learning service, records `completed_meetings` and pushes `macro:proposal` events when repeat patterns are detected; `ProjectContextSwitcher` — singleton that persists the active project context to `active-project.json` in Electron userData and broadcasts `project:context-changed` to all windows on switch/clear
 - `electron/corpus/` -- local-corpus RAG: file + git-history indexing, embedding-based retrieval, freshness guard
   - Config: `corpus.json` in Electron userData directory (no UI; file-based only)
 - `src/services/` -- post-meeting pipeline (RecapLLM, WorkflowClassifier, WorkflowDrafter, PostMeetingProcessor, ArchonDispatcher); `MacroLearner` evaluates completed-meeting patterns and proposes dispatch macros; `MacroRunner` executes confirmed macros
-- `src/components/` -- approval UI (ApprovalTray, WorkflowCard) for gated workflow execution; `MacroProposalCard` for macro-learning confirm/dismiss prompts
+- `src/components/` -- approval UI (ApprovalTray, WorkflowCard) for gated workflow execution; `MacroProposalCard` for macro-learning confirm/dismiss prompts; `ProjectContextPalette` — Cmd+Shift+P overlay for switching the active project context
 - `src/ipc/approvalHandlers.ts` -- IPC bridge for approval/reject/dispatch actions
 - `src/ipc/macroHandlers.ts` -- IPC handlers for macro:confirm, macro:dismiss, macro:override
 - `src/data/workflowTemplates.json` -- static workflow template definitions loaded at startup

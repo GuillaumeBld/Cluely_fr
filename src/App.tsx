@@ -202,13 +202,13 @@ const App: React.FC = () => {
                   isOpen={isSettingsOpen}
                   onClose={() => setIsSettingsOpen(false)}
                 />
+                <ProjectContextPalette />
                 <ToastViewport />
               </ToastProvider>
             </QueryClientProvider>
           </motion.div>
         )}
       </AnimatePresence>
-      <ProjectContextPalette />
       <UpdateBanner />
       <SupportToaster />
     </div>
