@@ -101,6 +101,8 @@ import { PermissionsAuditLog } from "./services/PermissionsAuditLog"
 import { CommitmentStalenessChecker, CommitmentQuerySource } from "./services/CommitmentStalenessChecker"
 import { BackgroundAgent } from "./services/BackgroundAgent"
 import { DashboardPoller } from './services/DashboardPoller'
+import { DailySummaryScheduler } from './services/DailySummaryScheduler'
+import { DailySummaryLLM } from './llm/DailySummaryLLM'
 import { TokenUsageTracker } from "./services/TokenUsageTracker"
 import { getAgentConfig, setAgentIntervalMs } from "./config/agentConfig"
 
@@ -130,6 +132,7 @@ export class AppState {
   private agentStateManager: AgentStateManager = new AgentStateManager()
   private backgroundAgent: BackgroundAgent | null = null
   private dashboardPoller: DashboardPoller | null = null
+  private dailySummaryScheduler: DailySummaryScheduler | null = null
   private _healthChunkWriter: import('./services/HealthChunkWriter').HealthChunkWriter | null = null
   private tokenUsageTracker: TokenUsageTracker = new TokenUsageTracker()
   private activeMeetingId: string = ''
@@ -1205,6 +1208,10 @@ export class AppState {
     return this.dashboardPoller;
   }
 
+  public getDailySummaryScheduler(): DailySummaryScheduler | null {
+    return this.dailySummaryScheduler;
+  }
+
   public getHealthChunkWriter(): import('./services/HealthChunkWriter').HealthChunkWriter | null {
     return this._healthChunkWriter;
   }
@@ -1989,6 +1996,22 @@ async function initializeApp() {
       console.error('[Main] Failed to start DashboardPoller:', e);
     }
 
+    // Initialize DailySummaryScheduler
+    try {
+      const dailySummaryLLM = new DailySummaryLLM(appState.processingHelper.getLLMHelper());
+      const scheduler = new DailySummaryScheduler(
+        DatabaseManager.getInstance(),
+        dailySummaryLLM,
+      );
+      appState['dailySummaryScheduler'] = scheduler;
+      const launcherForSummary = appState.getWindowHelper().getLauncherWindow();
+      if (launcherForSummary) scheduler.setWindow(launcherForSummary);
+      scheduler.start();
+      console.log('[Main] DailySummaryScheduler started');
+    } catch (e) {
+      console.error('[Main] Failed to start DailySummaryScheduler:', e);
+    }
+
     // Note: We do NOT force dock show here anymore, respecting stealth mode.
   })
 
@@ -2024,6 +2047,11 @@ async function initializeApp() {
       appState.getDashboardPoller()?.stop();
     } catch (e) {
       console.error('[Main] Failed to stop DashboardPoller:', e);
+    }
+    try {
+      appState.getDailySummaryScheduler()?.stop();
+    } catch (e) {
+      console.error('[Main] Failed to stop DailySummaryScheduler:', e);
     }
     try {
       MulticaManager.getInstance().stop();
