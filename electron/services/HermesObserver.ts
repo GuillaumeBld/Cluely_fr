@@ -59,13 +59,15 @@ export class HermesObserver {
       const patterns = this._detectPatterns();
       const drafts: WorkflowDraft[] = [];
       for (const pattern of patterns) {
-            // sensitivity = minimum score a pattern must reach to be surfaced (0=all, 1=none)
+        // sensitivity = minimum score a pattern must reach to be surfaced (0=all, 1=none)
         if (pattern.score < this._sensitivity) continue;
         if (!this.drafter) continue;
         let draft: WorkflowDraft | null = null;
-        if (pattern.kind === 'recurring-blocker') draft = await this.drafter.draftFromRecurringBlocker(pattern);
-        else if (pattern.kind === 'goal-drift') draft = await this.drafter.draftFromGoalDrift(pattern);
-        else if (pattern.kind === 'contradiction') draft = await this.drafter.draftFromContradiction(pattern);
+        switch (pattern.kind) {
+          case 'recurring-blocker': draft = await this.drafter.draftFromRecurringBlocker(pattern); break;
+          case 'goal-drift':        draft = await this.drafter.draftFromGoalDrift(pattern);        break;
+          case 'contradiction':     draft = await this.drafter.draftFromContradiction(pattern);    break;
+        }
         if (draft) drafts.push(draft);
       }
       if (drafts.length > 0) {
@@ -104,11 +106,7 @@ export class HermesObserver {
           });
         }
       } catch (err: unknown) {
-        // Expected on first run (tables not yet created); log unexpected errors
-        const msg = err instanceof Error ? err.message : String(err);
-        if (!msg.includes('no such table')) {
-          console.warn('[HermesObserver] _detectPatterns query failed (recurring-blocker):', msg);
-        }
+        this._warnQueryError('recurring-blocker', err);
       }
 
       // Pattern 2 — Goal Drift
@@ -131,11 +129,7 @@ export class HermesObserver {
           });
         }
       } catch (err: unknown) {
-        // Expected on first run (tables not yet created); log unexpected errors
-        const msg = err instanceof Error ? err.message : String(err);
-        if (!msg.includes('no such table')) {
-          console.warn('[HermesObserver] _detectPatterns query failed (goal-drift):', msg);
-        }
+        this._warnQueryError('goal-drift', err);
       }
 
       // Pattern 3 — Unresolved Contradictions
@@ -160,17 +154,22 @@ export class HermesObserver {
           });
         }
       } catch (err: unknown) {
-        // Expected on first run (tables not yet created); log unexpected errors
-        const msg = err instanceof Error ? err.message : String(err);
-        if (!msg.includes('no such table')) {
-          console.warn('[HermesObserver] _detectPatterns query failed (contradiction):', msg);
-        }
+        this._warnQueryError('contradiction', err);
       }
 
       return patterns;
     } catch (err: unknown) {
       console.debug('[HermesObserver] _detectPatterns: MemoryManager unavailable or threw:', err);
       return [];
+    }
+  }
+
+  // Silently swallows "no such table" errors (expected before first migration run);
+  // logs everything else as a warning.
+  private _warnQueryError(context: string, err: unknown): void {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (!msg.includes('no such table')) {
+      console.warn(`[HermesObserver] _detectPatterns query failed (${context}):`, msg);
     }
   }
 
