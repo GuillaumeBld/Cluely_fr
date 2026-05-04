@@ -200,7 +200,7 @@ export class MemoryManager {
     ).run(buf, factId);
     if (info.changes === 0) {
       console.warn('[MemoryManager] storeFactEmbedding: no fact found for id', factId, '— embedding not stored');
-      return; // skip vec insert — no matching memory_facts row
+      return;
     }
     try {
       this.db.prepare(

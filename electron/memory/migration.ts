@@ -21,7 +21,7 @@ export function runMigration(db: Database.Database): void {
     }
   })();
 
-  // Vec-extension DDL runs outside the main transaction — errors are silently ignored
+  // Vec-extension DDL runs outside the main transaction — logged and skipped
   // if sqlite-vec is not loaded (vec0 tables will not be created).
   for (const ddl of VEC_DDL) {
     try {
