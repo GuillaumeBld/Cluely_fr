@@ -16,6 +16,10 @@ import { AttendeePanel } from './AttendeePanel';
 import GoalPanel from './GoalPanel';
 import PreCallHint from './PreCallHint';
 import { ApprovalTray } from './ApprovalTray';
+import { DailySummary } from './DailySummary';
+import { DispatchDashboard } from './DispatchDashboard';
+import { CostDashboard } from './CostDashboard';
+import { ConflictCard } from './ConflictCard';
 
 interface Meeting {
     id: string;
@@ -177,6 +181,9 @@ const Launcher: React.FC<LauncherProps> = ({ onStartMeeting, onOpenSettings }) =
     const [selectedGoalId, setSelectedGoalId] = useState<string | null>(null);
     const [showGoals, setShowGoals] = useState(false);
     const [multicaToast, setMulticaToast] = useState<{ count: number; workspaceName: string } | null>(null);
+    const [pendingConflicts, setPendingConflicts] = useState<any[]>([]);
+    const [showDailySummary, setShowDailySummary] = useState(true);
+    const [dailySpendCents, setDailySpendCents] = useState(0);
 
     const { isShortcutPressed } = useShortcuts();
 
@@ -205,6 +212,28 @@ const Launcher: React.FC<LauncherProps> = ({ onStartMeeting, onOpenSettings }) =
 
         cleanups.push(window.electronAPI.onMeetingsUpdated(fetchMeetings));
         cleanups.push(window.electronAPI.onUndetectableChanged?.((u) => setIsDetectable(!u)) ?? (() => {}));
+
+        // Load pending conflicts on mount
+        const api = window.electronAPI as any;
+        if (api?.conflict?.getPending) {
+            api.conflict.getPending().then((res: any) => {
+                if (res?.success && Array.isArray(res.conflicts)) {
+                    setPendingConflicts(res.conflicts);
+                }
+            }).catch(() => {});
+        }
+        if (api?.conflict?.onPendingConflict) {
+            cleanups.push(api.conflict.onPendingConflict((conflict: any) => {
+                setPendingConflicts(prev => [...prev, conflict]);
+            }));
+        }
+
+        // Load daily spend to conditionally show CostDashboard
+        if (api?.cost?.getDailySpend) {
+            api.cost.getDailySpend().then((res: any) => {
+                if (res?.totalCents != null) setDailySpendCents(res.totalCents);
+            }).catch(() => {});
+        }
 
         if (window.electronAPI?.onKbContext) {
             cleanups.push(window.electronAPI.onKbContext(ctx => setKbContext(ctx)));
@@ -486,6 +515,40 @@ const Launcher: React.FC<LauncherProps> = ({ onStartMeeting, onOpenSettings }) =
                                     {/* Post-meeting workflow approval tray */}
                                     <ApprovalTray />
 
+                                    {/* Memory conflict resolution cards */}
+                                    {pendingConflicts.length > 0 && (
+                                        <div className="px-4 pt-2 space-y-2">
+                                            {pendingConflicts.map((conflict) => (
+                                                <ConflictCard
+                                                    key={conflict.id}
+                                                    entity={conflict.entity}
+                                                    relation={conflict.relation}
+                                                    oldValue={conflict.old_value}
+                                                    newValue={conflict.new_value}
+                                                    speaker={conflict.speaker ?? null}
+                                                    factId={conflict.fact_id}
+                                                    onResolve={(action) => {
+                                                        setPendingConflicts(prev => prev.filter(c => c.id !== conflict.id));
+                                                        (window.electronAPI as any)?.conflict?.resolve?.({
+                                                            factId: conflict.fact_id,
+                                                            action,
+                                                            newValue: conflict.new_value,
+                                                            meetingId: conflict.meeting_id ?? null,
+                                                            pendingConflictId: conflict.id,
+                                                        }).catch(console.warn);
+                                                    }}
+                                                />
+                                            ))}
+                                        </div>
+                                    )}
+
+                                    {/* Daily summary pinned card */}
+                                    {showDailySummary && (
+                                        <div className="mx-4 mt-2 rounded-xl border border-violet-500/20 bg-violet-950/20 overflow-hidden">
+                                            <DailySummary onClose={() => setShowDailySummary(false)} />
+                                        </div>
+                                    )}
+
                                     {/* Pre-meeting brief banner */}
                                     <PreBriefBanner />
 
@@ -664,6 +727,16 @@ const Launcher: React.FC<LauncherProps> = ({ onStartMeeting, onOpenSettings }) =
                                             </div>
                                         )}
                                     </div>
+
+                                    {/* Dispatch Dashboard — project health */}
+                                    <DispatchDashboard />
+
+                                    {/* Cost Dashboard — shown only when spend > 0 */}
+                                    {dailySpendCents > 0 && (
+                                        <div className="border-t border-border-subtle">
+                                            <CostDashboard />
+                                        </div>
+                                    )}
 
                                     {/* Connect calendar footer if not connected */}
                                     {isCalendarConnected && (
