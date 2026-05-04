@@ -219,6 +219,14 @@ export interface ElectronAPI {
   macroDismiss: () => Promise<{ success: boolean }>
   macroOverride: (meetingId: string) => Promise<{ meetingId: string; overridden: boolean }>
   macroObserve: (row: { id: string; project_id: string; meeting_type: string; template_id: string; dispatch_target: string }) => Promise<{ success: boolean }>
+
+  // Project Context Switcher API
+  listProjects: (labelLike?: string) => Promise<Array<{ id: string; kind: string; label: string; metadata: string; created_at: string; updated_at: string }>>
+  switchProject: (projectId: string, label: string) => Promise<{ success: boolean; error?: string }>
+  getActiveProject: () => Promise<{ projectId: string | null; label: string | null }>
+  clearActiveProject: () => Promise<{ success: boolean }>
+  onProjectContextChanged: (callback: (data: { projectId: string | null; label: string | null }) => void) => () => void
+  onOpenProjectPalette: (callback: () => void) => () => void
 }
 
 declare global {

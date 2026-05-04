@@ -14,6 +14,7 @@ import { analytics } from "./lib/analytics/analytics.service"
 import { LanguageProvider } from "./i18n"
 import { TranscriptSearchOverlay } from "./components/TranscriptSearchOverlay"
 import { ProactiveNudgeToast } from "./components/ProactiveNudgeToast"
+import { ProjectContextPalette } from "./components/ProjectContextPalette"
 
 const queryClient = new QueryClient()
 
@@ -155,6 +156,7 @@ const App: React.FC = () => {
                 onEndMeeting={handleEndMeeting}
               />
               <TranscriptSearchOverlay />
+              <ProjectContextPalette />
               <ProactiveNudgeToast />
               <ToastViewport />
             </ToastProvider>
@@ -206,6 +208,7 @@ const App: React.FC = () => {
           </motion.div>
         )}
       </AnimatePresence>
+      <ProjectContextPalette />
       <UpdateBanner />
       <SupportToaster />
     </div>
