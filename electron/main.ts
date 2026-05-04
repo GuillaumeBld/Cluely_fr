@@ -147,6 +147,7 @@ export class AppState {
   private meetingCostTracker: MeetingCostTracker | null = null
   private webSocketEmitter: import('./services/WebSocketEmitter').WebSocketEmitter | null = null
   private activeMeetingId: string = ''
+  private meetingStartTime: number = 0
   private turnCounter: number = 0
 
   // View management
@@ -989,6 +990,13 @@ export class AppState {
             this.getWindowHelper().getOverlayWindow()?.webContents.send('email-context', payload);
             this.getWindowHelper().getLauncherWindow()?.webContents.send('email-context', payload);
             this.intelligenceManager.setEmailContext(payload);
+            try {
+              const { HermesCore } = require('./hermes');
+              HermesCore.getInstance().emit('hermes:email-context', {
+                attendeeEmails,
+                meetingId: this.activeMeetingId || undefined,
+              }).catch(() => {});
+            } catch (_hermesErr) { /* never crash email flow */ }
           }).catch((err: any) => console.error('[Main] Email pre-call query failed:', err));
         }
       } catch (e) {
@@ -1014,12 +1022,22 @@ export class AppState {
     // 5. Start mid-call decision capture
     const meetingId = metadata?.calendarEventId || `meeting_${Date.now()}`;
     this.activeMeetingId = meetingId;
+    this.meetingStartTime = Date.now();
     this.turnCounter = 0;
     this.slidingWindowAnalyzer.start(meetingId);
     this.tokenUsageTracker.start(meetingId);
     this.liveNotesExtractor.start(meetingId);
     this.processingHelper.getLLMHelper().setActiveMeetingId(meetingId);
     IpcEventBus.emitTyped("meeting:started", { meeting_id: meetingId });
+    try {
+      const { HermesCore } = require('./hermes');
+      HermesCore.getInstance().emit('hermes:meeting-started', {
+        meetingId,
+        title: metadata?.title ?? 'Untitled',
+        source: metadata?.source ?? 'manual',
+        calendarEventId: metadata?.calendarEventId,
+      }).catch(() => {});
+    } catch (_hermesErr) { /* never crash meeting lifecycle */ }
   }
 
   public async endMeeting(): Promise<void> {
@@ -1041,6 +1059,13 @@ export class AppState {
     this.lunrIndexer.clear();
     this.processingHelper.getLLMHelper().setActiveMeetingId('');
     IpcEventBus.emitTyped("meeting:ended", { meeting_id: this.activeMeetingId });
+    try {
+      const { HermesCore } = require('./hermes');
+      HermesCore.getInstance().emit('hermes:meeting-ended', {
+        meetingId: this.activeMeetingId,
+        durationMs: Date.now() - this.meetingStartTime,
+      }).catch(() => {});
+    } catch (_hermesErr) { /* never crash meeting lifecycle */ }
 
     // 6. Reset Intelligence Context & Save
     await this.intelligenceManager.stopMeeting();
@@ -1908,6 +1933,15 @@ async function initializeApp() {
           source: 'calendar',
           attendees: event.attendees,
         });
+        try {
+          const { HermesCore } = require('./hermes');
+          HermesCore.getInstance().emit('hermes:calendar-event', {
+            eventId: event.id,
+            title: event.title,
+            startTime: event.startTime,
+            attendees: event.attendees ?? [],
+          }).catch(() => {});
+        } catch (_hermesErr) { /* never crash calendar flow */ }
       });
 
       calMgr.on('open-requested', () => {
@@ -1992,6 +2026,28 @@ async function initializeApp() {
       const { HermesCore } = require('./hermes');
       const hermes = HermesCore.getInstance();
       hermes.start();
+
+      // B. Subscribe: calendar event → PreMeetingOrchestrator immediate tick
+      hermes.on('hermes:calendar-event', {
+        id: 'pre-meeting-orchestrator',
+        handle: (_payload: any) => {
+          try {
+            const { PreMeetingOrchestrator } = require('./services/PreMeetingOrchestrator');
+            PreMeetingOrchestrator.getInstance().tick().catch(() => {});
+          } catch (_e) { /* ignore */ }
+        },
+      });
+
+      // C. Subscribe: meeting ended → HermesObserver immediate cycle
+      hermes.on('hermes:meeting-ended', {
+        id: 'hermes-observer-trigger',
+        handle: (_payload: any) => {
+          try {
+            appState.getHermesObserver()?._runCycle().catch(() => {});
+          } catch (_e) { /* ignore */ }
+        },
+      });
+
       console.log('[Main] Hermes initialized');
     } catch (e) {
       console.error('[Main] Failed to initialize Hermes:', e);
