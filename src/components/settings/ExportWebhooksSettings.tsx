@@ -7,14 +7,33 @@ export const ExportWebhooksSettings: React.FC = () => {
     const [newName, setNewName] = useState('');
     const [newUrl, setNewUrl] = useState('');
     const [saving, setSaving] = useState(false);
+    const [archonUrl, setArchonUrl] = useState('');
+    const [archonSaving, setArchonSaving] = useState(false);
+    const [archonSaved, setArchonSaved] = useState(false);
 
     useEffect(() => {
         const load = async () => {
             const stored = await window.electronAPI?.getExportWebhooks?.();
             if (stored) setWebhooks(stored);
+            const url = await (window.electronAPI as any)?.archon?.getUrl?.();
+            if (url) setArchonUrl(url);
         };
         load();
     }, []);
+
+    const handleArchonSave = async () => {
+        if (!archonUrl.trim()) return;
+        setArchonSaving(true);
+        try {
+            await (window.electronAPI as any)?.archon?.setUrl?.(archonUrl.trim());
+            setArchonSaved(true);
+            setTimeout(() => setArchonSaved(false), 2000);
+        } catch (err) {
+            console.error('[ExportWebhooksSettings] Failed to save Archon URL:', err);
+        } finally {
+            setArchonSaving(false);
+        }
+    };
 
     const handleAdd = async () => {
         if (!newUrl.trim() || !newName.trim()) return;
@@ -48,6 +67,31 @@ export const ExportWebhooksSettings: React.FC = () => {
 
     return (
         <div className="space-y-5 animated fadeIn select-text pb-4">
+            {/* Archon URL */}
+            <div>
+                <h3 className="text-lg font-bold text-text-primary mb-1">Archon</h3>
+                <p className="text-xs text-text-secondary mb-3">
+                    URL du dashboard Archon utilisé pour dispatcher les workflows après approbation.
+                </p>
+                <div className="flex gap-2">
+                    <input
+                        placeholder="http://localhost:5173"
+                        value={archonUrl}
+                        onChange={(e) => setArchonUrl(e.target.value)}
+                        className="flex-1 px-3 py-2 rounded-lg bg-bg-subtle border border-border-subtle text-sm text-text-primary placeholder-text-tertiary focus:outline-none focus:border-accent-primary/50"
+                    />
+                    <button
+                        onClick={handleArchonSave}
+                        disabled={archonSaving || !archonUrl.trim()}
+                        className="px-4 py-2 rounded-lg bg-accent-primary text-white text-sm font-medium hover:bg-accent-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
+                    >
+                        {archonSaved ? 'Enregistré ✓' : archonSaving ? '...' : 'Enregistrer'}
+                    </button>
+                </div>
+            </div>
+
+            <div className="border-t border-border-subtle" />
+
             <div>
                 <h3 className="text-lg font-bold text-text-primary mb-1">Export Webhooks</h3>
                 <p className="text-xs text-text-secondary">
