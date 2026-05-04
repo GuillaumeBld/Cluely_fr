@@ -222,6 +222,15 @@ interface ElectronAPI {
     onNudge: (cb: (data: { message: string; meeting_id: string; timestamp: number }) => void) => () => void;
   };
 
+  // Cost Tracking API
+  cost: {
+    getSessionSpend: (meetingId: string) => Promise<{ totalCents: number; byModel: Array<{ provider: string; model: string; inputTokens: number; outputTokens: number; costCents: number }> }>;
+    getDailySpend: (date?: string) => Promise<{ totalCents: number; byModel: Array<{ provider: string; model: string; inputTokens: number; outputTokens: number; costCents: number }> }>;
+    setDailyBudget: (cents: number) => Promise<{ success: boolean }>;
+    getDailyBudget: () => Promise<number | null>;
+    onBudgetExceeded: (cb: (payload: { meeting_id: string | null; daily_cents: number; budget_cents: number }) => void) => () => void;
+  };
+
   // Goal Management
   goalCreate: (opts: { title: string; description?: string; parent_id?: string }) => Promise<{ id: string; title: string } | { error: string }>;
   goalList: () => Promise<Array<{ id: string; title: string; description: string; parent_id: string | null; created_at: number; completed_at: number | null }>>;
@@ -892,6 +901,19 @@ contextBridge.exposeInMainWorld("electronAPI", {
       const subscription = (_: any, data: any) => cb(data);
       ipcRenderer.on('proactive:nudge', subscription);
       return () => ipcRenderer.removeListener('proactive:nudge', subscription);
+    },
+  },
+
+  // Cost Tracking API
+  cost: {
+    getSessionSpend: (meetingId: string) => ipcRenderer.invoke('cost:get-session-spend', meetingId),
+    getDailySpend: (date?: string) => ipcRenderer.invoke('cost:get-daily-spend', date),
+    setDailyBudget: (cents: number) => ipcRenderer.invoke('cost:set-daily-budget', cents),
+    getDailyBudget: () => ipcRenderer.invoke('cost:get-daily-budget'),
+    onBudgetExceeded: (cb: (payload: any) => void) => {
+      const subscription = (_: any, data: any) => cb(data);
+      ipcRenderer.on('cost:budget-exceeded', subscription);
+      return () => ipcRenderer.removeListener('cost:budget-exceeded', subscription);
     },
   },
 

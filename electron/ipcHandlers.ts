@@ -12,6 +12,8 @@ import { AudioDevices } from "./audio/AudioDevices";
 import { ENGLISH_VARIANTS } from "./config/languages"
 import { registerDashboardHandlers } from './ipc/dashboardHandlers';
 import { registerDailySummaryHandlers } from './ipc/dailySummaryHandlers';
+import { registerCostHandlers } from './ipc/costHandlers';
+import { CredentialsManager } from './services/CredentialsManager';
 
 export function initializeIpcHandlers(appState: AppState): void {
   const safeHandle = (channel: string, listener: (event: any, ...args: any[]) => Promise<any> | any) => {
@@ -1951,5 +1953,12 @@ export function initializeIpcHandlers(appState: AppState): void {
     { safeHandle },
     appState.getHealthChunkWriter(),
     appState.getDashboardPoller(),
+  );
+
+  // Cost Tracking handlers
+  registerCostHandlers(
+    { safeHandle },
+    appState.getMeetingCostTracker(),
+    CredentialsManager.getInstance(),
   );
 }
