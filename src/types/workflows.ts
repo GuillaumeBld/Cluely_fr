@@ -26,6 +26,8 @@ export interface WorkflowDraft {
     title: string;
     description: string;
     steps: string[];
+    projectId?: string;
+    meetingType?: string;
   };
   kbCitations: KBCitation[];
   goalTag: string;
