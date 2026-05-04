@@ -15,6 +15,7 @@ import { PreBriefBanner } from './PreBriefBanner';
 import { AttendeePanel } from './AttendeePanel';
 import GoalPanel from './GoalPanel';
 import PreCallHint from './PreCallHint';
+import { ApprovalTray } from './ApprovalTray';
 
 interface Meeting {
     id: string;
@@ -481,6 +482,9 @@ const Launcher: React.FC<LauncherProps> = ({ onStartMeeting, onOpenSettings }) =
                                             </motion.div>
                                         )}
                                     </AnimatePresence>
+
+                                    {/* Post-meeting workflow approval tray */}
+                                    <ApprovalTray />
 
                                     {/* Pre-meeting brief banner */}
                                     <PreBriefBanner />

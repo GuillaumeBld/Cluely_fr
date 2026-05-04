@@ -1921,8 +1921,10 @@ async function initializeApp() {
         const db = DatabaseManager.getInstance().getDb();
         if (db) {
           const auditLog = new PermissionsAuditLog(db);
+          const { LedgerQueryService } = require('./services/LedgerQueryService');
+          const ledgerSvc = LedgerQueryService.getInstance(db);
           const commitmentSource: CommitmentQuerySource = {
-            queryOpenCommitments: () => [], // Placeholder — wired to real ledger in future composite
+            queryOpenCommitments: () => ledgerSvc.queryOpenCommitments(),
           };
           const stalenessChecker = new CommitmentStalenessChecker(commitmentSource);
 

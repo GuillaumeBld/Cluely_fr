@@ -1994,9 +1994,29 @@ export function initializeIpcHandlers(appState: AppState): void {
     return { success: true };
   });
 
-  safeHandle('approval:approve', async (_event: any, draftId: string) => {
-    console.log(`[ApprovalTray] Draft approved: ${draftId}`);
-    // Future: dispatch to ArchonDispatcher here
+  safeHandle('approval:approve', async (_event: any, payload: { draft: any; meetingId: string } | string) => {
+    const draft = typeof payload === 'string' ? { id: payload } : payload.draft;
+    const meetingId = typeof payload === 'string' ? '' : payload.meetingId;
+    console.log(`[ApprovalTray] Draft approved: ${draft?.id} (meeting: ${meetingId})`);
+
+    // Persist dispatch record to ledger if DecisionLedger is available
+    try {
+      const db = appState.getMemoryManager()?.getDb();
+      if (db) {
+        const { LedgerQueryService } = require('./services/LedgerQueryService');
+        const svc = LedgerQueryService.getInstance(db);
+        const matches = svc.queryByMeeting(meetingId);
+        // Mark first un-dispatched matching decision as dispatched with a local job id
+        const undispatched = matches.find((d: any) => !d.dispatched_job_id);
+        if (undispatched) {
+          const { DecisionLedger } = require('./services/DecisionLedger');
+          DecisionLedger.getInstance(db).appendDispatch(undispatched.id, `local-${Date.now()}`);
+        }
+      }
+    } catch (err) {
+      console.warn('[ApprovalTray] Ledger dispatch record failed (non-critical):', err);
+    }
+
     return { success: true, dispatched: false };
   });
 
