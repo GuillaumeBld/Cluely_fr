@@ -1988,7 +1988,7 @@ export function initializeIpcHandlers(appState: AppState): void {
     return { success: true };
   });
 
-  // Approval Tray handlers — dismiss just acknowledges; approve is a no-op until ArchonDispatcher is wired
+  // Approval Tray handlers — dismiss just acknowledges; approve dispatches via ArchonDispatcher
   safeHandle('approval:dismiss', async (_event: any, draftId: string) => {
     console.log(`[ApprovalTray] Draft dismissed: ${draftId}`);
     return { success: true };
@@ -1999,6 +1999,36 @@ export function initializeIpcHandlers(appState: AppState): void {
     const meetingId = typeof payload === 'string' ? '' : payload.meetingId;
     console.log(`[ApprovalTray] Draft approved: ${draft?.id} (meeting: ${meetingId})`);
 
+    let jobId: string = `local-${Date.now()}`;
+    let dispatched = false;
+
+    // Attempt to dispatch via ArchonDispatcher
+    if (draft && typeof draft === 'object' && draft.templateId) {
+      try {
+        const { ArchonDispatcher } = require('../src/services/ArchonDispatcher');
+        const baseUrl = CredentialsManager.getInstance().getArchonBaseUrl();
+        const httpClient = {
+          post: async (url: string, body: unknown): Promise<{ jobId: string }> => {
+            const res = await fetch(url, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(body),
+              signal: AbortSignal.timeout(10_000),
+            });
+            if (!res.ok) throw new Error(`Archon HTTP ${res.status}`);
+            return res.json() as Promise<{ jobId: string }>;
+          },
+        };
+        const dispatcher = new ArchonDispatcher({ baseUrl }, httpClient);
+        const result = await dispatcher.dispatch(draft);
+        jobId = result.jobId;
+        dispatched = true;
+        console.log(`[ApprovalTray] Dispatched to Archon, jobId: ${jobId}`);
+      } catch (err: any) {
+        console.warn('[ApprovalTray] Archon unreachable, falling back to local id:', err.message);
+      }
+    }
+
     // Persist dispatch record to ledger if DecisionLedger is available
     try {
       const db = appState.getMemoryManager()?.getDb();
@@ -2006,18 +2036,39 @@ export function initializeIpcHandlers(appState: AppState): void {
         const { LedgerQueryService } = require('./services/LedgerQueryService');
         const svc = LedgerQueryService.getInstance(db);
         const matches = svc.queryByMeeting(meetingId);
-        // Mark first un-dispatched matching decision as dispatched with a local job id
+        // Mark first un-dispatched matching decision as dispatched with the job id
         const undispatched = matches.find((d: any) => !d.dispatched_job_id);
         if (undispatched) {
           const { DecisionLedger } = require('./services/DecisionLedger');
-          DecisionLedger.getInstance(db).appendDispatch(undispatched.id, `local-${Date.now()}`);
+          DecisionLedger.getInstance(db).appendDispatch(undispatched.id, jobId);
         }
       }
     } catch (err) {
       console.warn('[ApprovalTray] Ledger dispatch record failed (non-critical):', err);
     }
 
-    return { success: true, dispatched: false };
+    if (!dispatched) {
+      return { success: true, dispatched: false, error: 'Archon unreachable' };
+    }
+    return { success: true, dispatched: true, jobId };
+  });
+
+  // Archon URL configuration handlers
+  safeHandle('archon:set-url', async (_event: any, url: string) => {
+    try {
+      if (typeof url !== 'string' || !url.trim()) {
+        return { success: false, error: 'Invalid URL' };
+      }
+      CredentialsManager.getInstance().setArchonBaseUrl(url.trim());
+      return { success: true };
+    } catch (err: any) {
+      console.error('[IpcHandlers] archon:set-url failed:', err);
+      return { success: false, error: err.message };
+    }
+  });
+
+  safeHandle('archon:get-url', async () => {
+    return CredentialsManager.getInstance().getArchonBaseUrl();
   });
 
   // WebSocket port configuration

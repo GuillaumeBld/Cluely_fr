@@ -79,6 +79,7 @@ export interface StoredCredentials {
     backgroundAgent?: BackgroundAgentConfig;
     hermesObserver?: HermesObserverConfig;
     globalDailyBudgetCents?: number;
+    archonBaseUrl?: string;
 }
 
 export class CredentialsManager {
@@ -346,6 +347,16 @@ export class CredentialsManager {
         this.credentials.globalDailyBudgetCents = cents;
         this.saveCredentials();
         console.log(`[CredentialsManager] globalDailyBudgetCents: ${cents}`);
+    }
+
+    public getArchonBaseUrl(): string {
+        return this.credentials.archonBaseUrl ?? 'http://localhost:5173';
+    }
+
+    public setArchonBaseUrl(url: string): void {
+        this.credentials.archonBaseUrl = url;
+        this.saveCredentials();
+        console.log(`[CredentialsManager] archonBaseUrl: ${url}`);
     }
 
     public saveCustomProvider(provider: CustomProvider): void {

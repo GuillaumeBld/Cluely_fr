@@ -232,8 +232,21 @@ export interface ElectronAPI {
   approval: {
     onDraftsReady: (cb: (data: { drafts: Array<{ id: string; templateId: string; confidence: number; payload: { title: string; description: string; steps: string[] }; speaker: string; timestamp: string; source: string }>, meetingId?: string }) => void) => () => void
     dismiss: (draftId: string) => Promise<{ success: boolean }>
-    approve: (draftId: string) => Promise<{ success: boolean; dispatched: boolean }>
+    approve: (payload: { draft: any; meetingId: string } | string) => Promise<{ success: boolean; dispatched: boolean; jobId?: string; error?: string }>
   }
+
+  // Archon configuration API
+  archon: {
+    setUrl: (url: string) => Promise<{ success: boolean; error?: string }>
+    getUrl: () => Promise<string>
+  }
+
+  // Conflict Resolution API
+  conflict: {
+    getPending: (meetingId?: string) => Promise<{ success: boolean; conflicts: Array<{ id: number; meeting_id: string | null; entity: string; relation: string; old_value: string; new_value: string; speaker: string | null; fact_id: number; resolved_at: string | null; created_at: string }> } | { success: false; error: string }>;
+    resolve: (payload: { factId: number; action: 'update' | 'ignore' | 'flag'; newValue: string; meetingId: string | null; pendingConflictId?: number }) => Promise<{ success: boolean; error?: string }>;
+    onPendingConflict: (cb: (conflict: any) => void) => () => void;
+  };
 }
 
 declare global {

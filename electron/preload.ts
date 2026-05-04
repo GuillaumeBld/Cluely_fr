@@ -263,6 +263,19 @@ interface ElectronAPI {
   clearActiveProject: () => Promise<{ success: boolean }>
   onProjectContextChanged: (callback: (data: { projectId: string | null; label: string | null }) => void) => () => void
   onOpenProjectPalette: (callback: () => void) => () => void
+
+  // Archon configuration API
+  archon: {
+    setUrl: (url: string) => Promise<{ success: boolean; error?: string }>;
+    getUrl: () => Promise<string>;
+  };
+
+  // Conflict Resolution API
+  conflict: {
+    getPending: (meetingId?: string) => Promise<{ success: boolean; conflicts: Array<{ id: number; meeting_id: string | null; entity: string; relation: string; old_value: string; new_value: string; speaker: string | null; fact_id: number; resolved_at: string | null; created_at: string }> } | { success: false; error: string }>;
+    resolve: (payload: { factId: number; action: 'update' | 'ignore' | 'flag'; newValue: string; meetingId: string | null; pendingConflictId?: number }) => Promise<{ success: boolean; error?: string }>;
+    onPendingConflict: (cb: (conflict: any) => void) => () => void;
+  };
 }
 
 export const PROCESSING_EVENTS = {
@@ -981,7 +994,25 @@ contextBridge.exposeInMainWorld("electronAPI", {
       return () => ipcRenderer.removeListener('approval:drafts-ready', subscription);
     },
     dismiss: (draftId: string) => ipcRenderer.invoke('approval:dismiss', draftId),
-    approve: (draftId: string) => ipcRenderer.invoke('approval:approve', draftId),
+    approve: (payload: { draft: any; meetingId: string } | string) => ipcRenderer.invoke('approval:approve', payload),
+  },
+
+  // Archon configuration API
+  archon: {
+    setUrl: (url: string) => ipcRenderer.invoke('archon:set-url', url),
+    getUrl: () => ipcRenderer.invoke('archon:get-url'),
+  },
+
+  // Conflict Resolution API
+  conflict: {
+    getPending: (meetingId?: string) => ipcRenderer.invoke('conflict:get-pending', meetingId),
+    resolve: (payload: { factId: number; action: 'update' | 'ignore' | 'flag'; newValue: string; meetingId: string | null; pendingConflictId?: number }) =>
+      ipcRenderer.invoke('conflict:resolve', payload),
+    onPendingConflict: (cb: (conflict: any) => void) => {
+      const subscription = (_: any, data: any) => cb(data);
+      ipcRenderer.on('conflict:pending', subscription);
+      return () => ipcRenderer.removeListener('conflict:pending', subscription);
+    },
   },
 
   // Project Context Switcher API
