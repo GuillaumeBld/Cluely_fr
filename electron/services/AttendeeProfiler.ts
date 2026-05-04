@@ -1,10 +1,11 @@
 import { EmailManager, EmailMessage } from './EmailManager';
+import { MemoryManager } from '../memory/MemoryManager';
 
 export interface AttendeeProfile {
   email: string;
   recentEmails: EmailMessage[];
-  openItems: string[];      // populated by memory graph when available
-  priorDecisions: string[]; // populated by memory graph when available
+  openItems: string[];
+  priorDecisions: string[];
 }
 
 export class AttendeeProfiler {
@@ -23,11 +24,36 @@ export class AttendeeProfiler {
       console.warn('[AttendeeProfiler] Email fetch failed, proceeding without email context:', err);
       emailMap = new Map();
     }
-    return attendeeEmails.map(email => ({
-      email,
-      recentEmails: emailMap.get(email) ?? [],
-      openItems: [] as string[],      // TODO(#13): query memory graph (Composite A)
-      priorDecisions: [] as string[], // TODO(#13): query memory graph (Composite A)
-    }));
+    return attendeeEmails.map(email => {
+      let openItems: string[] = [];
+      let priorDecisions: string[] = [];
+
+      try {
+        const mm = MemoryManager.getInstance();
+        const nodes = mm.findNodes('person', email);
+        if (nodes.length > 0) {
+          const node = nodes[0];
+          const edges = mm.getEdgesFrom(node.id);
+          for (const edge of edges) {
+            const target = mm.getNode(edge.target_id);
+            if (!target) continue;
+            if (edge.predicate === 'works_on') {
+              openItems.push(target.label);
+            } else if (edge.predicate === 'decided' || edge.predicate === 'discussed') {
+              priorDecisions.push(target.label.slice(0, 120));
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('[AttendeeProfiler] Memory graph enrichment skipped:', err);
+      }
+
+      return {
+        email,
+        recentEmails: emailMap.get(email) ?? [],
+        openItems,
+        priorDecisions,
+      };
+    });
   }
 }

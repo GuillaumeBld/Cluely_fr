@@ -203,6 +203,12 @@ interface ElectronAPI {
     getLastBrief: () => Promise<any>;
   };
 
+  // Attendee Tracker API
+  attendeeTracker: {
+    getAll: () => Promise<any[]>;
+    onAttendeesUpdated: (cb: (data: { meeting_id: string; attendees: any[] }) => void) => () => void;
+  };
+
   // Dispatch Dashboard
   dashboard: {
     getSnapshots: () => Promise<Array<{ projectId: string; content: string; fetchedAt: string; stale: boolean }>>;
@@ -871,6 +877,16 @@ contextBridge.exposeInMainWorld("electronAPI", {
       return () => ipcRenderer.removeListener('pre-meeting:brief-ready', subscription);
     },
     getLastBrief: () => ipcRenderer.invoke('pre-meeting:get-last-brief'),
+  },
+
+  // Attendee Tracker API
+  attendeeTracker: {
+    getAll: () => ipcRenderer.invoke('attendee:get-all'),
+    onAttendeesUpdated: (cb: (data: any) => void) => {
+      const subscription = (_: any, data: any) => cb(data);
+      ipcRenderer.on('attendees:updated', subscription);
+      return () => ipcRenderer.removeListener('attendees:updated', subscription);
+    },
   },
 
   // Dispatch Dashboard API

@@ -107,6 +107,8 @@ import { DailySummaryScheduler } from './services/DailySummaryScheduler'
 import { DailySummaryLLM } from './llm/DailySummaryLLM'
 import { TokenUsageTracker } from "./services/TokenUsageTracker"
 import { ProactiveAdviceEngine } from "./services/ProactiveAdviceEngine"
+import { AttendeeTracker } from "./services/AttendeeTracker"
+import { registerAttendeeHandlers } from "./ipc/attendeeHandlers"
 import { getAgentConfig, setAgentIntervalMs } from "./config/agentConfig"
 
 export class AppState {
@@ -132,6 +134,7 @@ export class AppState {
   private slidingWindowAnalyzer: SlidingWindowAnalyzer = new SlidingWindowAnalyzer(this.lunrIndexer)
   private liveNotesExtractor: LiveNotesExtractor = new LiveNotesExtractor(this.lunrIndexer)
   private memoryGraphWriter: MemoryGraphWriter = new MemoryGraphWriter()
+  private attendeeTracker: AttendeeTracker = new AttendeeTracker(this.lunrIndexer)
   private agentStateManager: AgentStateManager = new AgentStateManager()
   private backgroundAgent: BackgroundAgent | null = null
   private dashboardPoller: DashboardPoller | null = null
@@ -228,6 +231,9 @@ export class AppState {
 
     // Register IPC handlers for memory graph queries
     registerMemoryHandlers()
+
+    // Register attendee tracker handlers
+    registerAttendeeHandlers(this.attendeeTracker)
 
     // Initialize Corpus Watcher (local corpus RAG indexing)
     this.initializeCorpusWatcher()
@@ -1229,6 +1235,10 @@ export class AppState {
 
   public getLunrIndexer(): LunrIndexer {
     return this.lunrIndexer
+  }
+
+  public getAttendeeTracker(): AttendeeTracker {
+    return this.attendeeTracker
   }
 
   public getBackgroundAgent(): BackgroundAgent | null {

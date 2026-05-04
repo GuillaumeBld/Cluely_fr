@@ -12,6 +12,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { analytics } from '../lib/analytics/analytics.service';
 import { useShortcuts } from '../hooks/useShortcuts';
 import { PreBriefBanner } from './PreBriefBanner';
+import { AttendeePanel } from './AttendeePanel';
 import GoalPanel from './GoalPanel';
 import PreCallHint from './PreCallHint';
 
@@ -483,6 +484,9 @@ const Launcher: React.FC<LauncherProps> = ({ onStartMeeting, onOpenSettings }) =
 
                                     {/* Pre-meeting brief banner */}
                                     <PreBriefBanner />
+
+                                    {/* Live attendee intelligence */}
+                                    <AttendeePanel />
 
                                     {/* Active workspace badge */}
                                     {activeWorkspace && (
