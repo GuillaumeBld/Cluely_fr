@@ -19,13 +19,10 @@ export class AttendeeProfiler {
 
   async profile(attendeeEmails: string[]): Promise<AttendeeProfile[]> {
     if (!attendeeEmails.length) return [];
-    let emailMap: Map<string, EmailMessage[]>;
-    try {
-      emailMap = await this.emailManager.getMessagesFromSenders(attendeeEmails);
-    } catch (err) {
+    const emailMap = await this.emailManager.getMessagesFromSenders(attendeeEmails).catch((err) => {
       console.warn('[AttendeeProfiler] Email fetch failed, proceeding without email context:', err);
-      emailMap = new Map();
-    }
+      return new Map<string, EmailMessage[]>();
+    });
     return attendeeEmails.map(email => {
       let openItems: string[] = [];
       let priorDecisions: string[] = [];
