@@ -247,6 +247,9 @@ export interface ElectronAPI {
     resolve: (payload: { factId: number; action: 'update' | 'ignore' | 'flag'; newValue: string; meetingId: string | null; pendingConflictId?: number }) => Promise<{ success: boolean; error?: string }>;
     onPendingConflict: (cb: (conflict: any) => void) => () => void;
   };
+  health: {
+    onTokenAnomaly: (cb: (payload: { meeting_id: string; token_count: number; rolling_avg: number; threshold_multiple: number; timestamp: number }) => void) => () => void;
+  };
 }
 
 declare global {

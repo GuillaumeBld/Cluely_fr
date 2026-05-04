@@ -276,6 +276,11 @@ interface ElectronAPI {
     resolve: (payload: { factId: number; action: 'update' | 'ignore' | 'flag'; newValue: string; meetingId: string | null; pendingConflictId?: number }) => Promise<{ success: boolean; error?: string }>;
     onPendingConflict: (cb: (conflict: any) => void) => () => void;
   };
+
+  // Health monitoring API
+  health: {
+    onTokenAnomaly: (cb: (payload: { meeting_id: string; token_count: number; rolling_avg: number; threshold_multiple: number; timestamp: number }) => void) => () => void;
+  };
 }
 
 export const PROCESSING_EVENTS = {
@@ -1012,6 +1017,15 @@ contextBridge.exposeInMainWorld("electronAPI", {
       const subscription = (_: any, data: any) => cb(data);
       ipcRenderer.on('conflict:pending', subscription);
       return () => ipcRenderer.removeListener('conflict:pending', subscription);
+    },
+  },
+
+  // Health monitoring API — token anomaly alerts from TokenUsageTracker
+  health: {
+    onTokenAnomaly: (cb: (payload: { meeting_id: string; token_count: number; rolling_avg: number; threshold_multiple: number; timestamp: number }) => void) => {
+      const subscription = (_: any, data: any) => cb(data);
+      ipcRenderer.on('health:token-anomaly', subscription);
+      return () => ipcRenderer.removeListener('health:token-anomaly', subscription);
     },
   },
 

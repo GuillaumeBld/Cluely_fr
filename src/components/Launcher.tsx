@@ -184,6 +184,7 @@ const Launcher: React.FC<LauncherProps> = ({ onStartMeeting, onOpenSettings }) =
     const [pendingConflicts, setPendingConflicts] = useState<any[]>([]);
     const [showDailySummary, setShowDailySummary] = useState(true);
     const [dailySpendCents, setDailySpendCents] = useState(0);
+    const [tokenAnomalyAlert, setTokenAnomalyAlert] = useState<{ token_count: number; threshold_multiple: number } | null>(null);
 
     const { isShortcutPressed } = useShortcuts();
 
@@ -251,6 +252,13 @@ const Launcher: React.FC<LauncherProps> = ({ onStartMeeting, onOpenSettings }) =
             cleanups.push(window.electronAPI.onMulticaIssuesPushed((data) => {
                 setMulticaToast(data);
                 setTimeout(() => setMulticaToast(null), 4000);
+            }));
+        }
+
+        if ((window.electronAPI as any)?.health?.onTokenAnomaly) {
+            cleanups.push((window.electronAPI as any).health.onTokenAnomaly((payload: any) => {
+                setTokenAnomalyAlert({ token_count: payload.token_count, threshold_multiple: payload.threshold_multiple });
+                setTimeout(() => setTokenAnomalyAlert(null), 8000);
             }));
         }
 
@@ -764,6 +772,23 @@ const Launcher: React.FC<LauncherProps> = ({ onStartMeeting, onOpenSettings }) =
                 onClose={() => { setIsGlobalChatOpen(false); setSubmittedGlobalQuery(''); }}
                 initialQuery={submittedGlobalQuery}
             />
+
+            {/* Token anomaly alert */}
+            <AnimatePresence>
+                {tokenAnomalyAlert && (
+                    <motion.div
+                        key="token-anomaly-toast"
+                        initial={{ opacity: 0, y: -12 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -12 }}
+                        transition={{ duration: 0.2 }}
+                        className="fixed top-4 left-1/2 -translate-x-1/2 z-[600] bg-amber-600 text-white text-xs font-medium px-4 py-2 rounded-xl shadow-lg flex items-center gap-2 cursor-pointer"
+                        onClick={() => setTokenAnomalyAlert(null)}
+                    >
+                        <span>⚠ Token spike: {tokenAnomalyAlert.token_count.toLocaleString()} tokens ({tokenAnomalyAlert.threshold_multiple.toFixed(1)}× avg)</span>
+                    </motion.div>
+                )}
+            </AnimatePresence>
 
             {/* Multica push toast */}
             <AnimatePresence>
