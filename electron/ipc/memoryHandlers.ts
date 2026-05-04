@@ -30,6 +30,7 @@ export function registerMemoryHandlers(): void {
     return mm().resolveReview(id, approved);
   });
 
+  ipcMain.removeHandler('memory:find-similar');
   ipcMain.handle(
     'memory:find-similar',
     async (_event, text: string, k: number = 5, kindFilter?: NodeKind) => {
@@ -45,11 +46,12 @@ export function registerMemoryHandlers(): void {
         return { success: true, results };
       } catch (err: any) {
         console.error('[memory:find-similar]', err);
-        return { success: false, error: err.message };
+        return { success: false, error: err?.message ?? String(err) };
       }
     }
   );
 
+  ipcMain.removeHandler('memory:embed-fact');
   ipcMain.handle(
     'memory:embed-fact',
     async (_event, factId: number, text: string) => {
@@ -66,7 +68,7 @@ export function registerMemoryHandlers(): void {
         return { success: true };
       } catch (err: any) {
         console.error('[memory:embed-fact]', err);
-        return { success: false, error: err.message };
+        return { success: false, error: err?.message ?? String(err) };
       }
     }
   );

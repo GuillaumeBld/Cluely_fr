@@ -42,11 +42,7 @@ export class MemoryManager {
         this.degraded = true;
       }
     }
-    try {
-      loadSqliteVec(this.db);
-    } catch (err) {
-      console.warn('[MemoryManager] sqlite-vec unavailable, vector search will be disabled:', err);
-    }
+    loadSqliteVec(this.db); // never throws; logs its own warning on failure
     try {
       runMigration(this.db);
     } catch (err) {
@@ -195,13 +191,17 @@ export class MemoryManager {
   /**
    * Store a float32 embedding for a fact.
    * Writes to both memory_facts.embedding (BLOB) and memory_facts_vec virtual table.
-   * No-op if the fact does not exist.
+   * Does nothing if no fact with the given id exists.
    */
   public storeFactEmbedding(factId: number, embedding: number[]): void {
     const buf = Buffer.from(new Float32Array(embedding).buffer);
-    this.db.prepare(
+    const info = this.db.prepare(
       "UPDATE memory_facts SET embedding = ?, updated_at = datetime('now') WHERE id = ?"
     ).run(buf, factId);
+    if (info.changes === 0) {
+      console.warn('[MemoryManager] storeFactEmbedding: no fact found for id', factId, '— embedding not stored');
+      return; // skip vec insert — no matching memory_facts row
+    }
     try {
       this.db.prepare(
         'INSERT OR REPLACE INTO memory_facts_vec (fact_id, embedding) VALUES (?, ?)'
@@ -214,7 +214,12 @@ export class MemoryManager {
   /**
    * Return the top-k memory facts whose embeddings are most similar to queryVector.
    * Uses cosine distance via sqlite-vec vec0 KNN.
-   * Returns empty array if vec0 extension is unavailable.
+   * Returns empty array on any failure (extension unavailable, dimension mismatch, etc.).
+   *
+   * NOTE: `kindFilter` is applied after the KNN search, not before. The KNN
+   * search first retrieves the top-k nearest facts across all node kinds, then
+   * the kind filter is applied. When filtering by kind, the returned count may
+   * be less than k even if matching facts exist beyond the k boundary.
    */
   public findSimilar(
     queryVector: number[],

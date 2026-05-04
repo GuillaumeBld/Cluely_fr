@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import Database from 'better-sqlite3';
 import { MemoryManager } from '../../electron/memory/MemoryManager';
 
-// Helper: encode number[] to Float32 Buffer (mirrors production code)
+// Helper: encode number[] to Float32 BLOB (mirrors MemoryManager.storeFactEmbedding encoding)
 function encodeVector(vec: number[]): Buffer {
   return Buffer.from(new Float32Array(vec).buffer);
 }
@@ -34,8 +34,8 @@ describe('VectorSearch', () => {
 
       // The UPDATE for memory_facts should have been called
       const row = db.prepare('SELECT embedding FROM memory_facts WHERE id = ?').get(fact.id) as any;
-      expect(row.embedding).toBeInstanceOf(Buffer);
-      expect(row.embedding.length).toBe(768 * 4); // Float32: 4 bytes each
+      expect(row.embedding).toEqual(encodeVector(vec)); // byte-for-byte match
+      expect(row.embedding.length).toBe(768 * 4);       // Float32: 4 bytes each
     });
 
     it('does not throw when vec0 table unavailable (sqlite-vec not loaded)', () => {
@@ -44,6 +44,15 @@ describe('VectorSearch', () => {
       const vec = Array.from({ length: 768 }, () => 0.1);
       // Should not throw even if memory_facts_vec doesn't exist
       expect(() => mm.storeFactEmbedding(fact.id, vec)).not.toThrow();
+    });
+
+    it('does nothing when fact id does not exist (no-op guard)', () => {
+      const vec = Array.from({ length: 768 }, () => 0.5);
+      // Should not throw and should not insert into vec table
+      expect(() => mm.storeFactEmbedding(99999, vec)).not.toThrow();
+      // The nonexistent fact should not appear in memory_facts
+      const row = db.prepare('SELECT embedding FROM memory_facts WHERE id = ?').get(99999);
+      expect(row).toBeUndefined();
     });
   });
 

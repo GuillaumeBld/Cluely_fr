@@ -272,6 +272,8 @@ export const DDL_DECISIONS_MEETING_INDEX = `
 CREATE INDEX IF NOT EXISTS idx_decisions_meeting ON decisions(meeting_id);
 `;
 
+// 768 = output dimension of the embedding model used by EmbeddingPipeline (gemini-embedding-001).
+// Update this if the model changes (schema migration required for existing databases).
 export const DDL_FACTS_VEC = `
 CREATE VIRTUAL TABLE IF NOT EXISTS memory_facts_vec USING vec0(
   fact_id INTEGER PRIMARY KEY,

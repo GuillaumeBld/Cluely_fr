@@ -21,12 +21,13 @@ export function runMigration(db: Database.Database): void {
     }
   })();
 
-  // Vec-extension DDL runs separately — no-op if sqlite-vec is not loaded
+  // Vec-extension DDL runs outside the main transaction — errors are silently ignored
+  // if sqlite-vec is not loaded (vec0 tables will not be created).
   for (const ddl of VEC_DDL) {
     try {
       db.exec(ddl);
-    } catch {
-      // sqlite-vec not loaded — vec0 tables will not be created
+    } catch (err) {
+      console.warn('[migration] vec DDL skipped:', err);
     }
   }
 }
