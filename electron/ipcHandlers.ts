@@ -1352,6 +1352,16 @@ export function initializeIpcHandlers(appState: AppState): void {
     return DatabaseManager.getInstance().updateMeetingSummary(id, updates);
   });
 
+  safeHandle("meeting:set-type", async (_, { type }: { type: string }) => {
+    try {
+      appState.getIntelligenceManager().setMeetingType(type as any);
+      return { success: true };
+    } catch (error) {
+      console.error("Error setting meeting type:", error);
+      return { success: false, error: String(error) };
+    }
+  });
+
   safeHandle("seed-demo", async () => {
     DatabaseManager.getInstance().seedDemoMeeting();
 
