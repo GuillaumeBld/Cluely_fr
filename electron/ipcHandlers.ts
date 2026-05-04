@@ -1355,8 +1355,7 @@ export function initializeIpcHandlers(appState: AppState): void {
   });
 
   safeHandle("meeting:set-type", async (_, { type }: { type: string }) => {
-    const validTypes = Object.keys(MEETING_TYPE_KEYWORDS) as MeetingType[];
-    if (!validTypes.includes(type as MeetingType)) {
+    if (!Object.keys(MEETING_TYPE_KEYWORDS).includes(type)) {
       return { success: false, error: `Unknown meeting type: "${type}"` };
     }
     try {

@@ -46,7 +46,7 @@ export class RecapLLM {
      */
     async *generateStream(context: string, meetingType: MeetingType = 'general'): AsyncGenerator<string> {
         if (!context.trim()) return;
-        const prompt = RECAP_PROMPTS[meetingType] ?? UNIVERSAL_RECAP_PROMPT;
+        const prompt = RECAP_PROMPTS[meetingType];
         yield* this.llmHelper.streamChat(context, undefined, undefined, prompt);
     }
 
