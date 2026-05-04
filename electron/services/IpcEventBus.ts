@@ -32,7 +32,17 @@ export interface ProactiveNudgePayload {
   timestamp: number; // ms since epoch
 }
 
+export interface TranscriptTurnPayload {
+  turn_id: string;
+  speaker: 'interviewer' | 'user';
+  text: string;
+  timestamp: number;
+  final: boolean;
+  meeting_id: string;
+}
+
 type BusEvents = {
+  "transcript:turn": TranscriptTurnPayload;
   "decision:captured": DecisionCapturedEvent;
   "notes:updated": LiveNoteSnapshot;
   "meeting:started": { meeting_id: string };
