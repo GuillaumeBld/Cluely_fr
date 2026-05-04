@@ -12,7 +12,7 @@ export interface WorkflowDraft {
   goalTag: string | null;
   speaker: string;
   confidence: number;
-  source: 'background-email' | 'background-calendar' | 'background-staleness' | 'background-kb';
+  source: 'background-email' | 'background-calendar' | 'background-staleness' | 'background-kb' | 'hermes-pattern';
   tokensUsed: number;
 }
 

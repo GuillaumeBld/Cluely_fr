@@ -40,6 +40,19 @@ export const DEFAULT_BG_AGENT_CONFIG: BackgroundAgentConfig = {
     intervalMs: 1800000,
     dailyBudgetCents: 10,
 };
+
+export interface HermesObserverConfig {
+    enabled: boolean;
+    intervalMs: number;
+    sensitivity: number;
+}
+
+export const DEFAULT_HERMES_CONFIG: HermesObserverConfig = {
+    enabled: true,
+    intervalMs: 6 * 60 * 60 * 1000,
+    sensitivity: 0.5,
+};
+
 export interface StoredCredentials {
     geminiApiKey?: string;
     groqApiKey?: string;
@@ -64,6 +77,7 @@ export interface StoredCredentials {
     openrouterModel?: string;
     exportWebhooks?: ExportWebhook[];
     backgroundAgent?: BackgroundAgentConfig;
+    hermesObserver?: HermesObserverConfig;
     globalDailyBudgetCents?: number;
 }
 
@@ -165,6 +179,10 @@ export class CredentialsManager {
 
     public getBackgroundAgentConfig(): BackgroundAgentConfig {
         return this.credentials.backgroundAgent ?? { ...DEFAULT_BG_AGENT_CONFIG };
+    }
+
+    public getHermesObserverConfig(): HermesObserverConfig {
+        return this.credentials.hermesObserver ?? { ...DEFAULT_HERMES_CONFIG };
     }
 
     public getAllCredentials(): StoredCredentials {
@@ -302,6 +320,22 @@ export class CredentialsManager {
         this.credentials.backgroundAgent.dailyBudgetCents = cents;
         this.saveCredentials();
         console.log(`[CredentialsManager] BackgroundAgent dailyBudgetCents: ${cents}`);
+    }
+
+    public setHermesObserverEnabled(enabled: boolean): void {
+        this.credentials.hermesObserver = { ...this.getHermesObserverConfig(), enabled };
+        this.saveCredentials();
+        console.log('[CredentialsManager] HermesObserver enabled:', enabled);
+    }
+
+    public setHermesObserverIntervalMs(ms: number): void {
+        this.credentials.hermesObserver = { ...this.getHermesObserverConfig(), intervalMs: ms };
+        this.saveCredentials();
+    }
+
+    public setHermesObserverSensitivity(s: number): void {
+        this.credentials.hermesObserver = { ...this.getHermesObserverConfig(), sensitivity: Math.max(0, Math.min(1, s)) };
+        this.saveCredentials();
     }
 
     public getGlobalDailyBudgetCents(): number | null {
