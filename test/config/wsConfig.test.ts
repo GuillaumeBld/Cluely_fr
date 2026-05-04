@@ -26,29 +26,16 @@ describe('wsConfig', () => {
     expect(getWsConfig().port).toBe(65535);
   });
 
-  it('rejects port 1023 (below minimum) and warns', () => {
+  it.each([
+    [1023, 'below minimum'],
+    [65536, 'above maximum'],
+    [0, 'zero'],
+  ])('rejects port %i (%s) and warns', (port) => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const before = getWsConfig().port;
-    setWsPort(1023);
+    setWsPort(port);
     expect(getWsConfig().port).toBe(before);
-    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('Invalid port 1023'));
-    warnSpy.mockRestore();
-  });
-
-  it('rejects port 65536 (above maximum) and warns', () => {
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    const before = getWsConfig().port;
-    setWsPort(65536);
-    expect(getWsConfig().port).toBe(before);
-    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('Invalid port 65536'));
-    warnSpy.mockRestore();
-  });
-
-  it('rejects port 0 and does not update config', () => {
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    const before = getWsConfig().port;
-    setWsPort(0);
-    expect(getWsConfig().port).toBe(before);
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining(`Invalid port ${port}`));
     warnSpy.mockRestore();
   });
 });
