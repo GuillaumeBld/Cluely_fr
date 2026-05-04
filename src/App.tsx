@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from "react" // forcing refresh
+import React, { useState, useEffect } from "react"
 import { QueryClient, QueryClientProvider } from "react-query"
 import { ToastProvider, ToastViewport } from "./components/ui/toast"
 import NativelyInterface from "./components/NativelyInterface"
-import SettingsPopup from "./components/SettingsPopup" // Keeping for legacy/specific window support if needed
+import SettingsPopup from "./components/SettingsPopup"
 import Launcher from "./components/Launcher"
 import ModelSelectorWindow from "./components/ModelSelectorWindow"
 import SettingsOverlay from "./components/SettingsOverlay"
@@ -19,22 +19,16 @@ import { ProjectContextPalette } from "./components/ProjectContextPalette"
 const queryClient = new QueryClient()
 
 const App: React.FC = () => {
-  const isSettingsWindow = new URLSearchParams(window.location.search).get('window') === 'settings';
-  const isLauncherWindow = new URLSearchParams(window.location.search).get('window') === 'launcher';
-  const isOverlayWindow = new URLSearchParams(window.location.search).get('window') === 'overlay';
-  const isModelSelectorWindow = new URLSearchParams(window.location.search).get('window') === 'model-selector';
+  const windowParam = new URLSearchParams(window.location.search).get('window');
+  const isSettingsWindow = windowParam === 'settings';
+  const isLauncherWindow = windowParam === 'launcher';
+  const isOverlayWindow = windowParam === 'overlay';
+  const isModelSelectorWindow = windowParam === 'model-selector';
 
-  // Default to launcher if not specified (dev mode safety)
   const isDefault = !isSettingsWindow && !isOverlayWindow && !isModelSelectorWindow;
 
   // Initialize Analytics
   useEffect(() => {
-    // Only init if we are in a main window context to avoid duplicate events from helper windows
-    // Actually, we probably want to track app open from the main entry point.
-    // Let's protect initialization to ensure single run per window.
-    // The service handles single-init, but let's be thoughtful about WHICH window tracks "App Open".
-    // Launcher is the main entry. Overlay is the "Assistant".
-
     analytics.initAnalytics();
 
     if (isLauncherWindow || isDefault) {
@@ -45,7 +39,6 @@ const App: React.FC = () => {
       analytics.trackAssistantStart();
     }
 
-    // Cleanup / Session End
     const handleUnload = () => {
       if (isOverlayWindow) {
         analytics.trackAssistantStop();
@@ -61,24 +54,17 @@ const App: React.FC = () => {
     };
   }, [isLauncherWindow, isOverlayWindow, isDefault]);
 
-  // State
   const [showStartup, setShowStartup] = useState(true);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
-  // Handlers
   const handleStartMeeting = async () => {
     try {
       const inputDeviceId = localStorage.getItem('preferredInputDeviceId');
       let outputDeviceId = localStorage.getItem('preferredOutputDeviceId');
       const useLegacyAudio = localStorage.getItem('useLegacyAudioBackend') === 'true';
 
-      // Override output device ID to force SCK if experimental mode is enabled
-      // Default to SCK unless legacy is enabled
       if (!useLegacyAudio) {
-        console.log("[App] Using ScreenCaptureKit backend (Default).");
         outputDeviceId = "sck";
-      } else {
-        console.log("[App] Using Legacy CoreAudio backend (User Preference).");
       }
 
       const result = await window.electronAPI.startMeeting({
@@ -86,11 +72,6 @@ const App: React.FC = () => {
       });
       if (result.success) {
         analytics.trackMeetingStarted();
-        // Switch to Overlay Mode via IPC
-        // The main process handles window switching, but we can reinforce it or just trust main.
-        // Actually, main process startMeeting triggers nothing UI-wise unless we tell it to switch window
-        // But we configured main.ts to not auto-switch?
-        // Let's explicitly request mode change.
         await window.electronAPI.setWindowMode('overlay');
       } else {
         console.error("Failed to start meeting:", result.error);
@@ -101,12 +82,9 @@ const App: React.FC = () => {
   };
 
   const handleEndMeeting = async () => {
-    console.log("[App.tsx] handleEndMeeting triggered");
     analytics.trackMeetingEnded();
     try {
       await window.electronAPI.endMeeting();
-      console.log("[App.tsx] endMeeting IPC completed");
-      // Switch back to Native Launcher Mode
       await window.electronAPI.setWindowMode('launcher');
     } catch (err) {
       console.error("Failed to end meeting:", err);
@@ -114,7 +92,6 @@ const App: React.FC = () => {
     }
   };
 
-  // Render Logic
   if (isSettingsWindow) {
     return (
       <LanguageProvider>
@@ -145,7 +122,6 @@ const App: React.FC = () => {
     );
   }
 
-  // --- OVERLAY WINDOW (Meeting Interface) ---
   if (isOverlayWindow) {
     return (
       <LanguageProvider>
@@ -166,8 +142,6 @@ const App: React.FC = () => {
     );
   }
 
-  // --- LAUNCHER WINDOW (Default) ---
-  // Renders if window=launcher OR no param
   return (
     <LanguageProvider>
     <div className="h-full min-h-0 w-full relative">
@@ -184,11 +158,11 @@ const App: React.FC = () => {
           <motion.div
             key="main"
             className="h-full w-full"
-            initial={{ opacity: 0, scale: 0.98, y: 15 }} // "Linear" style entry: slightly down and scaled down
-            animate={{ opacity: 1, scale: 1, y: 0 }}      // Slide up and snap to place
+            initial={{ opacity: 0, scale: 0.98, y: 15 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
             transition={{
               duration: 0.8,
-              ease: [0.19, 1, 0.22, 1], // Expo-out: snappy start, smooth landing
+              ease: [0.19, 1, 0.22, 1],
               delay: 0.1
             }}
           >

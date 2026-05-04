@@ -165,11 +165,10 @@ export const ProjectContextPalette: React.FC = () => {
           )}
 
           {/* Empty state */}
-          {!loading && query.trim() && results.length === 0 && (
-            <p className="mt-2 px-3 py-2 text-sm text-gray-500">No results for &ldquo;{query}&rdquo;</p>
-          )}
-          {!loading && !query.trim() && results.length === 0 && (
-            <p className="mt-2 px-3 py-2 text-sm text-gray-500">No projects found</p>
+          {!loading && results.length === 0 && (
+            <p className="mt-2 px-3 py-2 text-sm text-gray-500">
+              {query.trim() ? <>No results for &ldquo;{query}&rdquo;</> : 'No projects found'}
+            </p>
           )}
 
           {/* Clear scope button */}
