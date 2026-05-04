@@ -11,11 +11,16 @@ export function registerMacroHandlers(
       const { proposal } = opts as {
         proposal: { projectId: string; meetingType: string; templateId: string; dispatchTarget: string };
       };
-      db.prepare(
-        `INSERT OR IGNORE INTO dispatch_macros (project_id, meeting_type, template_id, dispatch_target)
-         VALUES (?, ?, ?, ?)`,
-      ).run(proposal.projectId, proposal.meetingType, proposal.templateId, proposal.dispatchTarget);
-      return { success: true };
+      try {
+        db.prepare(
+          `INSERT OR IGNORE INTO dispatch_macros (project_id, meeting_type, template_id, dispatch_target)
+           VALUES (?, ?, ?, ?)`,
+        ).run(proposal.projectId, proposal.meetingType, proposal.templateId, proposal.dispatchTarget);
+        return { success: true };
+      } catch (err: any) {
+        console.error('[macroHandlers] macro:confirm failed:', err);
+        return { success: false, error: err?.message ?? String(err) };
+      }
     },
   );
 

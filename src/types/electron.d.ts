@@ -213,6 +213,12 @@ export interface ElectronAPI {
   setKeybind: (id: string, accelerator: string) => Promise<boolean>
   resetKeybinds: () => Promise<Array<{ id: string; label: string; accelerator: string; isGlobal: boolean; defaultAccelerator: string }>>
   onKeybindsUpdate: (callback: (keybinds: Array<any>) => void) => () => void
+
+  // Macro Learning API
+  macroConfirm: (proposal: { projectId: string; meetingType: string; templateId: string; dispatchTarget: string }) => Promise<{ success: boolean }>
+  macroDismiss: () => Promise<{ success: boolean }>
+  macroOverride: (meetingId: string) => Promise<{ meetingId: string; overridden: boolean }>
+  macroObserve: (row: { id: string; project_id: string; meeting_type: string; template_id: string; dispatch_target: string }) => Promise<{ success: boolean }>
 }
 
 declare global {

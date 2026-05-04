@@ -1965,11 +1965,10 @@ export function initializeIpcHandlers(appState: AppState): void {
 
   // Macro Learning handlers
   const { registerMacroHandlers } = require('../src/ipc/macroHandlers');
-  const { MemoryManager: _MacroMM } = require('./memory');
-  const _macroDb = _MacroMM.getInstance().getDb();
-  registerMacroHandlers({ safeHandle }, _macroDb);
+  registerMacroHandlers({ safeHandle }, appState.getMemoryManager().getDb());
 
-  // PatternLearner observe — called after a workflow is dispatched/approved
+  // PatternLearner observe — called after a workflow is dispatched/approved.
+  // If PatternLearner failed to initialize, silently no-op (init error already logged in AppState).
   safeHandle('macro:observe', async (_event: any, opts: unknown) => {
     const { id, project_id, meeting_type, template_id, dispatch_target } = opts as {
       id: string; project_id: string; meeting_type: string; template_id: string; dispatch_target: string;

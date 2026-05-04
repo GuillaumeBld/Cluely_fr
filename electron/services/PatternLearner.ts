@@ -25,18 +25,22 @@ export class PatternLearner {
   }
 
   observe(row: MeetingRow): void {
-    this.db.prepare(
-      `INSERT OR IGNORE INTO completed_meetings (id, project_id, meeting_type, template_id, dispatch_target)
-       VALUES (?, ?, ?, ?, ?)`
-    ).run(row.id, row.project_id, row.meeting_type, row.template_id, row.dispatch_target);
+    try {
+      this.db.prepare(
+        `INSERT OR IGNORE INTO completed_meetings (id, project_id, meeting_type, template_id, dispatch_target)
+         VALUES (?, ?, ?, ?, ?)`
+      ).run(row.id, row.project_id, row.meeting_type, row.template_id, row.dispatch_target);
 
-    const proposal = this.macroLearner.evaluate(row.id);
-    if (proposal) {
-      BrowserWindow.getAllWindows().forEach(win => {
-        if (!win.isDestroyed()) {
-          win.webContents.send('macro:proposal', { proposal });
-        }
-      });
+      const proposal = this.macroLearner.evaluate(row.id);
+      if (proposal) {
+        BrowserWindow.getAllWindows().forEach(win => {
+          if (!win.isDestroyed()) {
+            win.webContents.send('macro:proposal', { proposal });
+          }
+        });
+      }
+    } catch (err) {
+      console.error('[PatternLearner] observe() failed:', err);
     }
   }
 

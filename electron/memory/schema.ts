@@ -198,6 +198,11 @@ CREATE TABLE IF NOT EXISTS completed_meetings (
 );
 `;
 
+export const DDL_COMPLETED_MEETINGS_INDEX = `
+CREATE INDEX IF NOT EXISTS idx_completed_meetings_project_type
+  ON completed_meetings(project_id, meeting_type);
+`;
+
 export const DDL_SCHEMA_VERSION = `
 CREATE TABLE IF NOT EXISTS memory_schema_version (
   version INTEGER NOT NULL
@@ -326,6 +331,7 @@ export const ALL_DDL = [
   DDL_GOALS_INDEX,
   DDL_DISPATCH_MACROS,
   DDL_COMPLETED_MEETINGS,
+  DDL_COMPLETED_MEETINGS_INDEX,
   DDL_SCHEMA_VERSION,
   DDL_PENDING_CONFLICTS,
   DDL_CONFLICT_RESOLUTIONS,

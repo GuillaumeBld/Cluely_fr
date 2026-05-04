@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import Database from 'better-sqlite3';
 import { BrowserWindow } from 'electron';
+import { IpcEventBus } from '../../electron/services/IpcEventBus';
 import { runMigration } from '../../electron/memory/migration';
 import { PatternLearner } from '../../electron/services/PatternLearner';
 
@@ -57,5 +58,21 @@ describe('PatternLearner', () => {
     learner.observe({ id: 'm1', project_id: 'finbiz', meeting_type: 'weekly-sync', template_id: 'code-task', dispatch_target: 'notion' });
     const cnt = (db.prepare('SELECT COUNT(*) as cnt FROM completed_meetings').get() as any).cnt;
     expect(cnt).toBe(1);
+  });
+
+  it('does not send to destroyed windows', () => {
+    vi.spyOn(BrowserWindow, 'getAllWindows').mockReturnValueOnce([
+      { isDestroyed: () => true, webContents: { send: mockSend } } as any,
+    ]);
+    learner.observe({ id: 'm1', project_id: 'finbiz', meeting_type: 'weekly-sync', template_id: 'code-task', dispatch_target: 'notion' });
+    learner.observe({ id: 'm2', project_id: 'finbiz', meeting_type: 'weekly-sync', template_id: 'code-task', dispatch_target: 'notion' });
+    expect(mockSend).not.toHaveBeenCalled();
+  });
+
+  it('dispose() unregisters the IpcEventBus listener', () => {
+    const offSpy = vi.spyOn(IpcEventBus, 'offTyped');
+    learner.dispose();
+    expect(offSpy).toHaveBeenCalledWith('meeting:ended', expect.any(Function));
+    offSpy.mockRestore();
   });
 });

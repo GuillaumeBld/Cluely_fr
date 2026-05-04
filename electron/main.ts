@@ -2152,6 +2152,11 @@ async function initializeApp() {
       console.error('[Main] Failed to stop WebSocketEmitter:', e);
     }
     try {
+      appState.getPatternLearner()?.dispose();
+    } catch (e) {
+      console.error('[Main] Failed to dispose PatternLearner:', e);
+    }
+    try {
       MulticaManager.getInstance().stop();
     } catch (e) {
       console.error('[Main] Failed to stop MulticaManager:', e);
