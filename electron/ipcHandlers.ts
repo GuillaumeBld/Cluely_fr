@@ -10,6 +10,8 @@ import * as fs from "fs";
 import { AudioDevices } from "./audio/AudioDevices";
 
 import { ENGLISH_VARIANTS } from "./config/languages"
+import { MEETING_TYPE_KEYWORDS } from "./config/meetingTypeTemplates"
+import type { MeetingType } from "./config/meetingTypeTemplates"
 import { registerDashboardHandlers } from './ipc/dashboardHandlers';
 import { registerDailySummaryHandlers } from './ipc/dailySummaryHandlers';
 import { registerCostHandlers } from './ipc/costHandlers';
@@ -1353,11 +1355,15 @@ export function initializeIpcHandlers(appState: AppState): void {
   });
 
   safeHandle("meeting:set-type", async (_, { type }: { type: string }) => {
+    const validTypes = Object.keys(MEETING_TYPE_KEYWORDS) as MeetingType[];
+    if (!validTypes.includes(type as MeetingType)) {
+      return { success: false, error: `Unknown meeting type: "${type}"` };
+    }
     try {
-      appState.getIntelligenceManager().setMeetingType(type as any);
+      appState.getIntelligenceManager().setMeetingType(type as MeetingType);
       return { success: true };
     } catch (error) {
-      console.error("Error setting meeting type:", error);
+      console.error("[IPC] Error setting meeting type:", error);
       return { success: false, error: String(error) };
     }
   });

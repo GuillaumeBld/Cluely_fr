@@ -8,18 +8,4 @@ export const MEETING_TYPE_KEYWORDS: Record<MeetingType, string[]> = {
   general: [],
 };
 
-const DEFAULT_MEETING_TYPE: MeetingType = 'general';
-
-let currentMeetingType: MeetingType = DEFAULT_MEETING_TYPE;
-
-export function getCurrentMeetingType(): MeetingType {
-  return currentMeetingType;
-}
-
-export function setCurrentMeetingType(type: MeetingType): void {
-  currentMeetingType = type;
-}
-
-export function resetMeetingType(): void {
-  currentMeetingType = DEFAULT_MEETING_TYPE;
-}
+export const DEFAULT_MEETING_TYPE: MeetingType = 'general';

@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { detectMeetingType } from '../../electron/services/MeetingTypeDetector';
+import { MEETING_TYPE_KEYWORDS } from '../../electron/config/meetingTypeTemplates';
+import type { MeetingType } from '../../electron/config/meetingTypeTemplates';
 
 describe('detectMeetingType', () => {
   it('detects standup from title', () => {
@@ -33,4 +35,16 @@ describe('detectMeetingType', () => {
   it('is case-insensitive', () => {
     expect(detectMeetingType('DAILY STAND-UP')).toBe('standup');
   });
+});
+
+describe('detectMeetingType — keyword exhaustiveness', () => {
+  const entries = Object.entries(MEETING_TYPE_KEYWORDS) as [MeetingType, string[]][];
+  for (const [type, keywords] of entries) {
+    if (keywords.length === 0) continue; // general has no keywords
+    for (const kw of keywords) {
+      it(`detects '${type}' from keyword '${kw}'`, () => {
+        expect(detectMeetingType(kw)).toBe(type);
+      });
+    }
+  }
 });

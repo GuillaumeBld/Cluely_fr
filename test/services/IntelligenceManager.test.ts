@@ -52,7 +52,7 @@ describe('IntelligenceManager — interim transcript tracking', () => {
     expect((mgr as any).lastInterimUser).toBeNull();
   });
 
-  it('reset() clears both lastInterimInterviewer and lastInterimUser', () => {
+  it('reset() clears lastInterimInterviewer and lastInterimUser', () => {
     // Directly set both fields to simulate mid-session state
     (mgr as any).lastInterimInterviewer = {
       speaker: 'interviewer', text: 'Can you tell me', timestamp: Date.now(), final: false,
@@ -65,5 +65,44 @@ describe('IntelligenceManager — interim transcript tracking', () => {
 
     expect((mgr as any).lastInterimInterviewer).toBeNull();
     expect((mgr as any).lastInterimUser).toBeNull();
+  });
+});
+
+describe('IntelligenceManager — meeting type detection and override', () => {
+  it('auto-detects standup from meeting title on setMeetingMetadata', () => {
+    const mgr = makeMgr();
+    mgr.setMeetingMetadata({ title: 'Daily Standup' });
+    expect((mgr as any).currentMeetingType).toBe('standup');
+  });
+
+  it('auto-detects sales from meeting title on setMeetingMetadata', () => {
+    const mgr = makeMgr();
+    mgr.setMeetingMetadata({ title: 'Product Demo with Acme Corp' });
+    expect((mgr as any).currentMeetingType).toBe('sales');
+  });
+
+  it('falls back to general when metadata has no title', () => {
+    const mgr = makeMgr();
+    mgr.setMeetingMetadata({});
+    expect((mgr as any).currentMeetingType).toBe('general');
+  });
+
+  it('falls back to general when metadata title is undefined', () => {
+    const mgr = makeMgr();
+    mgr.setMeetingMetadata({ title: undefined });
+    expect((mgr as any).currentMeetingType).toBe('general');
+  });
+
+  it('manual setMeetingType overrides auto-detected type', () => {
+    const mgr = makeMgr();
+    mgr.setMeetingMetadata({ title: 'Daily Standup' });
+    mgr.setMeetingType('sales');
+    expect((mgr as any).currentMeetingType).toBe('sales');
+  });
+
+  it('setMeetingType sets type directly', () => {
+    const mgr = makeMgr();
+    mgr.setMeetingType('interview');
+    expect((mgr as any).currentMeetingType).toBe('interview');
   });
 });

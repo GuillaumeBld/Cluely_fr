@@ -13,6 +13,12 @@ function mockHelper() {
   return { streamChat: vi.fn().mockImplementation(() => gen()) };
 }
 
+async function drainStream(gen: AsyncGenerator<string>): Promise<string[]> {
+  const chunks: string[] = [];
+  for await (const chunk of gen) chunks.push(chunk);
+  return chunks;
+}
+
 describe('RecapLLM — meeting type prompt selection', () => {
   it('uses STANDUP_RECAP_PROMPT for standup', async () => {
     const helper = mockHelper();
@@ -57,5 +63,49 @@ describe('RecapLLM — meeting type prompt selection', () => {
     expect(helper.streamChat).toHaveBeenCalledWith(
       'context', undefined, undefined, INTERVIEW_RECAP_PROMPT
     );
+  });
+});
+
+describe('RecapLLM — generateStream prompt selection', () => {
+  it('uses STANDUP_RECAP_PROMPT for standup (stream)', async () => {
+    const helper = mockHelper();
+    const recap = new RecapLLM(helper as any);
+    await drainStream(recap.generateStream('context', 'standup'));
+    expect(helper.streamChat).toHaveBeenCalledWith(
+      'context', undefined, undefined, STANDUP_RECAP_PROMPT
+    );
+  });
+
+  it('uses UNIVERSAL_RECAP_PROMPT for general (stream)', async () => {
+    const helper = mockHelper();
+    const recap = new RecapLLM(helper as any);
+    await drainStream(recap.generateStream('context', 'general'));
+    expect(helper.streamChat).toHaveBeenCalledWith(
+      'context', undefined, undefined, UNIVERSAL_RECAP_PROMPT
+    );
+  });
+
+  it('uses UNIVERSAL_RECAP_PROMPT as default when meetingType omitted (stream)', async () => {
+    const helper = mockHelper();
+    const recap = new RecapLLM(helper as any);
+    await drainStream(recap.generateStream('context'));
+    expect(helper.streamChat).toHaveBeenCalledWith(
+      'context', undefined, undefined, UNIVERSAL_RECAP_PROMPT
+    );
+  });
+
+  it('returns nothing for empty context (stream)', async () => {
+    const helper = mockHelper();
+    const recap = new RecapLLM(helper as any);
+    const chunks = await drainStream(recap.generateStream('   '));
+    expect(chunks).toHaveLength(0);
+    expect(helper.streamChat).not.toHaveBeenCalled();
+  });
+
+  it('propagates error when streamChat throws', async () => {
+    async function* throwing() { throw new Error('LLM down'); yield 'never'; }
+    const helper = { streamChat: vi.fn().mockImplementation(() => throwing()) };
+    const recap = new RecapLLM(helper as any);
+    await expect(drainStream(recap.generateStream('context', 'sales'))).rejects.toThrow('LLM down');
   });
 });

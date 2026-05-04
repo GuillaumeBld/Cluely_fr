@@ -46,12 +46,8 @@ export class RecapLLM {
      */
     async *generateStream(context: string, meetingType: MeetingType = 'general'): AsyncGenerator<string> {
         if (!context.trim()) return;
-        try {
-            const prompt = RECAP_PROMPTS[meetingType];
-            yield* this.llmHelper.streamChat(context, undefined, undefined, prompt);
-        } catch (error) {
-            console.error("[RecapLLM] Streaming generation failed:", error);
-        }
+        const prompt = RECAP_PROMPTS[meetingType] ?? UNIVERSAL_RECAP_PROMPT;
+        yield* this.llmHelper.streamChat(context, undefined, undefined, prompt);
     }
 
     private clampRecapResponse(text: string): string {

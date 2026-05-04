@@ -21,8 +21,10 @@
   - `DecisionQuery.ts` -- structured query for commitment/decision edges within a date range
 - `electron/ipcHandlers.ts` -- all IPC handler registrations (goal:create, goal:list, goal:complete, goal:pre-call-hint, and many more)
 - `electron/preload.ts` -- exposes `window.electronAPI` bindings to the renderer
-- `electron/config/` -- agent configuration (agentConfig)
-- `electron/services/` -- mid-call decision capture layer (IpcEventBus, LunrIndexer, SlidingWindowAnalyzer, TaskGeneratorBuffer, MemoryGraphWriter) and background agent (BackgroundAgent, AgentStateManager, CommitmentStalenessChecker, PermissionsAuditLog); also `PatternLearner` — post-dispatch macro-learning service, records `completed_meetings` and pushes `macro:proposal` events when repeat patterns are detected
+- `electron/config/` -- agent configuration (`agentConfig`) and meeting type registry
+  - `meetingTypeTemplates.ts` -- `MeetingType` union type, `MEETING_TYPE_KEYWORDS` map, and `DEFAULT_MEETING_TYPE` (single source of truth for meeting type enumeration)
+- `electron/llm/` -- Electron-side LLM helpers: `RecapLLM` (streaming recap generation with per-meeting-type prompt selection via `RECAP_PROMPTS` map), `prompts.ts` (all system prompt constants including `UNIVERSAL_RECAP_PROMPT`, `STANDUP_RECAP_PROMPT`, `ONE_ON_ONE_RECAP_PROMPT`, `SALES_RECAP_PROMPT`, `INTERVIEW_RECAP_PROMPT`)
+- `electron/services/` -- mid-call decision capture layer (IpcEventBus, LunrIndexer, SlidingWindowAnalyzer, TaskGeneratorBuffer, MemoryGraphWriter) and background agent (BackgroundAgent, AgentStateManager, CommitmentStalenessChecker, PermissionsAuditLog); also `PatternLearner` — post-dispatch macro-learning service, records `completed_meetings` and pushes `macro:proposal` events when repeat patterns are detected; `MeetingTypeDetector` — keyword-based meeting type detection from meeting title
 - `electron/corpus/` -- local-corpus RAG: file + git-history indexing, embedding-based retrieval, freshness guard
   - Config: `corpus.json` in Electron userData directory (no UI; file-based only)
 - `src/services/` -- post-meeting pipeline (RecapLLM, WorkflowClassifier, WorkflowDrafter, PostMeetingProcessor, ArchonDispatcher); `MacroLearner` evaluates completed-meeting patterns and proposes dispatch macros; `MacroRunner` executes confirmed macros
