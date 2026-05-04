@@ -4,6 +4,7 @@ import fs from 'fs';
 import { app } from 'electron';
 import crypto from 'crypto';
 import { runMigration } from './migration';
+import { loadSqliteVec } from './vecLoader';
 import {
   NodeKind,
   EdgePredicate,
@@ -40,6 +41,11 @@ export class MemoryManager {
         this.db = new Database(':memory:');
         this.degraded = true;
       }
+    }
+    try {
+      loadSqliteVec(this.db);
+    } catch (err) {
+      console.warn('[MemoryManager] sqlite-vec unavailable, vector search will be disabled:', err);
     }
     try {
       runMigration(this.db);
@@ -184,6 +190,60 @@ export class MemoryManager {
     ).run(nodeId, key, value, confidence, source);
 
     return this.db.prepare('SELECT * FROM memory_facts WHERE id = ?').get(Number(info.lastInsertRowid)) as MemoryFact;
+  }
+
+  /**
+   * Store a float32 embedding for a fact.
+   * Writes to both memory_facts.embedding (BLOB) and memory_facts_vec virtual table.
+   * No-op if the fact does not exist.
+   */
+  public storeFactEmbedding(factId: number, embedding: number[]): void {
+    const buf = Buffer.from(new Float32Array(embedding).buffer);
+    this.db.prepare(
+      "UPDATE memory_facts SET embedding = ?, updated_at = datetime('now') WHERE id = ?"
+    ).run(buf, factId);
+    try {
+      this.db.prepare(
+        'INSERT OR REPLACE INTO memory_facts_vec (fact_id, embedding) VALUES (?, ?)'
+      ).run(factId, new Float32Array(embedding));
+    } catch (err) {
+      console.warn('[MemoryManager] storeFactEmbedding: vec0 insert failed (extension unavailable?):', err);
+    }
+  }
+
+  /**
+   * Return the top-k memory facts whose embeddings are most similar to queryVector.
+   * Uses cosine distance via sqlite-vec vec0 KNN.
+   * Returns empty array if vec0 extension is unavailable.
+   */
+  public findSimilar(
+    queryVector: number[],
+    k: number = 5,
+    kindFilter?: NodeKind,
+  ): (MemoryFact & { node_label: string; node_kind: NodeKind; distance: number })[] {
+    try {
+      const queryBuf = new Float32Array(queryVector);
+      let sql = `
+        SELECT f.*, n.label AS node_label, n.kind AS node_kind, v.distance
+        FROM memory_facts_vec v
+        JOIN memory_facts f ON f.id = v.fact_id
+        JOIN memory_nodes n ON n.id = f.node_id
+        WHERE v.embedding MATCH ? AND k = ?
+      `;
+      const params: unknown[] = [queryBuf, k];
+
+      if (kindFilter) {
+        sql += ' AND n.kind = ?';
+        params.push(kindFilter);
+      }
+
+      sql += ' ORDER BY v.distance';
+
+      return this.db.prepare(sql).all(...params) as (MemoryFact & { node_label: string; node_kind: NodeKind; distance: number })[];
+    } catch (err) {
+      console.warn('[MemoryManager] findSimilar failed (sqlite-vec unavailable?):', err);
+      return [];
+    }
   }
 
   /**

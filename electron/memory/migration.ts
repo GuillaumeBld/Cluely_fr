@@ -1,5 +1,5 @@
 import Database from 'better-sqlite3';
-import { ALL_DDL, SCHEMA_VERSION } from './schema';
+import { ALL_DDL, VEC_DDL, SCHEMA_VERSION } from './schema';
 
 /**
  * Run memory-graph migrations idempotently.
@@ -20,6 +20,15 @@ export function runMigration(db: Database.Database): void {
       db.prepare('INSERT INTO memory_schema_version (version) VALUES (?)').run(SCHEMA_VERSION);
     }
   })();
+
+  // Vec-extension DDL runs separately — no-op if sqlite-vec is not loaded
+  for (const ddl of VEC_DDL) {
+    try {
+      db.exec(ddl);
+    } catch {
+      // sqlite-vec not loaded — vec0 tables will not be created
+    }
+  }
 }
 
 /**

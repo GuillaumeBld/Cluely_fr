@@ -45,6 +45,13 @@
         "to": "natively.icns"
       }
     ],
+    "asarUnpack": [
+      "**/node_modules/sqlite-vec-darwin-arm64/**",
+      "**/node_modules/sqlite-vec-darwin-x64/**",
+      "**/node_modules/sqlite-vec-linux-x64/**",
+      "**/node_modules/sqlite-vec-linux-arm64/**",
+      "**/node_modules/sqlite-vec-windows-x64/**"
+    ],
     "mac": {
       "category": "public.app-category.productivity",
       "target": [
@@ -166,6 +173,7 @@
     "@types/three": "^0.182.0",
     "axios": "^1.7.7",
     "better-sqlite3": "12.6.2",
+    "sqlite-vec": "^0.1.9",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
     "diff": "^7.0.0",
