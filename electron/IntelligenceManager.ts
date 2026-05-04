@@ -22,6 +22,8 @@ export interface SuggestionTrigger {
 }
 
 import { AnswerLLM, AssistLLM, FollowUpLLM, RecapLLM, FollowUpQuestionsLLM, WhatToAnswerLLM, prepareTranscriptForWhatToAnswer, GROQ_TITLE_PROMPT, GROQ_SUMMARY_JSON_PROMPT, buildTemporalContext, AssistantResponse, classifyIntent } from './llm';
+import { detectMeetingType } from './services/MeetingTypeDetector';
+import type { MeetingType } from './config/meetingTypeTemplates';
 import { desktopCapturer } from 'electron';
 import { DatabaseManager, Meeting, ActionItem } from './db/DatabaseManager';
 import { GoalAligner } from './memory/GoalAligner';
@@ -134,6 +136,11 @@ export class IntelligenceManager extends EventEmitter {
 
     public setMeetingMetadata(metadata: any) {
         this.currentMeetingMetadata = metadata;
+        this.currentMeetingType = detectMeetingType(metadata?.title ?? '');
+    }
+
+    public setMeetingType(type: MeetingType): void {
+        this.currentMeetingType = type;
     }
 
     public addMeetingScreenshot(screenshotPath: string, label?: string): void {
@@ -160,6 +167,9 @@ export class IntelligenceManager extends EventEmitter {
     private recapLLM: RecapLLM | null = null;
     private followUpQuestionsLLM: FollowUpQuestionsLLM | null = null;
     private whatToAnswerLLM: WhatToAnswerLLM | null = null;
+
+    // Meeting type for recap prompt selection
+    private currentMeetingType: MeetingType = 'general';
 
     // Goal alignment (optional — set via setGoalAligner)
     private goalAligner: GoalAligner | null = null;
@@ -693,7 +703,7 @@ export class IntelligenceManager extends EventEmitter {
             }
 
             let fullSummary = "";
-            const stream = this.recapLLM.generateStream(context);
+            const stream = this.recapLLM.generateStream(context, this.currentMeetingType);
 
             for await (const token of stream) {
                 this.emit('recap_token', token);

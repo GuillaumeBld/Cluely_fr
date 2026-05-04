@@ -1,6 +1,21 @@
 import { LLMHelper } from "../LLMHelper";
-import { UNIVERSAL_RECAP_PROMPT } from "./prompts";
+import {
+    UNIVERSAL_RECAP_PROMPT,
+    STANDUP_RECAP_PROMPT,
+    ONE_ON_ONE_RECAP_PROMPT,
+    SALES_RECAP_PROMPT,
+    INTERVIEW_RECAP_PROMPT,
+} from "./prompts";
+import type { MeetingType } from "../config/meetingTypeTemplates";
 import { ConflictResolution } from "../memory/schema";
+
+const RECAP_PROMPTS: Record<MeetingType, string> = {
+    standup: STANDUP_RECAP_PROMPT,
+    one_on_one: ONE_ON_ONE_RECAP_PROMPT,
+    sales: SALES_RECAP_PROMPT,
+    interview: INTERVIEW_RECAP_PROMPT,
+    general: UNIVERSAL_RECAP_PROMPT,
+};
 
 export class RecapLLM {
     private llmHelper: LLMHelper;
@@ -12,10 +27,11 @@ export class RecapLLM {
     /**
      * Generate a neutral conversation summary
      */
-    async generate(context: string): Promise<string> {
+    async generate(context: string, meetingType: MeetingType = 'general'): Promise<string> {
         if (!context.trim()) return "";
         try {
-            const stream = this.llmHelper.streamChat(context, undefined, undefined, UNIVERSAL_RECAP_PROMPT);
+            const prompt = RECAP_PROMPTS[meetingType];
+            const stream = this.llmHelper.streamChat(context, undefined, undefined, prompt);
             let fullResponse = "";
             for await (const chunk of stream) fullResponse += chunk;
             return this.clampRecapResponse(fullResponse);
@@ -28,11 +44,11 @@ export class RecapLLM {
     /**
      * Generate a neutral conversation summary (Streamed)
      */
-    async *generateStream(context: string): AsyncGenerator<string> {
+    async *generateStream(context: string, meetingType: MeetingType = 'general'): AsyncGenerator<string> {
         if (!context.trim()) return;
         try {
-            // Use our universal helper
-            yield* this.llmHelper.streamChat(context, undefined, undefined, UNIVERSAL_RECAP_PROMPT);
+            const prompt = RECAP_PROMPTS[meetingType];
+            yield* this.llmHelper.streamChat(context, undefined, undefined, prompt);
         } catch (error) {
             console.error("[RecapLLM] Streaming generation failed:", error);
         }

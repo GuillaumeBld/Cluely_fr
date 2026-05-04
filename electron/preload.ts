@@ -98,6 +98,7 @@ interface ElectronAPI {
   resetIntelligence: () => Promise<{ success: boolean; error?: string }>
 
   // Meeting Lifecycle
+  setMeetingType: (type: string) => Promise<{ success: boolean; error?: string }>
   startMeeting: (metadata?: any) => Promise<{ success: boolean; error?: string }>
   endMeeting: () => Promise<{ success: boolean; error?: string }>
   getRecentMeetings: () => Promise<Array<{ id: string; title: string; date: string; duration: string; summary: string }>>
@@ -540,6 +541,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   resetIntelligence: () => ipcRenderer.invoke("reset-intelligence"),
 
   // Meeting Lifecycle
+  setMeetingType: (type: string) => ipcRenderer.invoke("meeting:set-type", { type }),
   startMeeting: (metadata?: any) => ipcRenderer.invoke("start-meeting", metadata),
   endMeeting: () => ipcRenderer.invoke("end-meeting"),
   getRecentMeetings: () => ipcRenderer.invoke("get-recent-meetings"),
