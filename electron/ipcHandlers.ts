@@ -1988,6 +1988,18 @@ export function initializeIpcHandlers(appState: AppState): void {
     return { success: true };
   });
 
+  // Approval Tray handlers — dismiss just acknowledges; approve is a no-op until ArchonDispatcher is wired
+  safeHandle('approval:dismiss', async (_event: any, draftId: string) => {
+    console.log(`[ApprovalTray] Draft dismissed: ${draftId}`);
+    return { success: true };
+  });
+
+  safeHandle('approval:approve', async (_event: any, draftId: string) => {
+    console.log(`[ApprovalTray] Draft approved: ${draftId}`);
+    // Future: dispatch to ArchonDispatcher here
+    return { success: true, dispatched: false };
+  });
+
   // WebSocket port configuration
   safeHandle('ws:set-port', async (_, port: number) => {
     try {

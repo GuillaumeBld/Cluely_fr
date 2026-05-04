@@ -973,6 +973,17 @@ contextBridge.exposeInMainWorld("electronAPI", {
   macroObserve: (row: { id: string; project_id: string; meeting_type: string; template_id: string; dispatch_target: string }) =>
     ipcRenderer.invoke('macro:observe', row),
 
+  // Approval Tray API — receives workflow drafts from post-meeting pipeline and Hermes
+  approval: {
+    onDraftsReady: (cb: (data: { drafts: any[]; meetingId?: string }) => void) => {
+      const subscription = (_: any, data: any) => cb(data);
+      ipcRenderer.on('approval:drafts-ready', subscription);
+      return () => ipcRenderer.removeListener('approval:drafts-ready', subscription);
+    },
+    dismiss: (draftId: string) => ipcRenderer.invoke('approval:dismiss', draftId),
+    approve: (draftId: string) => ipcRenderer.invoke('approval:approve', draftId),
+  },
+
   // Project Context Switcher API
   listProjects: (labelLike?: string) => ipcRenderer.invoke('project:list', labelLike),
   switchProject: (projectId: string, label: string) => ipcRenderer.invoke('project:switch', projectId, label),

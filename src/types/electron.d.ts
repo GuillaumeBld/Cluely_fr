@@ -227,6 +227,13 @@ export interface ElectronAPI {
   clearActiveProject: () => Promise<{ success: boolean }>
   onProjectContextChanged: (callback: (data: { projectId: string | null; label: string | null }) => void) => () => void
   onOpenProjectPalette: (callback: () => void) => () => void
+
+  // Approval Tray API
+  approval: {
+    onDraftsReady: (cb: (data: { drafts: Array<{ id: string; templateId: string; confidence: number; payload: { title: string; description: string; steps: string[] }; speaker: string; timestamp: string; source: string }>, meetingId?: string }) => void) => () => void
+    dismiss: (draftId: string) => Promise<{ success: boolean }>
+    approve: (draftId: string) => Promise<{ success: boolean; dispatched: boolean }>
+  }
 }
 
 declare global {

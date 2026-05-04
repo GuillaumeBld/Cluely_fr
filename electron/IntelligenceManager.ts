@@ -31,6 +31,7 @@ import { MemoryManager } from './memory/MemoryManager';
 const crypto = require('crypto');
 import { app } from 'electron';
 import { taskGeneratorBuffer } from './services/TaskGeneratorBuffer';
+import { runPostMeetingPipeline } from './services/PostMeetingPipeline';
 
 
 export const GEMINI_FLASH_MODEL = "gemini-3-flash-preview";
@@ -1061,6 +1062,7 @@ export class IntelligenceManager extends EventEmitter {
         let summaryData: { actionItems: (string | import('./db/DatabaseManager').ActionItem)[], keyPoints: string[] } = { actionItems: [], keyPoints: [] };
         let calendarEventId: string | undefined;
         let source: 'manual' | 'calendar' = 'manual';
+        let _decisionHints = '';
 
         if (this.currentMeetingMetadata) {
             if (this.currentMeetingMetadata.title) title = this.currentMeetingMetadata.title;
@@ -1081,6 +1083,7 @@ export class IntelligenceManager extends EventEmitter {
 
             // Inject mid-call decision hints into context for better action item extraction
             const decisionHints = this.buildDecisionHintsBlock();
+            _decisionHints = decisionHints;
 
             // Generate Structured Summary
             // Only generate if we have sufficient context/transcript
@@ -1179,6 +1182,22 @@ export class IntelligenceManager extends EventEmitter {
 
             // Extract text strings for KB/Multica (they expect string[])
             const actionItemTexts = normalizedItems.map(a => a.text);
+
+            // Run post-meeting pipeline: ledger + memory graph + workflow drafts → ApprovalTray
+            const transcriptBlock = data.transcript.map(s => `[${s.speaker}] ${s.text}`).join('\n');
+            runPostMeetingPipeline(
+                {
+                    meetingId,
+                    transcriptText: transcriptBlock,
+                    actionItems: normalizedItems.map(a => ({
+                        text: a.text,
+                        speaker: 'user',
+                        timestamp: new Date().toISOString(),
+                    })),
+                    decisionHints: _decisionHints,
+                },
+                this.llmHelper,
+            ).catch(err => console.error('[IntelligenceManager] PostMeetingPipeline failed:', err));
 
             // Sync to KB + NotebookLM (non-blocking)
             const kb = KBManager.getInstance();
