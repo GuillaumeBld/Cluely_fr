@@ -83,8 +83,10 @@ export async function runPostMeetingPipeline(
 ): Promise<void> {
   const { meetingId, transcriptText, actionItems } = input;
 
-  // ── Shared deps ───────────────────────────────────────────���────────────────
+  // ── Shared deps ──────────────────────────────────────────────────────────────
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let db: any = null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let mm: any = null;
   let activeProjectId: string | null = null;
 
@@ -109,7 +111,7 @@ export async function runPostMeetingPipeline(
       const ledger = DecisionLedger.getInstance(db);
       let aligner: any;
       try { aligner = GoalAligner.getInstance(); } catch {
-        aligner = { align: async () => null, alignActionItems: async (items: string[]) => items.map((text: string) => ({ text, goal_id: null, goal_confidence: null })) };
+        aligner = { align: async (): Promise<null> => null, alignActionItems: async (items: string[]): Promise<Array<{ text: string; goal_id: null; goal_confidence: null }>> => items.map((text: string): { text: string; goal_id: null; goal_confidence: null } => ({ text, goal_id: null, goal_confidence: null })) };
       }
 
       const simpleExtractor = {
