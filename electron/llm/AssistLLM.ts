@@ -32,7 +32,7 @@ export class AssistLLM {
                 instruction,
                 undefined, // no image
                 context,
-                UNIVERSAL_ASSIST_PROMPT
+                UNIVERSAL_ASSIST_PROMPT()
             );
 
         } catch (error) {

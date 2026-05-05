@@ -10,6 +10,7 @@ import WorkspaceSelector, { Workspace, MULTICA_API, MULTICA_TOKEN } from './Work
 import MulticaPanel from './MulticaPanel';
 import { motion, AnimatePresence } from 'framer-motion';
 import { analytics } from '../lib/analytics/analytics.service';
+import { useT } from '../i18n';
 import { useShortcuts } from '../hooks/useShortcuts';
 import { PreBriefBanner } from './PreBriefBanner';
 import { AttendeePanel } from './AttendeePanel';
@@ -161,6 +162,7 @@ const MiniCalendar: React.FC<{ events: any[]; onEventClick: (e: any) => void }> 
 };
 
 const Launcher: React.FC<LauncherProps> = ({ onStartMeeting, onOpenSettings }) => {
+    const { t } = useT();
     const [meetings, setMeetings] = useState<Meeting[]>([]);
     const [isDetectable, setIsDetectable] = useState(false);
     const [selectedMeeting, setSelectedMeeting] = useState<Meeting | null>(null);
@@ -420,13 +422,13 @@ const Launcher: React.FC<LauncherProps> = ({ onStartMeeting, onOpenSettings }) =
                                                         ? 'border-white/10 text-text-tertiary hover:border-white/20'
                                                         : 'border-sky-500/30 text-sky-400 bg-sky-500/10'
                                                 }`}
-                                                title={isDetectable ? "Mode détectable" : "Mode indétectable"}
+                                                title={isDetectable ? t('label_detectable_mode') : t('label_undetectable_mode')}
                                             >
                                                 {isDetectable
                                                     ? <Ghost size={11} />
                                                     : <svg width="11" height="11" viewBox="0 0 24 24" fill="white"><path d="M12 2C7.58 2 4 5.58 4 10v12l3-3 2.5 2.5L12 19l2.5 2.5L17 19l3 3V10c0-4.42-3.58-8-8-8z"/><circle cx="9" cy="10" r="1.5" fill="black"/><circle cx="15" cy="10" r="1.5" fill="black"/></svg>
                                                 }
-                                                {isDetectable ? 'Détectable' : 'Indétectable'}
+                                                {isDetectable ? t('label_detectable') : t('label_undetectable')}
                                             </button>
                                         </div>
 
@@ -438,7 +440,7 @@ const Launcher: React.FC<LauncherProps> = ({ onStartMeeting, onOpenSettings }) =
                                                 className="flex items-center gap-2 px-4 py-1.5 rounded-full text-[12px] font-semibold bg-sky-500 hover:bg-sky-400 text-white transition-all shadow-md shadow-sky-500/20 active:scale-95"
                                             >
                                                 <img src={icon} alt="" className="w-3.5 h-3.5 brightness-0 invert" />
-                                                Démarrer
+                                                {t('btn_start')}
                                             </button>
                                         </div>
                                     </div>

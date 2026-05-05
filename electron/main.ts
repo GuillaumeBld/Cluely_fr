@@ -105,11 +105,14 @@ import { BackgroundAgent } from "./services/BackgroundAgent"
 import { DashboardPoller } from './services/DashboardPoller'
 import { DailySummaryScheduler } from './services/DailySummaryScheduler'
 import { DailySummaryLLM } from './llm/DailySummaryLLM'
+import { getUiLang } from './llm/prompts'
 import { TokenUsageTracker } from "./services/TokenUsageTracker"
 import { ProactiveAdviceEngine } from "./services/ProactiveAdviceEngine"
 import { AttendeeTracker } from "./services/AttendeeTracker"
 import { registerAttendeeHandlers } from "./ipc/attendeeHandlers"
 import { getAgentConfig, setAgentIntervalMs } from "./config/agentConfig"
+
+function mt(fr: string, en: string): string { return getUiLang() === 'fr' ? fr : en; }
 
 export class AppState {
   private static instance: AppState | null = null
@@ -1532,7 +1535,7 @@ export class AppState {
     trayIcon.setTemplateImage(iconToUse.endsWith('Template.png'));
 
     this.tray = new Tray(trayIcon)
-    this.tray.setToolTip('Cluely.fr - Appuyez sur Cmd+Shift+Space pour afficher') // This tooltip might also need update if we change global shortcut, but global shortcut is removed.
+    this.tray.setToolTip(mt('Répliq.ai - Appuyez sur Cmd+Shift+Space pour afficher', 'Répliq.ai - Press Cmd+Shift+Space to show'))
     this.updateTrayMenu();
 
     // Double-click to show window
@@ -1550,7 +1553,7 @@ export class AppState {
     console.log('[Main] updateTrayMenu called. Screenshot Accelerator:', screenshotAccel);
 
     // Update tooltip for verification
-    this.tray.setToolTip(`Cluely.fr (${screenshotAccel}) - Appuyez sur Cmd+Maj+Espace pour afficher`);
+    this.tray.setToolTip(mt(`Répliq.ai (${screenshotAccel}) - Appuyez sur Cmd+Maj+Espace pour afficher`, `Répliq.ai (${screenshotAccel}) - Press Cmd+Shift+Space to show`));
 
     // Helper to format accelerator for display (e.g. CommandOrControl+H -> Cmd+H)
     const formatAccel = (accel: string) => {
@@ -1570,7 +1573,7 @@ export class AppState {
 
     const contextMenu = Menu.buildFromTemplate([
       {
-        label: 'Afficher Cluely.fr',
+        label: mt('Afficher Répliq.ai', 'Show Répliq.ai'),
         click: () => {
           this.centerAndShowWindow()
         }
@@ -1682,7 +1685,7 @@ export class AppState {
   }
 
   private _applyDisguise(mode: 'terminal' | 'settings' | 'activity' | 'none'): void {
-    let appName = "Cluely.fr";
+    let appName = "Répliq.ai";
     let iconPath = "";
 
     switch (mode) {
@@ -1705,7 +1708,7 @@ export class AppState {
           : path.resolve(__dirname, "../assets/fakeicon/activity.png");
         break;
       case 'none':
-        appName = "Cluely.fr";
+        appName = "Répliq.ai";
         iconPath = app.isPackaged
           ? path.join(process.resourcesPath, "natively.icns")
           : path.resolve(__dirname, "../assets/natively.icns");
@@ -1862,7 +1865,7 @@ async function initializeApp() {
       case 'terminal': return 'Terminal ';
       case 'settings': return 'System Settings ';
       case 'activity': return 'Activity Monitor ';
-      default: return 'Cluely.fr';
+      default: return 'Répliq.ai';
     }
   })();
   app.setName(initialAppName);
@@ -2021,7 +2024,7 @@ async function initializeApp() {
       console.error('[Main] Failed to start HermesObserver:', hermesErr);
     }
 
-    // Initialize Hermes orchestrator (Interpretation A — Inner Cluely Operator)
+    // Initialize Hermes orchestrator (Interpretation A — Inner Répliq Operator)
     try {
       const { HermesCore } = require('./hermes');
       const hermes = HermesCore.getInstance();
@@ -2129,11 +2132,11 @@ async function initializeApp() {
       console.error('[Main] MulticaManager failed to start:', err);
     });
 
-    // Start Zoom watcher — show Cluely + workspace selector when Zoom opens
+    // Start Zoom watcher — show Répliq + workspace selector when Zoom opens
     try {
       const zoomWatcher = ZoomWatcher.getInstance();
       zoomWatcher.on('zoom-meeting-started', () => {
-        console.log('[Main] Zoom meeting detected — showing Cluely');
+        console.log('[Main] Zoom meeting detected — showing Répliq');
         appState.centerAndShowWindow();
         // Notify renderer to open workspace selector
         const launcher = appState.getWindowHelper().getLauncherWindow();

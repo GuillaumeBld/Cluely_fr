@@ -1,0 +1,96 @@
+name: repliq-rename
+description: |
+  Rename the app from "Cluely.fr" / "cluely-fr" to "Répliq.ai" / "repliq-ai" throughout
+  the entire codebase. Updates package.json, electron/main.ts, all UI components,
+  prompts, i18n files, config files, and documentation.
+
+nodes:
+  - id: rename
+    loop:
+      prompt: |
+        You are renaming an Electron app from "Cluely.fr" to "Répliq.ai" across the entire codebase at /Volumes/SanDisk/dev/app-support/Cluely_fr.
+
+        The renaming rules are:
+        - "Cluely.fr" → "Répliq.ai"
+        - "Cluely" (standalone) → "Répliq"
+        - "cluely-fr" (package/id slugs) → "repliq-ai"
+        - "cluely_fr" (underscored) → "repliq_ai"
+        - "CLUELY" (env var prefix) → "REPLIQ"
+        - "fr.qualiaai.cluely-fr" (appId) → "ai.repliq.repliq"
+        - GitHub repo references to "Cluely_fr" → keep as-is (don't rename the actual repo)
+        - "Cluely.fr.app" (macOS app bundle) → "Répliq.ai.app"
+
+        Files to update (in priority order):
+        1. /Volumes/SanDisk/dev/app-support/Cluely_fr/package.json
+           - name: "cluely-fr" → "repliq-ai"
+           - description: update
+           - productName: "Cluely.fr" → "Répliq.ai"
+           - appId: "fr.qualiaai.cluely-fr" → "ai.repliq.repliq"
+
+        2. /Volumes/SanDisk/dev/app-support/Cluely_fr/electron/llm/prompts.ts
+           - All "Je suis Cluely.fr" → "Je suis Répliq.ai"
+           - All "Cluely.fr, un copilote" → "Répliq.ai, un copilote"
+           - Self-identification strings only — do NOT touch LANGUE instructions yet (handled by bilingual workflow)
+
+        3. /Volumes/SanDisk/dev/app-support/Cluely_fr/electron/main.ts
+           - Tray tooltip strings
+           - Menu labels
+           - appName variable assignments
+           - Console log comments (cosmetic only)
+
+        4. /Volumes/SanDisk/dev/app-support/Cluely_fr/electron/db/DatabaseManager.ts
+           - Tutorial/help content strings referencing "Cluely.fr"
+           - STT name "cluely-fr-stt" → "repliq-ai-stt"
+
+        5. /Volumes/SanDisk/dev/app-support/Cluely_fr/electron/services/MulticaConfig.ts
+           - Secret path: ".multica-cluely-secret" → ".multica-repliq-secret"
+           - Config path: ".multica-cluely.json" → ".multica-repliq.json"
+           - Bootstrap email: "admin@cluely.local" → "admin@repliq.local"
+
+        6. /Volumes/SanDisk/dev/app-support/Cluely_fr/electron/services/MulticaManager.ts
+           - client name: "cluely-electron" → "repliq-electron"
+
+        7. /Volumes/SanDisk/dev/app-support/Cluely_fr/electron/services/CalendarManager.ts
+           - Auth success message and notification strings
+
+        8. /Volumes/SanDisk/dev/app-support/Cluely_fr/electron/rag/TranscriptPreprocessor.ts
+           - Return value "Cluely.fr" → "Répliq.ai"
+
+        9. /Volumes/SanDisk/dev/app-support/Cluely_fr/electron/update/ReleaseNotesManager.ts
+           - repoName stays "Cluely_fr" (actual GitHub repo name — do not change)
+
+        10. /Volumes/SanDisk/dev/app-support/Cluely_fr/src/i18n/fr.ts
+            - All "Cluely.fr" occurrences in translation values
+
+        11. /Volumes/SanDisk/dev/app-support/Cluely_fr/src/i18n/en.ts
+            - All "Cluely.fr" occurrences in translation values
+
+        12. /Volumes/SanDisk/dev/app-support/Cluely_fr/src/components/SettingsOverlay.tsx
+            - "Quitter Cluely.fr" → "Quitter Répliq.ai"
+            - "Cluely.fr est actuellement" → "Répliq.ai est actuellement"
+
+        13. /Volumes/SanDisk/dev/app-support/Cluely_fr/src/components/settings/GeneralSettings.tsx
+            - Description paragraph
+
+        14. /Volumes/SanDisk/dev/app-support/Cluely_fr/src/components/UpdateModal.tsx
+            - App bundle name in xattr command
+
+        15. /Volumes/SanDisk/dev/app-support/Cluely_fr/src/components/ui/TopPill.tsx
+            - alt text
+
+        16. /Volumes/SanDisk/dev/app-support/Cluely_fr/electron/services/KBManager.ts
+            - REPLIQ_KB_ROOT env var name (was CLUELY_KB_ROOT)
+            - Comment strings only
+
+        17. /Volumes/SanDisk/dev/app-support/Cluely_fr/README.md
+            - All "Cluely.fr" in human-readable text → "Répliq.ai"
+            - Keep GitHub repo URLs unchanged
+
+        18. /Volumes/SanDisk/dev/app-support/Cluely_fr/electron/hermes/index.ts and types.ts
+            - Comment strings only (not runtime behavior)
+
+        For each file: read it first, make all applicable substitutions, write it back.
+        Work through all 18 files. When all are done output: <promise>COMPLETE</promise>
+      until: COMPLETE
+      max_iterations: 6
+      fresh_context: false

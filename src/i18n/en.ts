@@ -2,38 +2,38 @@ import type { TranslationKey } from './fr';
 
 export const en: Record<TranslationKey, string> = {
   // AboutSection
-  about_title: 'About Cluely.fr',
+  about_title: 'About Répliq.ai',
   about_subtitle: 'Designed to be invisible, intelligent, and trusted.',
   about_hybrid_title: 'Hybrid Intelligence',
   about_hybrid_desc: 'Seamlessly routes queries between ultra-fast models and reasoning models (Gemini, OpenAI, Claude). Powered by enterprise-grade speech recognition from 7+ providers.',
   about_rag_title: 'Local RAG & Memory',
-  about_rag_desc: 'A purely local vector memory system lets Cluely.fr recall details from past meetings. Embeddings happen on-device via SQLite for maximum privacy.',
+  about_rag_desc: 'A purely local vector memory system lets Répliq.ai recall details from past meetings. Embeddings happen on-device via SQLite for maximum privacy.',
   about_stealth_title: 'Stealth & Control',
   about_stealth_desc: '"Undetectable Mode" hides the app from the dock, "Masquerading" disguises it as a system app. You control exactly what data leaves your device.',
   about_no_record_title: 'No Recording',
-  about_no_record_desc: 'Cluely.fr listens only when active. It does not record video, take screenshots without command, or perform background surveillance.',
+  about_no_record_desc: 'Répliq.ai listens only when active. It does not record video, take screenshots without command, or perform background surveillance.',
   about_community: 'Community',
   about_repo: 'GitHub Repository',
   about_view_project: 'View project',
   about_creator: 'Creator',
   about_creator_desc: 'I build software that stays discreet.',
   about_star: 'Star on GitHub',
-  about_star_desc: 'Like Cluely.fr? Support us by starring the repo.',
+  about_star_desc: 'Like Répliq.ai? Support us by starring the repo.',
   about_bug: 'Report an issue',
   about_bug_desc: 'Found a bug? Report it on GitHub.',
   about_contact: 'Contact us',
   about_contact_desc: 'Open to professional collaborations.',
   about_contact_btn: 'Contact me',
   about_support_title: 'Support development',
-  about_support_desc: 'Cluely.fr is an independent open-source project.',
+  about_support_desc: 'Répliq.ai is an independent open-source project.',
   about_support_btn: 'Support the project',
   about_tech: 'Core Technology',
-  about_how: 'How Cluely.fr works',
+  about_how: 'How Répliq.ai works',
   about_privacy: 'Privacy & Data',
 
   // SupportToaster
   support_headline: 'Built by one.\nUsed by thousands.',
-  support_body: "Cluely.fr is built and maintained by one developer.\nIf it's part of your daily workflow, your support keeps\nit moving forward.",
+  support_body: "Répliq.ai is built and maintained by one developer.\nIf it's part of your daily workflow, your support keeps\nit moving forward.",
   support_btn: 'Support the project',
   support_dismiss: 'Not now',
 
@@ -71,14 +71,14 @@ export const en: Record<TranslationKey, string> = {
   meeting_chat_placeholder: 'Ask about this meeting...',
 
   // SettingsOverlay
-  settings_general_desc: 'Customize how Cluely.fr works for you',
-  settings_open_login: 'Open Cluely.fr at login',
-  settings_open_login_desc: 'Cluely.fr will open automatically when you log in',
-  settings_theme_desc: 'Customize how Cluely.fr looks on your device',
-  settings_version: 'You are currently using Cluely.fr version',
-  settings_disguise_desc: 'Disguise Cluely.fr as another application to prevent detection during screen sharing.',
+  settings_general_desc: 'Customize how Répliq.ai works for you',
+  settings_open_login: 'Open Répliq.ai at login',
+  settings_open_login_desc: 'Répliq.ai will open automatically when you log in',
+  settings_theme_desc: 'Customize how Répliq.ai looks on your device',
+  settings_version: 'You are currently using Répliq.ai version',
+  settings_disguise_desc: 'Disguise Répliq.ai as another application to prevent detection during screen sharing.',
   settings_disguise_auto: 'Select a disguise applied automatically when Undetectable mode is on.',
-  settings_shortcuts_desc: 'Cluely.fr works with these easy to remember commands.',
+  settings_shortcuts_desc: 'Répliq.ai works with these easy to remember commands.',
   settings_save: 'Save',
   settings_microphone: 'Default Microphone',
   settings_speakers: 'Default Speakers',
@@ -105,4 +105,27 @@ export const en: Record<TranslationKey, string> = {
 
   // PreCallHint
   goal_open_items: '{n} open action(s) since last meeting',
+
+  // Tray
+  tray_show: 'Show Répliq.ai',
+  tray_tooltip: 'Répliq.ai - Press Cmd+Shift+Space to show',
+  tray_tooltip_screenshot: 'Répliq.ai ({accel}) - Press Cmd+Shift+Space to show',
+
+  // Buttons
+  btn_start: 'Start',
+  btn_quit: 'Quit Répliq.ai',
+
+  // Labels
+  label_detectable: 'Detectable',
+  label_undetectable: 'Undetectable',
+  label_settings: 'Settings',
+  label_detectable_mode: 'Detectable mode',
+  label_undetectable_mode: 'Undetectable mode',
+
+  // Calendar
+  calendar_auth_success: 'Authentication successful! You can close this window and return to Répliq.ai.',
+  calendar_meeting_soon: '"{title}" starts in 2 minutes. Start Répliq.ai?',
+
+  // Screen sharing
+  screen_share_status: 'Répliq.ai is currently {status} by screen sharing.',
 };

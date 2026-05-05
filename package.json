@@ -1,8 +1,8 @@
 {
-  "name": "cluely-fr",
+  "name": "repliq-ai",
   "version": "1.0.0",
   "main": "./dist-electron/main.js",
-  "description": "Cluely.fr est un assistant IA de réunions et d'entretiens, entièrement en français.",
+  "description": "Répliq.ai est un assistant IA de réunions et d'entretiens, entièrement en français.",
   "scripts": {
     "clean": "rimraf dist dist-electron",
     "dev": "vite",
@@ -21,9 +21,9 @@
     "test:watch": "vitest"
   },
   "build": {
-    "appId": "fr.qualiaai.cluely-fr",
+    "appId": "ai.repliq.repliq",
     "afterPack": "./scripts/ad-hoc-sign.js",
-    "productName": "Cluely.fr",
+    "productName": "Répliq.ai",
     "files": [
       "dist/**/*",
       "dist-electron/**/*",

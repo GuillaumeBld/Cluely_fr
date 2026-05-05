@@ -4,8 +4,8 @@ import * as fs from 'fs';
 import * as crypto from 'crypto';
 import { app } from 'electron';
 
-const SECRET_PATH = path.join(os.homedir(), '.multica-cluely-secret');
-export const CONFIG_PATH = path.join(os.homedir(), '.multica-cluely.json');
+const SECRET_PATH = path.join(os.homedir(), '.multica-repliq-secret');
+export const CONFIG_PATH = path.join(os.homedir(), '.multica-repliq.json');
 
 /**
  * Resolve the Go server binary path relative to the Electron app bundle.
@@ -41,5 +41,5 @@ export function getJwtSecret(): string {
 
 export const PORT = Number(process.env.MULTICA_PORT) || 8091;
 export const BASE_URL = `http://localhost:${PORT}`;
-export const BOOTSTRAP_EMAIL = 'admin@cluely.local';
+export const BOOTSTRAP_EMAIL = 'admin@repliq.local';
 export const MASTER_CODE = '888888';

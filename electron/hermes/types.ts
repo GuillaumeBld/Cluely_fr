@@ -2,7 +2,7 @@
  * Hermes Event Types
  *
  * Typed event definitions for the Hermes in-process orchestrator.
- * Hermes observes only data Cluely already holds (Interpretation A — ADR-001).
+ * Hermes observes only data Répliq already holds (Interpretation A — ADR-001).
  */
 
 // ---------------------------------------------------------------------------

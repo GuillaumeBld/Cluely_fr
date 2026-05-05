@@ -264,6 +264,11 @@ interface ElectronAPI {
   onProjectContextChanged: (callback: (data: { projectId: string | null; label: string | null }) => void) => () => void
   onOpenProjectPalette: (callback: () => void) => () => void
 
+  // Language auto-detection API
+  lang: {
+    onChanged: (cb: (lang: 'fr' | 'en') => void) => () => void;
+  };
+
   // Archon configuration API
   archon: {
     setUrl: (url: string) => Promise<{ success: boolean; error?: string }>;
@@ -1000,6 +1005,15 @@ contextBridge.exposeInMainWorld("electronAPI", {
     },
     dismiss: (draftId: string) => ipcRenderer.invoke('approval:dismiss', draftId),
     approve: (payload: { draft: any; meetingId: string } | string) => ipcRenderer.invoke('approval:approve', payload),
+  },
+
+  // Language auto-detection API
+  lang: {
+    onChanged: (cb: (lang: 'fr' | 'en') => void) => {
+      const subscription = (_: any, lang: 'fr' | 'en') => cb(lang);
+      ipcRenderer.on('lang:changed', subscription);
+      return () => ipcRenderer.removeListener('lang:changed', subscription);
+    },
   },
 
   // Archon configuration API

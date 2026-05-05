@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Plus, Loader2, Check, ArrowLeft } from 'lucide-react';
+import { useT } from '../i18n';
 
 const MULTICA_API = 'http://localhost:8091';
 const MULTICA_TOKEN = ''; // Always use IPC in Electron; this fallback is for browser dev only
@@ -36,6 +37,7 @@ interface WorkspaceSelectorProps {
 }
 
 const WorkspaceSelector: React.FC<WorkspaceSelectorProps> = ({ onSelect, onCancel }) => {
+  const { t } = useT();
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<string | null>(null);
@@ -217,7 +219,7 @@ const WorkspaceSelector: React.FC<WorkspaceSelectorProps> = ({ onSelect, onCance
           ) : (
             <button onClick={handleConfirm} disabled={!selected}
               className="flex-1 py-2 rounded-lg text-xs font-medium bg-sky-500 hover:bg-sky-400 disabled:opacity-40 disabled:cursor-not-allowed text-white transition-all">
-              Démarrer
+              {t('btn_start')}
             </button>
           )}
         </div>

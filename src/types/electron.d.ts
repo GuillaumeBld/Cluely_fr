@@ -235,6 +235,11 @@ export interface ElectronAPI {
     approve: (payload: { draft: any; meetingId: string } | string) => Promise<{ success: boolean; dispatched: boolean; jobId?: string; error?: string }>
   }
 
+  // Language auto-detection API
+  lang: {
+    onChanged: (cb: (lang: 'fr' | 'en') => void) => () => void;
+  };
+
   // Archon configuration API
   archon: {
     setUrl: (url: string) => Promise<{ success: boolean; error?: string }>

@@ -1,7 +1,7 @@
 <div align="center">
-  <img src="assets/icon.png" width="150" alt="Cluely.fr Logo">
+  <img src="assets/icon.png" width="150" alt="Répliq.ai Logo">
 
-  # Cluely.fr – Assistant IA de Réunions et d'Entretiens (Version Française)
+  # Répliq.ai – Assistant IA de Réunions et d'Entretiens (Version Française)
 
   [![Licence](https://img.shields.io/badge/Licence-AGPL--3.0-blue?style=flat-square)](LICENSE)
   [![Plateforme](https://img.shields.io/badge/Plateforme-macOS%20%7C%20Windows-lightgrey?style=flat-square)](https://github.com/GuillaumeBld/Cluely_fr/releases)
@@ -16,9 +16,9 @@
 
 <div align="center">
 
-> **Cluely.fr** est un **copilote IA gratuit, axé sur la confidentialité**, pour **Google Meet, Zoom et Teams**. Version entièrement francisée de Natively — offrant une **transcription en temps réel**, une **aide aux entretiens** et des **notes de réunion automatisées**, entièrement en local.
+> **Répliq.ai** est un **copilote IA gratuit, axé sur la confidentialité**, pour **Google Meet, Zoom et Teams**. Version entièrement francisée de Natively — offrant une **transcription en temps réel**, une **aide aux entretiens** et des **notes de réunion automatisées**, entièrement en local.
 
-Contrairement aux outils uniquement en cloud, Cluely.fr utilise la **RAG locale (Génération Augmentée par Récupération)** pour se souvenir des conversations passées, vous donnant des réponses instantanées lors d'**entretiens techniques**, d'**appels commerciaux** et de **stand-ups quotidiens**.
+Contrairement aux outils uniquement en cloud, Répliq.ai utilise la **RAG locale (Génération Augmentée par Récupération)** pour se souvenir des conversations passées, vous donnant des réponses instantanées lors d'**entretiens techniques**, d'**appels commerciaux** et de **stand-ups quotidiens**.
 
 L'assistant **répond en français** par défaut.
 
@@ -26,7 +26,7 @@ L'assistant **répond en français** par défaut.
 
 ---
 
-## Pourquoi Cluely.fr ?
+## Pourquoi Répliq.ai ?
 
 - **Base de données vectorielle locale (RAG) :** Vos réunions sont indexées localement pour pouvoir demander : « Qu'est-ce que Jean a dit sur l'API la semaine dernière ? »
 - **Tableau de bord complet :** Interface complète pour gérer, rechercher et exporter votre historique.
@@ -38,7 +38,7 @@ L'assistant **répond en français** par défaut.
 
 ## Différences avec l'original
 
-| Fonctionnalité | Cluely.fr (ce fork) | Natively (original) |
+| Fonctionnalité | Répliq.ai (ce fork) | Natively (original) |
 | :--- | :--- | :--- |
 | **Langue de l'IA** | **Français par défaut** | Anglais |
 | **Interface** | **100% en français** | Anglais |
@@ -197,4 +197,4 @@ Si vous exécutez ou modifiez ce logiciel sur un réseau, vous devez fournir le 
 
 ---
 
-**Mettez une étoile à ce dépôt si Cluely.fr vous aide lors de vos réunions, entretiens ou présentations !**
+**Mettez une étoile à ce dépôt si Répliq.ai vous aide lors de vos réunions, entretiens ou présentations !**

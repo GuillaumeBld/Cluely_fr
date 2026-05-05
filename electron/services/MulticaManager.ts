@@ -4,7 +4,7 @@
  * Owns the full Multica lifecycle inside Electron:
  *   - Starts/stops the Go server process
  *   - Bootstraps auth on first run (888888 master code)
- *   - Persists PAT token to ~/.multica-cluely.json
+ *   - Persists PAT token to ~/.multica-repliq.json
  *   - Exposes typed API methods for IPC handlers
  */
 
@@ -257,7 +257,7 @@ export class MulticaManager {
             const userId = verifyRes.user?.id;
 
             const patRes = await this.postAuth(jwt, '/api/tokens', {
-                name: 'cluely-electron',
+                name: 'repliq-electron',
                 expires_in_days: 3650,
             }) as any;
 

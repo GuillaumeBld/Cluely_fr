@@ -1,8 +1,8 @@
 /**
- * HermesCore — In-process event orchestrator for Cluely
+ * HermesCore — In-process event orchestrator for Répliq
  *
- * Scope: Interpretation A (Inner Cluely Operator) — see ADR-001.
- * Hermes observes only data Cluely already holds.
+ * Scope: Interpretation A (Inner Répliq Operator) — see ADR-001.
+ * Hermes observes only data Répliq already holds.
  */
 
 import { HandlerRegistry } from './handlers'
@@ -31,7 +31,7 @@ export class HermesCore {
       return
     }
     this.started = true
-    console.log('[Hermes] Started (Interpretation A — Inner Cluely Operator)')
+    console.log('[Hermes] Started (Interpretation A — Inner Répliq Operator)')
   }
 
   /**

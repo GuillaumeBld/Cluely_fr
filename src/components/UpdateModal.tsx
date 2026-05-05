@@ -56,7 +56,7 @@ const UpdateModal: React.FC<UpdateModalProps> = ({
     };
 
     const handleCopyCommand = () => {
-        navigator.clipboard.writeText('xattr -cr /Applications/Cluely.fr.app');
+        navigator.clipboard.writeText('xattr -cr /Applications/Répliq.ai.app');
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
     };
@@ -163,7 +163,7 @@ const UpdateModal: React.FC<UpdateModalProps> = ({
                                     {/* Code Block with Copy */}
                                     <div className="flex items-center justify-between bg-black/20 rounded-lg pl-3 pr-1.5 py-1.5 border border-white/[0.03] group hover:border-white/10 transition-colors">
                                         <code className="text-[10px] font-mono text-blue-400 truncate mr-2 select-all">
-                                            xattr -cr /Applications/Cluely.fr.app
+                                            xattr -cr /Applications/Répliq.ai.app
                                         </code>
                                         <button
                                             onClick={handleCopyCommand}

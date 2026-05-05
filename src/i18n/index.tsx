@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState } from 'react';
 import { fr, TranslationKey } from './fr';
 import { en } from './en';
 
@@ -20,15 +20,24 @@ const LanguageContext = createContext<LanguageContextValue>({
 
 export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [lang, setLangState] = useState<Lang>(() => {
-    return (localStorage.getItem('cluely_ui_lang') as Lang) || 'fr';
+    return (localStorage.getItem('repliq_ui_lang') as Lang) ||
+      (navigator.language?.startsWith('fr') ? 'fr' : 'en');
   });
 
   const setLang = (l: Lang) => {
-    localStorage.setItem('cluely_ui_lang', l);
+    localStorage.setItem('repliq_ui_lang', l);
     setLangState(l);
     // Sync to main process for AI prompt language
     (window as any).electronAPI?.invoke?.('set-ui-lang', l);
   };
+
+  // Subscribe to language changes detected by Deepgram STT
+  useEffect(() => {
+    const unsub = window.electronAPI?.lang?.onChanged((newLang: Lang) => {
+      setLang(newLang);
+    });
+    return () => { unsub?.(); };
+  }, []);
 
   const t = (key: TranslationKey): string => translations[lang][key] ?? fr[key];
 

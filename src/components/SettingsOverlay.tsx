@@ -919,7 +919,7 @@ const SettingsOverlay: React.FC<SettingsOverlayProps> = ({ isOpen, onClose }) =>
                                     onClick={() => window.electronAPI.quitApp()}
                                     className="w-full text-left px-3 py-2 rounded-lg text-sm font-medium text-red-400 hover:bg-red-500/10 transition-colors flex items-center gap-3"
                                 >
-                                    <LogOut size={16} /> Quitter Cluely.fr
+                                    <LogOut size={16} /> {t('btn_quit')}
                                 </button>
                                 <button onClick={onClose} className="group mt-2 w-full text-left px-3 py-2 rounded-lg text-sm font-medium text-text-secondary hover:text-text-primary hover:bg-bg-item-active/50 transition-colors flex items-center gap-3">
                                     <X size={18} className="group-hover:text-red-500 transition-colors" /> Close
@@ -975,7 +975,7 @@ const SettingsOverlay: React.FC<SettingsOverlayProps> = ({ isOpen, onClose }) =>
                                                     <h3 className="text-lg font-bold text-text-primary">{isUndetectable ? 'Undetectable' : 'Detectable'}</h3>
                                                 </div>
                                                 <p className="text-xs text-text-secondary">
-                                                    Cluely.fr est actuellement {isUndetectable ? "indétectable" : "détectable"} par le partage d'écran. <button className="text-blue-400 hover:underline">Applications supportées</button>
+                                                    {t('screen_share_status', { status: isUndetectable ? t('label_undetectable') : t('label_detectable') })} <button className="text-blue-400 hover:underline">Applications supportées</button>
                                                 </p>
                                             </div>
                                             <div

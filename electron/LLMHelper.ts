@@ -699,7 +699,7 @@ export class LLMHelper {
       const { mimeType, data } = await this.processImage(imagePath);
 
       // Use the generic image analysis prompt
-      const prompt = `${HARD_SYSTEM_PROMPT}\n\nDescribe the content of this image in a short, concise answer. If it contains code or a problem, solve it.`;
+      const prompt = `${HARD_SYSTEM_PROMPT()}\n\nDescribe the content of this image in a short, concise answer. If it contains code or a problem, solve it.`;
 
       const contents = [
         { role: "user", parts: [{ text: prompt }] },
@@ -809,8 +809,8 @@ ANSWER DIRECTLY:`;
         : message;
 
       const combinedMessages = {
-        gemini: buildMessage(HARD_SYSTEM_PROMPT),
-        groq: alternateGroqMessage || buildMessage(this.withLang(GROQ_SYSTEM_PROMPT)),
+        gemini: buildMessage(HARD_SYSTEM_PROMPT()),
+        groq: alternateGroqMessage || buildMessage(this.withLang(GROQ_SYSTEM_PROMPT())),
       };
 
       // GROQ FAST TEXT OVERRIDE (Text-Only)
@@ -825,15 +825,15 @@ ANSWER DIRECTLY:`;
       }
 
       // System prompts for OpenAI/Claude (skipped if skipSystemPrompt)
-      const openaiSystemPrompt = skipSystemPrompt ? undefined : OPENAI_SYSTEM_PROMPT;
-      const claudeSystemPrompt = skipSystemPrompt ? undefined : CLAUDE_SYSTEM_PROMPT;
+      const openaiSystemPrompt = skipSystemPrompt ? undefined : OPENAI_SYSTEM_PROMPT();
+      const claudeSystemPrompt = skipSystemPrompt ? undefined : CLAUDE_SYSTEM_PROMPT();
 
       if (this.useOllama) {
         return await this.callOllama(combinedMessages.gemini);
       }
 
       if (this.activeCurlProvider) {
-        return await this.chatWithCurl(message, skipSystemPrompt ? undefined : CUSTOM_SYSTEM_PROMPT);
+        return await this.chatWithCurl(message, skipSystemPrompt ? undefined : CUSTOM_SYSTEM_PROMPT());
       }
 
       if (this.customProvider) {
@@ -842,7 +842,7 @@ ANSWER DIRECTLY:`;
         const response = await this.executeCustomProvider(
           this.customProvider.curlCommand,
           combinedMessages.gemini,
-          skipSystemPrompt ? "" : CUSTOM_SYSTEM_PROMPT,
+          skipSystemPrompt ? "" : CUSTOM_SYSTEM_PROMPT(),
           message,
           context || "",
           imagePath
@@ -1246,13 +1246,13 @@ ANSWER DIRECTLY:`;
    */
   private mapToCustomPrompt(prompt: string): string {
     // Map from concise UNIVERSAL to rich CUSTOM equivalents
-    if (prompt === UNIVERSAL_SYSTEM_PROMPT || prompt === HARD_SYSTEM_PROMPT) return CUSTOM_SYSTEM_PROMPT;
-    if (prompt === UNIVERSAL_ANSWER_PROMPT) return CUSTOM_ANSWER_PROMPT;
-    if (prompt === UNIVERSAL_WHAT_TO_ANSWER_PROMPT) return CUSTOM_WHAT_TO_ANSWER_PROMPT;
+    if (prompt === UNIVERSAL_SYSTEM_PROMPT() || prompt === HARD_SYSTEM_PROMPT()) return CUSTOM_SYSTEM_PROMPT();
+    if (prompt === UNIVERSAL_ANSWER_PROMPT()) return CUSTOM_ANSWER_PROMPT();
+    if (prompt === UNIVERSAL_WHAT_TO_ANSWER_PROMPT()) return CUSTOM_WHAT_TO_ANSWER_PROMPT();
     if (prompt === UNIVERSAL_RECAP_PROMPT) return CUSTOM_RECAP_PROMPT;
     if (prompt === UNIVERSAL_FOLLOWUP_PROMPT) return CUSTOM_FOLLOWUP_PROMPT;
     if (prompt === UNIVERSAL_FOLLOW_UP_QUESTIONS_PROMPT) return CUSTOM_FOLLOW_UP_QUESTIONS_PROMPT;
-    if (prompt === UNIVERSAL_ASSIST_PROMPT) return CUSTOM_ASSIST_PROMPT;
+    if (prompt === UNIVERSAL_ASSIST_PROMPT()) return CUSTOM_ASSIST_PROMPT();
     // If it's already a different override (e.g. user-supplied), pass through
     return prompt;
   }
@@ -1329,8 +1329,8 @@ ANSWER DIRECTLY:`;
       : message;
 
     const combinedMessages = {
-      gemini: buildCombinedMessage(HARD_SYSTEM_PROMPT),
-      groq: buildCombinedMessage(this.withLang(GROQ_SYSTEM_PROMPT)),
+      gemini: buildCombinedMessage(HARD_SYSTEM_PROMPT()),
+      groq: buildCombinedMessage(this.withLang(GROQ_SYSTEM_PROMPT())),
     };
 
     if (this.useOllama) {
@@ -1349,8 +1349,8 @@ ANSWER DIRECTLY:`;
     const providers: ProviderAttempt[] = [];
 
     // System prompts for OpenAI/Claude (skipped if skipSystemPrompt)
-    const openaiSystemPrompt = skipSystemPrompt ? undefined : OPENAI_SYSTEM_PROMPT;
-    const claudeSystemPrompt = skipSystemPrompt ? undefined : CLAUDE_SYSTEM_PROMPT;
+    const openaiSystemPrompt = skipSystemPrompt ? undefined : OPENAI_SYSTEM_PROMPT();
+    const claudeSystemPrompt = skipSystemPrompt ? undefined : CLAUDE_SYSTEM_PROMPT();
 
     if (isMultimodal) {
       // MULTIMODAL PROVIDER ORDER: Gemini Flash → OpenAI → Claude → Gemini Pro
@@ -1436,7 +1436,7 @@ ANSWER DIRECTLY:`;
 
     // Determine the system prompt to use
     // logic: if override provided, use it. otherwise use HARD_SYSTEM_PROMPT (which is the universal base)
-    const finalSystemPrompt = systemPromptOverride || HARD_SYSTEM_PROMPT;
+    const finalSystemPrompt = systemPromptOverride || HARD_SYSTEM_PROMPT();
 
     // Helper to build combined user message
     const userContent = context
@@ -1447,7 +1447,7 @@ ANSWER DIRECTLY:`;
     if (this.groqFastTextMode && !isMultimodal && this.groqClient) {
       console.log(`[LLMHelper] ⚡️ Groq Fast Text Mode Active (Streaming). Routing to Groq...`);
       try {
-        const groqSystem = this.withLang(systemPromptOverride || GROQ_SYSTEM_PROMPT);
+        const groqSystem = this.withLang(systemPromptOverride || GROQ_SYSTEM_PROMPT());
         const groqFullMessage = `${groqSystem}\n\n${userContent}`;
         yield* this.streamWithGroq(groqFullMessage);
         return;
@@ -1474,7 +1474,7 @@ ANSWER DIRECTLY:`;
 
     // OpenAI
     if (this.currentModelId === OPENAI_MODEL && this.openaiClient) {
-      const openAiSystem = this.withLang(systemPromptOverride || OPENAI_SYSTEM_PROMPT);
+      const openAiSystem = this.withLang(systemPromptOverride || OPENAI_SYSTEM_PROMPT());
       if (isMultimodal && imagePath) {
         yield* this.streamWithOpenaiMultimodal(userContent, imagePath, openAiSystem);
       } else {
@@ -1485,14 +1485,14 @@ ANSWER DIRECTLY:`;
 
     // OpenRouter (OpenAI-compatible)
     if (this.currentModelId.startsWith('openrouter-') && this.openrouterClient) {
-      const orSystem = this.withLang(systemPromptOverride || OPENAI_SYSTEM_PROMPT);
+      const orSystem = this.withLang(systemPromptOverride || OPENAI_SYSTEM_PROMPT());
       yield* this.streamWithOpenai(userContent, orSystem);
       return;
     }
 
     // Claude
     if (this.currentModelId === CLAUDE_MODEL && this.claudeClient) {
-      const claudeSystem = this.withLang(systemPromptOverride || CLAUDE_SYSTEM_PROMPT);
+      const claudeSystem = this.withLang(systemPromptOverride || CLAUDE_SYSTEM_PROMPT());
       if (isMultimodal && imagePath) {
         yield* this.streamWithClaudeMultimodal(userContent, imagePath, claudeSystem);
       } else {
@@ -1504,7 +1504,7 @@ ANSWER DIRECTLY:`;
     // Groq (Text Only)
     if (this.currentModelId === GROQ_MODEL && this.groqClient && !isMultimodal) {
       // Build Groq message
-      const groqSystem = this.withLang(systemPromptOverride ? finalSystemPrompt : GROQ_SYSTEM_PROMPT);
+      const groqSystem = this.withLang(systemPromptOverride ? finalSystemPrompt : GROQ_SYSTEM_PROMPT());
       const groqFullMessage = `${groqSystem}\n\n${userContent}`;
       yield* this.streamWithGroq(groqFullMessage);
       return;
@@ -1750,7 +1750,7 @@ ANSWER DIRECTLY:`;
   }
 
   // --- OLLAMA STREAMING ---
-  private async * streamWithOllama(message: string, context?: string, systemPrompt: string = UNIVERSAL_SYSTEM_PROMPT): AsyncGenerator<string, void, unknown> {
+  private async * streamWithOllama(message: string, context?: string, systemPrompt: string = UNIVERSAL_SYSTEM_PROMPT()): AsyncGenerator<string, void, unknown> {
     const fullPrompt = context
       ? `SYSTEM: ${systemPrompt}\nCONTEXT: ${context}\nUSER: ${message}`
       : `SYSTEM: ${systemPrompt}\nUSER: ${message}`;
@@ -1792,7 +1792,7 @@ ANSWER DIRECTLY:`;
   }
 
   // --- CUSTOM PROVIDER STREAMING ---
-  private async * streamWithCustom(message: string, context?: string, imagePath?: string, systemPrompt: string = UNIVERSAL_SYSTEM_PROMPT): AsyncGenerator<string, void, unknown> {
+  private async * streamWithCustom(message: string, context?: string, imagePath?: string, systemPrompt: string = UNIVERSAL_SYSTEM_PROMPT()): AsyncGenerator<string, void, unknown> {
     if (!this.customProvider) return;
     // We reuse the executeCustomProvider logic but we need it to stream.
     // If the user provided a curl command, it might support streaming (SSE) or not.

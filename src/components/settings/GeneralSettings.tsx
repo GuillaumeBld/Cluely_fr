@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Info, Monitor, Globe } from 'lucide-react';
+import { useT } from '../../i18n';
 
 interface GeneralSettingsProps { }
 
 export const GeneralSettings: React.FC<GeneralSettingsProps> = () => {
+    const { t } = useT();
     // Recognition Language
     const [recognitionLanguage, setRecognitionLanguage] = useState('');
     const [availableLanguages, setAvailableLanguages] = useState<Record<string, any>>({});
@@ -109,7 +111,7 @@ export const GeneralSettings: React.FC<GeneralSettingsProps> = () => {
         <div className="space-y-8 animated fadeIn">
             <div>
                 <h3 className="text-lg font-bold text-text-primary mb-2">General Configuration</h3>
-                <p className="text-xs text-text-secondary mb-4">Paramètres principaux de Cluely.fr.</p>
+                <p className="text-xs text-text-secondary mb-4">{t('settings_general_desc')}</p>
 
                 <div className="space-y-4">
                     {/* Google Cloud Service Account */}

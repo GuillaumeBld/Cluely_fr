@@ -6,6 +6,7 @@ import fs from 'fs';
 import path from 'path';
 import { execFile } from 'child_process';
 import { EventEmitter } from 'events';
+import { getUiLang } from '../llm/prompts';
 
 // Configuration
 // In a real app, these should be in environment variables or build configs
@@ -84,7 +85,9 @@ export class CalendarManager extends EventEmitter {
                         }
 
                         if (code) {
-                            res.end('Authentification réussie ! Vous pouvez fermer cette fenêtre et retourner sur Cluely.fr.');
+                            res.end(getUiLang() === 'fr'
+                                ? 'Authentification réussie ! Vous pouvez fermer cette fenêtre et retourner sur Répliq.ai.'
+                                : 'Authentication successful! You can close this window and return to Répliq.ai.');
                             server.close();
 
                             // 2. Exchange code for tokens
@@ -304,7 +307,9 @@ export class CalendarManager extends EventEmitter {
         const { Notification } = require('electron');
         const notif = new Notification({
             title: 'Réunion imminente',
-            body: `"${event.title}" commence dans 2 minutes. Démarrer Cluely.fr ?`,
+            body: getUiLang() === 'fr'
+                ? `"${event.title}" commence dans 2 minutes. Démarrer Répliq.ai ?`
+                : `"${event.title}" starts in 2 minutes. Start Répliq.ai?`,
             actions: [
                 { type: 'button', text: 'Démarrer la réunion' },
                 { type: 'button', text: 'Ignorer' }

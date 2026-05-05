@@ -726,7 +726,7 @@ export class DatabaseManager {
 
         const summaryMarkdown = `# Vue d’ensemble
 
-Cluely.fr est un assistant IA de réunion en temps réel conçu pour vous aider à rester concentré, informé et réactif pendant vos appels. Obtenez des informations en direct pendant que vous parlez, des réponses instantanées à vos questions, et des notes structurées après chaque réunion.
+Répliq.ai est un assistant IA de réunion en temps réel conçu pour vous aider à rester concentré, informé et réactif pendant vos appels. Obtenez des informations en direct pendant que vous parlez, des réponses instantanées à vos questions, et des notes structurées après chaque réunion.
 
 # Démarrage
 
@@ -736,7 +736,7 @@ Rejoignez une réunion planifiée et démarrez directement depuis la notificatio
 
 ### Pendant une réunion
 - Utilisez les **cinq boutons d’action rapide** pour une assistance en temps réel
-- Afficher ou masquer Cluely.fr à tout moment :
+- Afficher ou masquer Répliq.ai à tout moment :
   - **Mac** : Cmd + B
   - **Windows** : Ctrl + B
 - Déplacez le widget n’importe où sur votre écran en survolant la pilule supérieure et en faisant glisser
@@ -754,7 +754,7 @@ Rejoignez une réunion planifiée et démarrez directement depuis la notificatio
 - **Prise de notes intelligente** : Capture automatiquement les points clés, les actions à réaliser et les résumés structurés.
 - **Résumé** : Un bref résumé de haut niveau de l’intégralité de la réunion.
 - **Transcript** : Transcription vocale complète en temps réel, disponible pendant et après l’appel.
-- **Utilisation** : Suivez votre historique d’interaction et voyez comment Cluely.fr vous a assisté.
+- **Utilisation** : Suivez votre historique d’interaction et voyez comment Répliq.ai vous a assisté.
 
 ## Insights en direct
 Cliquez sur **Insights en direct** pendant un appel pour voir :
@@ -771,7 +771,7 @@ Cliquez sur **Insights en direct** pendant un appel pour voir :
 - **Capture plein écran** : Cmd + H
 - **Capture sélective** : Cmd + Maj + H
 
-# Tirer le meilleur parti de Cluely.fr
+# Tirer le meilleur parti de Répliq.ai
 
 ### Contexte personnalisé
 Téléchargez des CV, des briefs de projet, des scripts de vente ou d’autres documents pour adapter les réponses à votre flux de travail (bientôt disponible).
@@ -782,7 +782,7 @@ Allez dans **Paramètres → Préférences de langue** pour :
 - Activer la traduction en temps réel pendant les appels
 
 ### Indétectabilité
-Activez le module **Indétectabilité** pour garder Cluely.fr invisible lors du partage d’écran.
+Activez le module **Indétectabilité** pour garder Répliq.ai invisible lors du partage d’écran.
 
 # Interface de base
 
@@ -816,7 +816,7 @@ Si vous n’en avez pas encore, suivez les étapes ci-dessous pour en créer un.
 ## 3. Créer un compte de service
 - Naviguez vers **IAM & Admin → Comptes de service**
 - Cliquez sur **Créer un compte de service**
-- **Nom** : cluely-fr-stt
+- **Nom** : repliq-ai-stt
 - **Description** : optionnel
 
 ## 4. Attribuer les permissions
@@ -828,7 +828,7 @@ Si vous n’en avez pas encore, suivez les étapes ci-dessous pour en créer un.
 - Sélectionnez **JSON**
 - Téléchargez le fichier
 
-**Une fois téléchargé, retournez dans Paramètres → Identifiants dans Cluely.fr et sélectionnez ce fichier pour terminer la configuration.**
+**Une fois téléchargé, retournez dans Paramètres → Identifiants dans Répliq.ai et sélectionnez ce fichier pour terminer la configuration.**
 
 # Crédit Google Cloud gratuit (nouveaux utilisateurs)
 
@@ -850,17 +850,17 @@ guillaume@autoflux.fr`;
 
         const demoMeeting: Meeting = {
             id: demoId,
-            title: "Guide de démarrage Cluely.fr",
+            title: "Guide de démarrage Répliq.ai",
             date: today.toISOString(),
             duration: "5:00",
-            summary: "Guide complet pour utiliser Cluely.fr, votre assistant IA de réunion en temps réel.",
+            summary: "Guide complet pour utiliser Répliq.ai, votre assistant IA de réunion en temps réel.",
             detailedSummary: {
                 overview: summaryMarkdown,
                 actionItems: [],
                 keyPoints: []
             },
             transcript: [
-                { speaker: 'interviewer', text: "Bienvenue sur Cluely.fr ! Laissez-moi vous montrer comment ça fonctionne.", timestamp: 0 },
+                { speaker: 'interviewer', text: "Bienvenue sur Répliq.ai ! Laissez-moi vous montrer comment ça fonctionne.", timestamp: 0 },
                 { speaker: 'user', text: "Merci ! J'ai hâte d'essayer.", timestamp: 5000 },
                 { speaker: 'interviewer', text: "Vous avez 5 boutons d'action rapide. 'Quoi répondre' écoute la conversation et suggère ce que vous devriez dire.", timestamp: 10000 },
                 { speaker: 'user', text: "Ça semble très utile pour les entretiens.", timestamp: 18000 },
@@ -870,13 +870,13 @@ guillaume@autoflux.fr`;
                 { speaker: 'interviewer', text: "'Questions de suivi' suggère des questions que vous pouvez poser. 'Répondre' vous permet de parler une question et d'obtenir une réponse instantanée.", timestamp: 35000 },
                 { speaker: 'user', text: "Puis-je prendre des captures d'écran pendant les appels ?", timestamp: 45000 },
                 { speaker: 'interviewer', text: "Oui ! Appuyez sur Cmd+H pour plein écran ou Cmd+Maj+H pour sélectionner une zone. L'IA l'analysera et vous aidera.", timestamp: 50000 },
-                { speaker: 'user', text: "Comment masquer Cluely.fr lors du partage d'écran ?", timestamp: 60000 },
+                { speaker: 'user', text: "Comment masquer Répliq.ai lors du partage d'écran ?", timestamp: 60000 },
                 { speaker: 'interviewer', text: "Appuyez sur Cmd+B pour basculer la visibilité à tout moment. Vous pouvez aussi activer le mode indétectable dans les paramètres.", timestamp: 65000 },
                 { speaker: 'user', text: "C'est incroyable. Que se passe-t-il après l'appel ?", timestamp: 75000 },
                 { speaker: 'interviewer', text: "Vous obtenez des notes de réunion détaillées avec les actions à réaliser, les points clés, le transcript complet et un journal de toutes les interactions IA.", timestamp: 80000 }
             ],
             usage: [
-                { type: 'assist', timestamp: 15000, question: 'Quelles fonctionnalités propose Cluely.fr ?', answer: 'Cluely.fr propose 5 boutons d\'action rapide, l\'analyse de captures d\'écran, la transcription en temps réel et des notes de réunion complètes.' },
+                { type: 'assist', timestamp: 15000, question: 'Quelles fonctionnalités propose Répliq.ai ?', answer: 'Répliq.ai propose 5 boutons d\'action rapide, l\'analyse de captures d\'écran, la transcription en temps réel et des notes de réunion complètes.' },
                 { type: 'followup', timestamp: 40000, question: 'Comment fonctionnent les boutons d\'action ?', answer: 'Chaque bouton a un objectif précis : suggérer des réponses, raccourcir les réponses, récapituler les conversations, générer des questions de suivi, ou obtenir des réponses voix-en-texte instantanées.' }
             ],
             isProcessed: true

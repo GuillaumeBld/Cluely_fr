@@ -11,7 +11,9 @@
 
 import { EventEmitter } from 'events';
 import WebSocket from 'ws';
+import { BrowserWindow } from 'electron';
 import { ENGLISH_VARIANTS } from '../config/languages';
+import { setUiLang, getUiLang } from '../llm/prompts';
 
 const RECONNECT_BASE_DELAY_MS = 1000;
 const RECONNECT_MAX_DELAY_MS = 30000;
@@ -145,7 +147,7 @@ export class DeepgramStreamingSTT extends EventEmitter {
             `&channels=${this.numChannels}` +
             `&smart_format=true` +
             `&interim_results=true` +
-            `&language=${this.languageCode}`;
+            `&detect_language=true`;
 
         console.log(`[DeepgramStreaming] Connecting (rate=${this.sampleRate}, ch=${this.numChannels})...`);
 
@@ -174,6 +176,22 @@ export class DeepgramStreamingSTT extends EventEmitter {
                 if (msg.type !== 'Results') return;
 
                 this.lastTranscriptAt = Date.now();
+
+                // Auto-detect language and sync UI
+                const detectedLang: string | undefined =
+                    msg.channel?.detected_language ??
+                    msg.results?.channels?.[0]?.detected_language;
+                if (detectedLang) {
+                    let lang: 'fr' | 'en' | null = null;
+                    if (detectedLang === 'fr' || detectedLang.startsWith('fr')) lang = 'fr';
+                    else if (detectedLang === 'en' || detectedLang.startsWith('en')) lang = 'en';
+                    if (lang && lang !== getUiLang()) {
+                        console.log(`[DeepgramStreaming] Detected language: ${detectedLang} → switching UI to ${lang}`);
+                        setUiLang(lang);
+                        BrowserWindow.getAllWindows().forEach(w => w.webContents.send('lang:changed', lang));
+                    }
+                }
+
                 const transcript = msg.channel?.alternatives?.[0]?.transcript;
                 if (!transcript) return;
 

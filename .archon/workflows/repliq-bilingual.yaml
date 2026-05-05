@@ -1,0 +1,236 @@
+name: repliq-bilingual
+description: |
+  Make Répliq.ai fully bilingual (FR + EN). The UI language follows the detected
+  conversation language. AI prompts respond in the detected language. All hardcoded
+  French UI strings move to the i18n system. STT language is dynamically set.
+
+nodes:
+  # ── Step 1: Audit current i18n coverage ──────────────────────────────────────
+  - id: audit-i18n
+    bash: |
+      cd /Volumes/SanDisk/dev/app-support/Cluely_fr
+      echo "=== i18n keys in fr.ts ==="
+      grep -c ":" src/i18n/fr.ts || true
+      echo "=== i18n keys in en.ts ==="
+      grep -c ":" src/i18n/en.ts || true
+      echo "=== Hardcoded French in components (not from t()) ==="
+      grep -rn "Démarrer\|Paramètres\|Détectable\|Indétectable\|Quitter\|Appuyez\|Réponds TOUJOURS\|Réponds en français\|en français" \
+        src/components/ electron/main.ts electron/llm/prompts.ts \
+        --include="*.ts" --include="*.tsx" 2>/dev/null | grep -v "node_modules" | head -40
+
+  # ── Step 2: Update prompts.ts — dynamic language instruction ─────────────────
+  - id: update-prompts
+    prompt: |
+      You are making the AI prompts in /Volumes/SanDisk/dev/app-support/Cluely_fr/electron/llm/prompts.ts
+      language-dynamic instead of hardcoded French.
+
+      Current state: every prompt contains a hardcoded line like:
+        "LANGUE: Réponds TOUJOURS en français."
+      and the file has:
+        let _uiLang: 'fr' | 'en' = 'fr';
+        function langInstruction(): string { return 'LANGUE: Réponds TOUJOURS en français.' }
+
+      What to change:
+      1. Keep the existing `setUiLang` / `getUiLang` / `_uiLang` mechanism.
+      2. Change `langInstruction()` to return a bilingual dynamic string:
+         - if _uiLang === 'fr': return 'LANGUE: Réponds TOUJOURS en français.'
+         - if _uiLang === 'en': return 'LANGUAGE: Always respond in English.'
+      3. All 13 hardcoded French language instruction strings like
+         "LANGUE: Réponds TOUJOURS en français." should be replaced with
+         a call to `langInstruction()` (they already call it in some places — make ALL of them consistent).
+      4. The self-identification string:
+         "Tu es Répliq.ai, un copilote d'entretiens et de réunions..."
+         should become bilingual based on _uiLang:
+         FR: "Tu es Répliq.ai, un copilote d'entretiens et de réunions développé par GuillaumeBld."
+         EN: "You are Répliq.ai, a meeting and interview copilot developed by GuillaumeBld."
+         Implement this as a `selfIntro()` helper function and use it in the system prompt.
+      5. The "Si on te demande qui tu es" instruction:
+         FR: "dis UNIQUEMENT \"Je suis Répliq.ai, ton assistant IA.\""
+         EN: "say ONLY \"I am Répliq.ai, your AI assistant.\""
+         Also make dynamic.
+
+      Read the file first, make all changes, write it back.
+
+  # ── Step 3: Update i18n files — add missing keys ─────────────────────────────
+  - id: update-i18n
+    prompt: |
+      You are adding missing i18n keys to the bilingual translation files for Répliq.ai.
+
+      Files to update:
+      - /Volumes/SanDisk/dev/app-support/Cluely_fr/src/i18n/fr.ts
+      - /Volumes/SanDisk/dev/app-support/Cluely_fr/src/i18n/en.ts
+
+      Add these missing keys (French and English values):
+
+      FR → EN translations needed:
+      - tray_show: "Afficher Répliq.ai" → "Show Répliq.ai"
+      - tray_tooltip: "Répliq.ai - Appuyez sur Cmd+Shift+Space pour afficher" → "Répliq.ai - Press Cmd+Shift+Space to show"
+      - tray_tooltip_screenshot: "Répliq.ai ({accel}) - Appuyez sur Cmd+Maj+Espace pour afficher" → "Répliq.ai ({accel}) - Press Cmd+Shift+Space to show"
+      - btn_start: "Démarrer" → "Start"
+      - btn_quit: "Quitter Répliq.ai" → "Quit Répliq.ai"
+      - label_detectable: "Détectable" → "Detectable"
+      - label_undetectable: "Indétectable" → "Undetectable"
+      - label_settings: "Paramètres" → "Settings"
+      - label_detectable_mode: "Mode détectable" → "Detectable mode"
+      - label_undetectable_mode: "Mode indétectable" → "Undetectable mode"
+      - calendar_auth_success: "Authentification réussie ! Vous pouvez fermer cette fenêtre et retourner sur Répliq.ai." → "Authentication successful! You can close this window and return to Répliq.ai."
+      - calendar_meeting_soon: '"{title}" commence dans 2 minutes. Démarrer Répliq.ai ?' → '"{title}" starts in 2 minutes. Start Répliq.ai?'
+      - settings_general_desc: "Paramètres principaux de Répliq.ai." → "Main settings for Répliq.ai."
+      - screen_share_status: "Répliq.ai est actuellement {status} par le partage d'écran." → "Répliq.ai is currently {status} by screen sharing."
+
+      Read both files first, add keys at appropriate positions, write them back.
+      Do not remove or alter existing keys.
+
+  # ── Step 4: Wire hardcoded French strings in components to i18n ──────────────
+  - id: wire-components
+    prompt: |
+      You are replacing hardcoded French strings in React components with i18n `t()` calls.
+      The app already has an i18n system: `import { useLang } from '../i18n'` and `const { t } = useLang()`.
+
+      Files to update:
+
+      1. /Volumes/SanDisk/dev/app-support/Cluely_fr/src/components/Launcher.tsx
+         Find and replace:
+         - `title={isDetectable ? "Mode détectable" : "Mode indétectable"}` → `title={isDetectable ? t('label_detectable_mode') : t('label_undetectable_mode')}`
+         - `{isDetectable ? 'Détectable' : 'Indétectable'}` → `{isDetectable ? t('label_detectable') : t('label_undetectable')}`
+         - Hardcoded "Démarrer" button text → `{t('btn_start')}`
+
+      2. /Volumes/SanDisk/dev/app-support/Cluely_fr/src/components/WorkspaceSelector.tsx
+         - Hardcoded "Démarrer" → `{t('btn_start')}`
+         (Add `const { t } = useLang()` import if not already present)
+
+      3. /Volumes/SanDisk/dev/app-support/Cluely_fr/src/components/settings/GeneralSettings.tsx
+         - "Paramètres principaux de Répliq.ai." → `{t('settings_general_desc')}`
+
+      4. /Volumes/SanDisk/dev/app-support/Cluely_fr/src/components/SettingsOverlay.tsx
+         - "Quitter Répliq.ai" → `{t('btn_quit')}`
+         - "Répliq.ai est actuellement {isUndetectable ? 'indétectable' : 'détectable'} par le partage d'écran."
+           → `{t('screen_share_status', { status: isUndetectable ? t('label_undetectable') : t('label_detectable') })}`
+
+      For each file: read it, make minimal targeted replacements, write it back.
+      Do NOT restructure or reformat surrounding code.
+
+  # ── Step 5: Wire tray/menu strings in electron/main.ts ───────────────────────
+  - id: wire-main
+    prompt: |
+      You are replacing hardcoded French strings in /Volumes/SanDisk/dev/app-support/Cluely_fr/electron/main.ts
+      with i18n-aware equivalents.
+
+      The main process has access to the current UI language via:
+        import { getUiLang } from './llm/prompts';
+      (already imported or can be added)
+
+      Create a small helper at the top of the tray setup section:
+        function mt(fr: string, en: string): string { return getUiLang() === 'fr' ? fr : en; }
+
+      Then replace:
+      1. Tray tooltip (line ~1535):
+         `'Cluely.fr - Appuyez sur Cmd+Shift+Space pour afficher'`
+         → `mt('Répliq.ai - Appuyez sur Cmd+Shift+Space pour afficher', 'Répliq.ai - Press Cmd+Shift+Space to show')`
+
+      2. Tray tooltip with shortcut (line ~1553):
+         `` `Cluely.fr (${screenshotAccel}) - Appuyez sur Cmd+Maj+Espace pour afficher` ``
+         → `` mt(`Répliq.ai (${screenshotAccel}) - Appuyez sur Cmd+Maj+Espace pour afficher`, `Répliq.ai (${screenshotAccel}) - Press Cmd+Shift+Space to show`) ``
+
+      3. Tray menu label (line ~1573):
+         `label: 'Afficher Cluely.fr'`
+         → `label: mt('Afficher Répliq.ai', 'Show Répliq.ai')`
+
+      Read the file, make these three targeted changes, write it back.
+
+  # ── Step 6: Wire calendar notifications ──────────────────────────────────────
+  - id: wire-calendar
+    prompt: |
+      You are replacing hardcoded French strings in /Volumes/SanDisk/dev/app-support/Cluely_fr/electron/services/CalendarManager.ts.
+
+      The main process has access to the current UI language via:
+        import { getUiLang } from '../llm/prompts';
+      (add this import if not present)
+
+      Replace:
+      1. Auth success message (~line 87):
+         `'Authentification réussie ! Vous pouvez fermer cette fenêtre et retourner sur Répliq.ai.'`
+         →
+         `getUiLang() === 'fr'
+           ? 'Authentification réussie ! Vous pouvez fermer cette fenêtre et retourner sur Répliq.ai.'
+           : 'Authentication successful! You can close this window and return to Répliq.ai.'`
+
+      2. Meeting notification (~line 307):
+         `` `"${event.title}" commence dans 2 minutes. Démarrer Répliq.ai ?` ``
+         →
+         `` getUiLang() === 'fr'
+           ? `"${event.title}" commence dans 2 minutes. Démarrer Répliq.ai ?`
+           : `"${event.title}" starts in 2 minutes. Start Répliq.ai?` ``
+
+      Read the file, make these two targeted changes, write it back.
+
+  # ── Step 7: Language detection from STT — auto-switch UI lang ────────────────
+  - id: language-detection
+    prompt: |
+      You are adding automatic language detection to Répliq.ai so the UI language
+      switches to match the detected conversation language.
+
+      The app uses Deepgram for STT. Deepgram returns a `detected_language` field
+      in its transcript response when `detect_language: true` is set.
+
+      Files to update:
+
+      1. /Volumes/SanDisk/dev/app-support/Cluely_fr/electron/audio/DeepgramStreamingSTT.ts
+         - In the Deepgram WebSocket URL construction, add `&detect_language=true`
+           alongside the existing `&language=${this.languageCode}` parameter.
+           Actually when detect_language=true, Deepgram ignores the language param —
+           so replace `&language=${this.languageCode}` with `&detect_language=true`
+           (keep setRecognitionLanguage for manual override but default to auto-detect).
+         - In the transcript result handler (where utterances/finals are processed),
+           extract `result.channel?.detected_language` or `result.results?.channels?.[0]?.detected_language`.
+           If it is `'fr'` or starts with `'fr'`, call `setUiLang('fr')`.
+           If it is `'en'` or starts with `'en'`, call `setUiLang('en')`.
+           Import `setUiLang` from `'../llm/prompts'`.
+           Only switch if the detected language differs from current (avoid thrashing).
+           Broadcast the language change to renderer via `BrowserWindow.getAllWindows().forEach(w => w.webContents.send('lang:changed', lang))`.
+
+      2. /Volumes/SanDisk/dev/app-support/Cluely_fr/electron/preload.ts
+         - Add a `lang` namespace to the contextBridge:
+           ```
+           lang: {
+             onChanged: (cb: (lang: 'fr' | 'en') => void) => () => void;
+           }
+           ```
+           Implementation: subscribe to `'lang:changed'` IPC event, return cleanup fn.
+         - Add matching type to /Volumes/SanDisk/dev/app-support/Cluely_fr/src/types/electron.d.ts
+
+      3. /Volumes/SanDisk/dev/app-support/Cluely_fr/src/i18n/index.tsx
+         - In the LangProvider component, subscribe to `window.electronAPI?.lang?.onChanged`
+           on mount and call `setLang(newLang)` when the event fires.
+           This makes the entire React UI re-render in the new language automatically.
+         - Also change the localStorage key from `'cluely_ui_lang'` to `'repliq_ui_lang'`.
+         - Change the default fallback from `'fr'` to detect from browser/system:
+           `navigator.language?.startsWith('fr') ? 'fr' : 'en'`
+
+      Read each file carefully before editing. Make minimal targeted changes only.
+
+  # ── Step 8: Verify — type-check and test ─────────────────────────────────────
+  - id: verify
+    bash: |
+      cd /Volumes/SanDisk/dev/app-support/Cluely_fr
+      echo "=== TypeScript check ===" && npx tsc --noEmit 2>&1 | head -30 || true
+      echo "=== Test suite ===" && node_modules/.bin/vitest run 2>&1 | tail -8
+    depends_on: [update-prompts, update-i18n, wire-components, wire-main, wire-calendar, language-detection]
+
+  # ── Synthesis ─────────────────────────────────────────────────────────────────
+  - id: verdict
+    prompt: |
+      Summarise the bilingual migration result.
+
+      Audit output: $audit-i18n.output
+      TypeScript + test result: $verify.output
+
+      Report:
+      1. Prompts — are all LANGUE instructions now dynamic?
+      2. i18n — how many new keys added? Any missing?
+      3. Components — which hardcoded strings were wired?
+      4. Language detection — is it wired end-to-end (STT → IPC → React)?
+      5. TypeScript errors — any remaining?
+      6. Tests — pass/fail count?
+      7. VERDICT: COMPLETE / NEEDS FIXES — if needs fixes, list exactly what.
+    depends_on: [verify]

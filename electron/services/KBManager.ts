@@ -4,11 +4,11 @@ import * as path from 'path';
 import { MulticaManager } from './MulticaManager';
 import { IpcEventBus } from './IpcEventBus';
 
-const KB_ROOT = process.env.CLUELY_KB_ROOT || '/Volumes/SanDisk/dev/knowledge-base/cluely-multica';
+const KB_ROOT = process.env.REPLIQ_KB_ROOT || '/Volumes/SanDisk/dev/knowledge-base/cluely-multica';
 const SCRIPTS = path.join(KB_ROOT, 'scripts');
 
 /**
- * KBManager — bridges Cluely to the shared Cluely-Multica knowledge base.
+ * KBManager — bridges Répliq to the shared Répliq-Multica knowledge base.
  *
  * On meeting end: writes transcript + action items to local KB, syncs to NotebookLM.
  * On meeting start: queries NotebookLM for context on attendees/topics.
