@@ -128,10 +128,10 @@ export class WindowHelper {
       webPreferences: {
         nodeIntegration: false,
         contextIsolation: true,
+        sandbox: true,
         preload: path.join(__dirname, "preload.js"),
         scrollBounce: true,
-        webSecurity: !isDev, // DEBUG: Disable web security only in dev
-        webviewTag: true, // Enable <webview> for Multica panel
+        webSecurity: true,
       },
       show: false, // DEBUG: Force show -> Fixed white screen, now relies on ready-to-show
       titleBarStyle: 'hiddenInset',
@@ -184,6 +184,7 @@ export class WindowHelper {
       webPreferences: {
         nodeIntegration: false,
         contextIsolation: true,
+        sandbox: true,
         preload: path.join(__dirname, "preload.js"),
         scrollBounce: true,
       },

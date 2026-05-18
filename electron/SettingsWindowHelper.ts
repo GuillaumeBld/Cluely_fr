@@ -139,6 +139,7 @@ export class SettingsWindowHelper {
             webPreferences: {
                 nodeIntegration: false,
                 contextIsolation: true,
+                sandbox: true,
                 preload: path.join(__dirname, "preload.js"),
                 backgroundThrottling: false // Keep window ready even when hidden
             }

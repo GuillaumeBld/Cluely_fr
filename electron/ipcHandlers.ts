@@ -3,6 +3,7 @@
 import { app, ipcMain, shell, dialog, desktopCapturer, systemPreferences, BrowserWindow, screen } from "electron"
 import { MulticaManager } from "./services/MulticaManager"
 import { AppState } from "./main"
+import { validateFilePath, validateUrl } from './security'
 import { GEMINI_FLASH_MODEL } from "./IntelligenceManager"
 import { DatabaseManager } from "./db/DatabaseManager"; // Import Database Manager
 import * as path from "path";
@@ -84,8 +85,11 @@ export function initializeIpcHandlers(appState: AppState): void {
     return { success: true };
   })
 
-  safeHandle("delete-screenshot", async (event, path: string) => {
-    return appState.deleteScreenshot(path)
+  safeHandle("delete-screenshot", async (event, filePath: string) => {
+    if (!validateFilePath(filePath)) {
+      return { success: false, error: 'Invalid file path' };
+    }
+    return appState.deleteScreenshot(filePath)
   })
 
   safeHandle("take-screenshot", async () => {
@@ -273,9 +277,12 @@ export function initializeIpcHandlers(appState: AppState): void {
   })
 
   // IPC handler for analyzing image from file path
-  safeHandle("analyze-image-file", async (event, path: string) => {
+  safeHandle("analyze-image-file", async (event, filePath: string) => {
+    if (!validateFilePath(filePath)) {
+      throw new Error('Invalid file path');
+    }
     try {
-      const result = await appState.processingHelper.getLLMHelper().analyzeImageFile(path)
+      const result = await appState.processingHelper.getLLMHelper().analyzeImageFile(filePath)
       return result
     } catch (error: any) {
       // console.error("Error in analyze-image-file handler:", error)
@@ -495,6 +502,9 @@ export function initializeIpcHandlers(appState: AppState): void {
 
   safeHandle("switch-to-ollama", async (_, model?: string, url?: string) => {
     try {
+      if (url !== undefined && !validateUrl(url)) {
+        return { success: false, error: 'Invalid URL — only http: and https: allowed' };
+      }
       const llmHelper = appState.processingHelper.getLLMHelper();
       await llmHelper.switchToOllama(model, url);
       return { success: true };
@@ -1397,7 +1407,7 @@ export function initializeIpcHandlers(appState: AppState): void {
   });
 
   safeHandle("open-path", async (_event, filePath: string) => {
-    if (typeof filePath !== 'string' || !filePath) return;
+    if (!validateFilePath(filePath)) return;
     await shell.openPath(filePath);
   });
 
