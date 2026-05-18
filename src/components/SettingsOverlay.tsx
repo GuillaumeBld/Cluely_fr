@@ -975,7 +975,7 @@ const SettingsOverlay: React.FC<SettingsOverlayProps> = ({ isOpen, onClose }) =>
                                                     <h3 className="text-lg font-bold text-text-primary">{isUndetectable ? 'Undetectable' : 'Detectable'}</h3>
                                                 </div>
                                                 <p className="text-xs text-text-secondary">
-                                                    {t('screen_share_status', { status: isUndetectable ? t('label_undetectable') : t('label_detectable') })} <button className="text-blue-400 hover:underline">Applications supportées</button>
+                                                    {isUndetectable ? t('screen_share_status_undetectable') : t('screen_share_status_detectable')} <button className="text-blue-400 hover:underline">Applications supportées</button>
                                                 </p>
                                             </div>
                                             <div

@@ -127,5 +127,6 @@ export const en: Record<TranslationKey, string> = {
   calendar_meeting_soon: '"{title}" starts in 2 minutes. Start Répliq.ai?',
 
   // Screen sharing
-  screen_share_status: 'Répliq.ai is currently {status} by screen sharing.',
+  screen_share_status_detectable: 'Répliq.ai is currently detectable by screen sharing.',
+  screen_share_status_undetectable: 'Répliq.ai is currently undetectable by screen sharing.',
 };

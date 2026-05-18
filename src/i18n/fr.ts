@@ -125,7 +125,8 @@ export const fr = {
   calendar_meeting_soon: '"{title}" commence dans 2 minutes. Démarrer Répliq.ai ?',
 
   // Screen sharing
-  screen_share_status: 'Répliq.ai est actuellement {status} par le partage d\'écran.',
+  screen_share_status_detectable: "Répliq.ai est actuellement détectable par le partage d'écran.",
+  screen_share_status_undetectable: "Répliq.ai est actuellement indétectable par le partage d'écran.",
 } as const;
 
 export type TranslationKey = keyof typeof fr;
