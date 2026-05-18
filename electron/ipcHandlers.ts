@@ -1407,7 +1407,10 @@ export function initializeIpcHandlers(appState: AppState): void {
   });
 
   safeHandle("open-path", async (_event, filePath: string) => {
-    if (!validateFilePath(filePath)) return;
+    if (!validateFilePath(filePath)) {
+      console.warn(`[IPC] Blocked open-path with invalid file path`);
+      return;
+    }
     await shell.openPath(filePath);
   });
 

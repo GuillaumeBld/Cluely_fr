@@ -1867,8 +1867,12 @@ async function initializeApp() {
   // Prevent navigation to unexpected URLs and handle new window requests
   app.on('web-contents-created', (_event, contents) => {
     contents.on('will-navigate', (event, navigationUrl) => {
-      const parsedUrl = new URL(navigationUrl);
-      if (parsedUrl.protocol !== 'file:' && !navigationUrl.startsWith('http://localhost')) {
+      try {
+        const parsedUrl = new URL(navigationUrl);
+        if (parsedUrl.protocol !== 'file:' && !navigationUrl.startsWith('http://localhost')) {
+          event.preventDefault();
+        }
+      } catch {
         event.preventDefault();
       }
     });
