@@ -14,7 +14,8 @@
     "resolveJsonModule": true
   },
   "include": [
-    "**/*.ts"
+    "**/*.ts",
+    "../src/ipc/**/*.ts"
   ],
   "exclude": [
     "db/seedDemo.ts",
