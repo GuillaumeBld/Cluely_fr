@@ -48,6 +48,7 @@ export class LLMHelper {
   private openrouterClient: OpenAI | null = null
   private openrouterModelId: string | null = null
   private claudeClient: Anthropic | null = null
+  private deepseekClient: OpenAI | null = null
   private apiKey: string | null = null
   private groqApiKey: string | null = null
   private openaiApiKey: string | null = null
@@ -161,6 +162,15 @@ export class LLMHelper {
     console.log("[LLMHelper] Claude API Key updated.");
   }
 
+  public setDeepseekApiKey(apiKey: string) {
+    this.deepseekClient = new OpenAI({
+      apiKey,
+      baseURL: 'https://api.deepseek.com',
+      dangerouslyAllowBrowser: true,
+    });
+    console.log("[LLMHelper] DeepSeek client initialized.");
+  }
+
   public setOpenRouterApiKey(apiKey: string, model?: string) {
     this.openrouterClient = new OpenAI({
       apiKey,
@@ -189,6 +199,7 @@ export class LLMHelper {
     this.groqClient = null;
     this.openaiClient = null;
     this.openrouterClient = null;
+    this.deepseekClient = null;
     this.claudeClient = null;
     // Destroy rate limiters
     if (this.rateLimiters) {
@@ -233,6 +244,15 @@ export class LLMHelper {
       this.openrouterModelId = targetModelId.replace('openrouter-', '');
       this.currentModelId = targetModelId;
       console.log(`[LLMHelper] Switched to OpenRouter: ${this.openrouterModelId}`);
+      return;
+    }
+
+    if (targetModelId.startsWith('deepseek-')) {
+      this.useOllama = false;
+      this.customProvider = null;
+      this.activeCurlProvider = null;
+      this.currentModelId = targetModelId;
+      console.log(`[LLMHelper] Switched to DeepSeek: ${targetModelId}`);
       return;
     }
 
@@ -857,6 +877,9 @@ ANSWER DIRECTLY:`;
       if (this.currentModelId.startsWith('openrouter-') && this.openrouterClient) {
         return await this.generateWithOpenai(userContent, openaiSystemPrompt, imagePath);
       }
+      if (this.currentModelId.startsWith('deepseek-') && this.deepseekClient) {
+        return await this.generateWithDeepseek(userContent, openaiSystemPrompt);
+      }
       if (this.currentModelId === CLAUDE_MODEL && this.claudeClient) {
         return await this.generateWithClaude(userContent, claudeSystemPrompt, imagePath);
       }
@@ -1099,6 +1122,20 @@ ANSWER DIRECTLY:`;
       console.error("[LLMHelper] cURL Execution Error:", error.message);
       return `Error: ${error.message}`;
     }
+  }
+
+  private async generateWithDeepseek(userMessage: string, systemPrompt?: string): Promise<string> {
+    if (!this.deepseekClient) throw new Error("DeepSeek client not initialized");
+    const modelId = this.currentModelId; // e.g. 'deepseek-chat' or 'deepseek-reasoner'
+    const messages: any[] = [];
+    if (systemPrompt) messages.push({ role: 'system', content: systemPrompt });
+    messages.push({ role: 'user', content: userMessage });
+    const response = await this.deepseekClient.chat.completions.create({
+      model: modelId,
+      messages,
+      max_tokens: 16000,
+    });
+    return response.choices[0]?.message?.content || '';
   }
 
   /**

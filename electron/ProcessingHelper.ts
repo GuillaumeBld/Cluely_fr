@@ -79,6 +79,12 @@ export class ProcessingHelper {
       this.llmHelper.setClaudeApiKey(claudeKey);
     }
 
+    const deepseekKey = credManager.getAllCredentials().deepseekApiKey;
+    if (deepseekKey) {
+      console.log("[ProcessingHelper] Loading stored DeepSeek API Key from CredentialsManager");
+      this.llmHelper.setDeepseekApiKey(deepseekKey);
+    }
+
     const openrouterKey = credManager.getAllCredentials().openrouterApiKey;
     const openrouterModel = credManager.getAllCredentials().openrouterModel;
     if (openrouterKey) {

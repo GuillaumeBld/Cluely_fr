@@ -1,4 +1,4 @@
-import { app, safeStorage, shell, net } from 'electron';
+import { app, safeStorage, shell, net, systemPreferences } from 'electron';
 import axios from 'axios';
 import http from 'http';
 import url from 'url';
@@ -26,7 +26,8 @@ export interface CalendarEvent {
     startTime: string; // ISO
     endTime: string; // ISO
     link?: string;
-    source: 'google';
+    source: 'google' | 'system' | 'outlook' | 'exchange';
+    calendarName?: string;
     attendees?: string[]; // email addresses
 }
 
@@ -55,12 +56,30 @@ export class CalendarManager extends EventEmitter {
 
     public init() {
         this.loadTokens();
-        // On macOS, system calendar is always available — mark as ready so UI shows events
         if (this.isSystemCalendarAvailable() && !this.isConnected) {
-            this.isConnected = true; // System calendar needs no auth
+            this.isConnected = true;
             this.emit('connection-changed', true);
-            this.fetchUpcomingEvents();
+            this.requestCalendarAccessAndFetch();
         }
+    }
+
+    private async requestCalendarAccessAndFetch(): Promise<void> {
+        try {
+            const status = systemPreferences.getMediaAccessStatus('camera'); // warm up — unused
+        } catch {}
+
+        // Request Calendar access via native Electron API (triggers macOS permission dialog)
+        try {
+            const granted = await (systemPreferences as any).askForCalendarAccess?.();
+            if (granted === false) {
+                console.warn('[CalendarManager] Calendar access denied by user');
+                return;
+            }
+        } catch {
+            // askForCalendarAccess not available in this Electron version — proceed anyway
+        }
+
+        this.fetchUpcomingEvents();
     }
 
     // =========================================================================
@@ -469,59 +488,20 @@ export class CalendarManager extends EventEmitter {
         return process.platform === 'darwin';
     }
 
-    public async getSystemCalendarEvents(daysAhead: number = 7): Promise<CalendarEvent[]> {
+    public async getSystemCalendarEvents(_daysAhead: number = 7): Promise<CalendarEvent[]> {
         if (!this.isSystemCalendarAvailable()) return [];
 
-        // AppleScript that queries all calendars and returns JSON-like lines
-        // Format: title|||startISO|||endISO|||calendarName|||location|||attendees(comma-sep emails)
-        const script = `
-set startDate to current date
-set endDate to startDate + (${daysAhead} * days)
-set output to ""
-tell application "Calendar"
-  repeat with cal in calendars
-    try
-      set evts to (every event of cal whose start date >= startDate and start date <= endDate)
-      repeat with e in evts
-        try
-          set evtTitle to summary of e
-          set evtStart to start date of e
-          set evtEnd to end date of e
-          set evtCal to name of cal
-          set evtLoc to ""
-          try
-            set evtLoc to location of e
-          end try
-          if evtLoc is missing value then set evtLoc to ""
-          set evtAttendees to ""
-          try
-            set atts to attendees of e
-            repeat with a in atts
-              try
-                set aEmail to email of a
-                if aEmail is not missing value and aEmail is not "" then
-                  if evtAttendees is "" then
-                    set evtAttendees to aEmail
-                  else
-                    set evtAttendees to evtAttendees & "," & aEmail
-                  end if
-                end if
-              end try
-            end repeat
-          end try
-          set output to output & evtTitle & "|||" & (evtStart as string) & "|||" & (evtEnd as string) & "|||" & evtCal & "|||" & evtLoc & "|||" & evtAttendees & "\n"
-        end try
-      end repeat
-    end try
-  end repeat
-end tell
-return output
-        `.trim();
+        // Use native Swift EventKit binary (assets/CalReader) which has direct
+        // Calendar access via EventKit — bypasses Electron's Apple Events sandbox restriction.
+        // Output format per line: title|||startISO|||endISO|||calendarName|||location|||attendees
+        const helperPath = app.isPackaged
+            ? path.join(process.resourcesPath, 'CalReader')
+            : path.join(app.getAppPath(), 'assets', 'CalReader');
 
         return new Promise((resolve) => {
-            execFile('osascript', ['-e', script], { timeout: 10000 }, (err, stdout, stderr) => {
+            execFile(helperPath, [], { timeout: 30000 }, (err, stdout, stderr) => {
                 if (err) {
-                    console.error('[CalendarManager] osascript failed:', err.message);
+                    console.error('[CalendarManager] CalReader failed:', stderr || err.message);
                     resolve([]);
                     return;
                 }
@@ -535,17 +515,11 @@ return output
                         if (parts.length < 4) continue;
 
                         const [title, startStr, endStr, calName, location, attendeesStr] = parts;
-                        const startTime = this.parseAppleScriptDate(startStr.trim());
-                        const endTime = this.parseAppleScriptDate(endStr.trim());
+                        // CalReader outputs ISO 8601 — parse directly
+                        const startTime = new Date(startStr.trim()).toISOString();
+                        const endTime = new Date(endStr.trim()).toISOString();
 
-                        if (!startTime || !endTime) continue;
-
-                        // Skip all-day events (duration >= 23h and starts at midnight)
-                        const durationMs = new Date(endTime).getTime() - new Date(startTime).getTime();
-                        if (durationMs >= 23 * 60 * 60 * 1000) continue;
-
-                        // Skip very short events (< 5 min)
-                        if (durationMs < 5 * 60 * 1000) continue;
+                        if (isNaN(new Date(startTime).getTime())) continue;
 
                         const meetingLink = location ? this.extractMeetingLink(location) : undefined;
 
@@ -553,19 +527,22 @@ return output
                             ? attendeesStr.split(',').map(e => e.trim().toLowerCase()).filter(e => e.includes('@'))
                             : [];
 
+                        const calNameTrimmed = (calName || '').trim();
+                        const isOutlook = /outlook|exchange|microsoft|office\s*365|hotmail|live\.com/i.test(calNameTrimmed);
+
                         events.push({
                             id: `sys-${title}-${startTime}`,
                             title: title.trim() || '(Sans titre)',
                             startTime,
                             endTime,
                             link: meetingLink,
-                            source: 'google', // reuse type — calName could be added if CalendarEvent is extended
+                            source: isOutlook ? 'outlook' : 'system',
+                            calendarName: calNameTrimmed || undefined,
                             attendees: attendees.length > 0 ? attendees : undefined,
                         });
                     } catch {}
                 }
 
-                // Sort by start time
                 events.sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
                 console.log(`[CalendarManager] System calendar returned ${events.length} events`);
                 resolve(events);

@@ -88,16 +88,45 @@ const MulticaPanel: React.FC = () => {
 
     // Check if already ready, then subscribe to future status changes
     useEffect(() => {
-        eAPI?.multicaIsReady?.().then((res: { ready: boolean }) => {
-            if (res?.ready) {
-                setIsReady(true);
-                loadWorkspaces().then((ws) => { if (ws.length > 0) loadIssues(ws[0].id); });
+        let settled = false;
+
+        const settle = () => { settled = true; };
+
+        // 5-second timeout — if no response, show unavailable
+        const timeout = setTimeout(() => {
+            if (!settled) {
+                settle();
+                setLoadError('Multica service unreachable');
                 setLoading(false);
             }
-        });
+        }, 5000);
+
+        const readyPromise = eAPI?.multicaIsReady?.();
+        if (readyPromise) {
+            readyPromise.then((res: { ready: boolean }) => {
+                if (settled) return;
+                if (res?.ready) {
+                    settle();
+                    clearTimeout(timeout);
+                    setIsReady(true);
+                    loadWorkspaces().then((ws) => { if (ws.length > 0) loadIssues(ws[0].id); });
+                    setLoading(false);
+                }
+            }).catch(() => {
+                if (!settled) {
+                    settle();
+                    clearTimeout(timeout);
+                    setLoadError('Multica unavailable');
+                    setLoading(false);
+                }
+            });
+        }
 
         const unsub = eAPI?.onMulticaStatusChange?.(
             (data: { status: 'ready' | 'failed'; error?: string }) => {
+                if (settled) return;
+                settle();
+                clearTimeout(timeout);
                 if (data.status === 'ready') {
                     setIsReady(true);
                     loadWorkspaces().then((ws) => { if (ws.length > 0) loadIssues(ws[0].id); });
@@ -108,7 +137,7 @@ const MulticaPanel: React.FC = () => {
             }
         );
 
-        return () => unsub?.();
+        return () => { unsub?.(); clearTimeout(timeout); };
     }, []);
 
     // Load issues when workspace changes

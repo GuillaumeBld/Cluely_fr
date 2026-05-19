@@ -1044,6 +1044,9 @@ contextBridge.exposeInMainWorld("electronAPI", {
   },
 
   // Project Context Switcher API
+  workspaceClassify: (attendees: string[]) => ipcRenderer.invoke('workspace:classify', attendees),
+  workspaceConfirm: (attendees: string[], workspaceId: string) => ipcRenderer.invoke('workspace:confirm', { attendees, workspaceId }),
+  workspaceRules: () => ipcRenderer.invoke('workspace:rules'),
   listProjects: (labelLike?: string) => ipcRenderer.invoke('project:list', labelLike),
   switchProject: (projectId: string, label: string) => ipcRenderer.invoke('project:switch', projectId, label),
   getActiveProject: () => ipcRenderer.invoke('project:get-active'),

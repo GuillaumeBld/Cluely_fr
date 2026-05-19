@@ -183,6 +183,7 @@ const Launcher: React.FC<LauncherProps> = ({ onStartMeeting, onOpenSettings }) =
     const [selectedGoalId, setSelectedGoalId] = useState<string | null>(null);
     const [showGoals, setShowGoals] = useState(false);
     const [multicaToast, setMulticaToast] = useState<{ count: number; workspaceName: string } | null>(null);
+    const [pendingCalendarEvent, setPendingCalendarEvent] = useState<any | null>(null);
     const [pendingConflicts, setPendingConflicts] = useState<any[]>([]);
     const [showDailySummary, setShowDailySummary] = useState(true);
     const [dailySpendCents, setDailySpendCents] = useState(0);
@@ -674,7 +675,7 @@ const Launcher: React.FC<LauncherProps> = ({ onStartMeeting, onOpenSettings }) =
                                                 {formatEventTime(nextMeeting.startTime)} – {formatEventTime(nextMeeting.endTime)}
                                             </p>
                                             <button
-                                                onClick={() => { setShowWorkspaceSelector(true); analytics.trackCommandExecuted('start_from_calendar'); }}
+                                                onClick={() => { setPendingCalendarEvent(nextMeeting); setShowWorkspaceSelector(true); analytics.trackCommandExecuted('start_from_calendar'); }}
                                                 className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 text-[11px] font-semibold border border-emerald-500/20 transition-all"
                                             >
                                                 <Zap size={11} />
@@ -814,6 +815,7 @@ const Launcher: React.FC<LauncherProps> = ({ onStartMeeting, onOpenSettings }) =
                     <WorkspaceSelector
                         onSelect={ws => {
                             setShowWorkspaceSelector(false);
+                            setPendingCalendarEvent(null);
                             setActiveWorkspace(ws);
                             if (ws) {
                                 window.electronAPI?.invoke?.('start-meeting', { multicaWorkspaceId: ws.id, multicaWorkspaceName: ws.name }).catch(() => {});
@@ -821,7 +823,8 @@ const Launcher: React.FC<LauncherProps> = ({ onStartMeeting, onOpenSettings }) =
                                 onStartMeeting();
                             }
                         }}
-                        onCancel={() => setShowWorkspaceSelector(false)}
+                        onCancel={() => { setShowWorkspaceSelector(false); setPendingCalendarEvent(null); }}
+                        attendees={pendingCalendarEvent?.attendees ?? []}
                     />
                 )}
             </AnimatePresence>

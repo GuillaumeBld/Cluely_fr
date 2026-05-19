@@ -284,7 +284,8 @@ export class MulticaManager {
         if (!this.config) return;
 
         const existing = await this.api('/api/workspaces') as Workspace[];
-        const existingNames = new Set(existing.map((w) => w.name));
+        const existingByName = new Map(existing.map((w) => [w.name, w]));
+        const existingBySlug = new Map(existing.map((w) => [w.slug, w]));
 
         const defaults = [
             { name: 'Graduate_Researcher', slug: 'graduate-researcher', issue_prefix: 'GRA' },
@@ -293,14 +294,25 @@ export class MulticaManager {
         ];
 
         for (const ws of defaults) {
-            if (!existingNames.has(ws.name)) {
+            const found = existingByName.get(ws.name) || existingBySlug.get(ws.slug);
+            if (found) {
+                this.config.workspaces[ws.issue_prefix] = found.id;
+                continue;
+            }
+            try {
                 const created = await this.apiPost('/api/workspaces', ws) as Workspace;
                 if (created?.id) {
                     this.config.workspaces[ws.issue_prefix] = created.id;
                 }
-            } else {
-                const found = existing.find((w) => w.name === ws.name);
-                if (found) this.config.workspaces[ws.issue_prefix] = found.id;
+            } catch (err: any) {
+                // 409 = already exists (slug conflict) — fetch and use the existing one
+                if (err.message?.includes('409')) {
+                    const refreshed = await this.api('/api/workspaces') as Workspace[];
+                    const match = refreshed.find((w) => w.slug === ws.slug || w.name === ws.name);
+                    if (match) this.config.workspaces[ws.issue_prefix] = match.id;
+                } else {
+                    throw err;
+                }
             }
         }
     }

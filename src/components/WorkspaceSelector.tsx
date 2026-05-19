@@ -34,28 +34,45 @@ interface Workspace {
 interface WorkspaceSelectorProps {
   onSelect: (workspace: Workspace | null) => void;
   onCancel: () => void;
+  attendees?: string[]; // from calendar event — used for auto-routing
 }
 
-const WorkspaceSelector: React.FC<WorkspaceSelectorProps> = ({ onSelect, onCancel }) => {
+const WorkspaceSelector: React.FC<WorkspaceSelectorProps> = ({ onSelect, onCancel, attendees = [] }) => {
   const { t } = useT();
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<string | null>(null);
+  const [suggestedId, setSuggestedId] = useState<string | null>(null);
+  const [suggestedConfidence, setSuggestedConfidence] = useState<number>(0);
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const fetchWorkspaces = () => {
-    return api.getWorkspaces()
-      .then((data: any) => {
-        console.log('[WorkspaceSelector] raw data:', data, 'isArray:', Array.isArray(data));
-        if (Array.isArray(data)) setWorkspaces(data);
-        else setError('Format inattendu: ' + JSON.stringify(data)?.slice(0, 80));
-      })
-      .catch((e: any) => { console.error('[WorkspaceSelector] fetch error:', e); setError('Erreur: ' + e?.message); })
-      .finally(() => setLoading(false));
+  const fetchWorkspaces = async () => {
+    try {
+      const data = await api.getWorkspaces();
+      if (Array.isArray(data)) {
+        setWorkspaces(data);
+        // Auto-classify if we have attendees
+        if (attendees.length > 0) {
+          const eAPI = (window as any).electronAPI;
+          const result = await eAPI?.workspaceClassify?.(attendees);
+          if (result?.workspaceId) {
+            setSuggestedId(result.workspaceId);
+            setSuggestedConfidence(result.confidence);
+            setSelected(result.workspaceId); // pre-select
+          }
+        }
+      } else {
+        setError('Format inattendu: ' + JSON.stringify(data)?.slice(0, 80));
+      }
+    } catch (e: any) {
+      setError('Erreur: ' + e?.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => { fetchWorkspaces(); }, []);
@@ -89,9 +106,12 @@ const WorkspaceSelector: React.FC<WorkspaceSelectorProps> = ({ onSelect, onCance
     }
   };
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
     if (selected === 'other') { onSelect(null); return; }
     const ws = workspaces.find((w) => w.id === selected);
+    if (ws && attendees.length > 0) {
+      await (window as any).electronAPI?.workspaceConfirm?.(attendees, ws.id);
+    }
     onSelect(ws || null);
   };
 
@@ -163,20 +183,30 @@ const WorkspaceSelector: React.FC<WorkspaceSelectorProps> = ({ onSelect, onCance
                   </div>
                 ) : (
                   <>
-                    {workspaces.map((ws) => (
-                      <button key={ws.id} onClick={() => setSelected(ws.id)}
-                        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all ${
-                          selected === ws.id ? 'bg-sky-500/20 border border-sky-500/40' : 'hover:bg-white/5 border border-transparent'}`}>
-                        <div className="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center text-xs font-bold text-text-primary shrink-0">
-                          {ws.issue_prefix.slice(0, 2)}
-                        </div>
-                        <div>
-                          <div className="text-xs font-medium text-text-primary">{ws.name}</div>
-                          <div className="text-[10px] text-text-secondary">{ws.issue_prefix}-*</div>
-                        </div>
-                        {selected === ws.id && <Check size={13} className="ml-auto text-sky-400" />}
-                      </button>
-                    ))}
+                    {workspaces.map((ws) => {
+                      const isSuggested = ws.id === suggestedId;
+                      return (
+                        <button key={ws.id} onClick={() => setSelected(ws.id)}
+                          className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all ${
+                            selected === ws.id ? 'bg-sky-500/20 border border-sky-500/40' : 'hover:bg-white/5 border border-transparent'}`}>
+                          <div className="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center text-xs font-bold text-text-primary shrink-0">
+                            {ws.issue_prefix.slice(0, 2)}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-xs font-medium text-text-primary truncate">{ws.name}</span>
+                              {isSuggested && (
+                                <span className="shrink-0 text-[9px] font-semibold bg-sky-500/20 text-sky-400 border border-sky-500/30 rounded px-1 py-px leading-none">
+                                  {Math.round(suggestedConfidence * 100)}% match
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-[10px] text-text-secondary">{ws.issue_prefix}-*</div>
+                          </div>
+                          {selected === ws.id && <Check size={13} className="ml-auto text-sky-400" />}
+                        </button>
+                      );
+                    })}
 
                     {/* Create new — inline */}
                     <button onClick={() => setCreating(true)}

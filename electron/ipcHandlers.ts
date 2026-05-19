@@ -184,7 +184,32 @@ export function initializeIpcHandlers(appState: AppState): void {
   );
 
   safeHandle("multica-is-ready", async () => ({ ready: multica.isReady() }));
-  // ── End Multica IPC ──
+
+  // ── Workspace routing (attendee → workspace auto-classification) ──
+  const { WorkspaceRouter } = require('./services/WorkspaceRouter');
+  let _router: any = null;
+  const _getRouter = () => {
+    if (!_router) {
+      const db = DatabaseManager.getInstance().getDb();
+      if (db) _router = new WorkspaceRouter(db);
+    }
+    return _router;
+  };
+
+  safeHandle("workspace:classify", (_event, attendees: unknown) => {
+    if (!Array.isArray(attendees)) return null;
+    return _getRouter()?.classify(attendees as string[]) ?? null;
+  });
+
+  safeHandle("workspace:confirm", (_event, payload: unknown) => {
+    const { attendees, workspaceId } = (payload || {}) as any;
+    if (!Array.isArray(attendees) || typeof workspaceId !== 'string') return { ok: false };
+    _getRouter()?.learn(attendees as string[], workspaceId);
+    return { ok: true };
+  });
+
+  safeHandle("workspace:rules", () => _getRouter()?.getRules() ?? []);
+  // ── End workspace routing ──
 
   safeHandle("get-screenshots", async () => {
     // console.log({ view: appState.getView() })
@@ -619,6 +644,20 @@ export function initializeIpcHandlers(appState: AppState): void {
     }
   });
 
+  safeHandle("set-deepseek-api-key", async (_, apiKey: string) => {
+    try {
+      const { CredentialsManager } = require('./services/CredentialsManager');
+      CredentialsManager.getInstance().setDeepseekApiKey(apiKey);
+      const llmHelper = appState.processingHelper.getLLMHelper();
+      llmHelper.setDeepseekApiKey(apiKey);
+      appState.getIntelligenceManager().initializeLLMs();
+      return { success: true };
+    } catch (error: any) {
+      console.error("Error saving DeepSeek API key:", error);
+      return { success: false, error: error.message };
+    }
+  });
+
   safeHandle("set-openrouter-api-key", async (_, apiKey: string) => {
     try {
       const { CredentialsManager } = require('./services/CredentialsManager');
@@ -827,6 +866,7 @@ export function initializeIpcHandlers(appState: AppState): void {
         hasGroqKey: hasKey(creds.groqApiKey),
         hasOpenaiKey: hasKey(creds.openaiApiKey),
         hasClaudeKey: hasKey(creds.claudeApiKey),
+        hasDeepseekKey: hasKey(creds.deepseekApiKey),
         hasOpenRouterKey: hasKey(creds.openrouterApiKey),
         openrouterModel: creds.openrouterModel || 'google/gemini-flash-1.5',
         googleServiceAccountPath: creds.googleServiceAccountPath || null,
@@ -1092,7 +1132,7 @@ export function initializeIpcHandlers(appState: AppState): void {
     }
   });
 
-  safeHandle("test-llm-connection", async (_, provider: 'gemini' | 'groq' | 'openai' | 'claude', apiKey?: string) => {
+  safeHandle("test-llm-connection", async (_, provider: 'gemini' | 'groq' | 'openai' | 'claude' | 'deepseek', apiKey?: string) => {
     console.log(`[IPC] Received test-llm-connection request for provider: ${provider}`);
     try {
       if (!apiKey || !apiKey.trim()) {
@@ -1102,6 +1142,7 @@ export function initializeIpcHandlers(appState: AppState): void {
         else if (provider === 'groq') apiKey = creds.getGroqApiKey();
         else if (provider === 'openai') apiKey = creds.getOpenaiApiKey();
         else if (provider === 'claude') apiKey = creds.getClaudeApiKey();
+        else if (provider === 'deepseek') apiKey = creds.getDeepseekApiKey();
       }
 
       if (!apiKey || !apiKey.trim()) {
@@ -1141,6 +1182,14 @@ export function initializeIpcHandlers(appState: AppState): void {
             'anthropic-version': '2023-06-01',
             'content-type': 'application/json'
           }
+        });
+      } else if (provider === 'deepseek') {
+        response = await axios.post('https://api.deepseek.com/chat/completions', {
+          model: "deepseek-chat",
+          messages: [{ role: "user", content: "Hello" }],
+          max_tokens: 10,
+        }, {
+          headers: { Authorization: `Bearer ${apiKey}`, 'content-type': 'application/json' }
         });
       }
 

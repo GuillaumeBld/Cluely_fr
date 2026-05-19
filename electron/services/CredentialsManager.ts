@@ -58,6 +58,7 @@ export interface StoredCredentials {
     groqApiKey?: string;
     openaiApiKey?: string;
     claudeApiKey?: string;
+    deepseekApiKey?: string;
     googleServiceAccountPath?: string;
     customProviders?: CustomProvider[];
     curlProviders?: CurlProvider[];
@@ -124,6 +125,10 @@ export class CredentialsManager {
 
     public getClaudeApiKey(): string | undefined {
         return this.credentials.claudeApiKey;
+    }
+
+    public getDeepseekApiKey(): string | undefined {
+        return this.credentials.deepseekApiKey;
     }
 
     public getGoogleServiceAccountPath(): string | undefined {
@@ -216,6 +221,12 @@ export class CredentialsManager {
         this.credentials.claudeApiKey = key;
         this.saveCredentials();
         console.log('[CredentialsManager] Claude API Key updated');
+    }
+
+    public setDeepseekApiKey(key: string): void {
+        this.credentials.deepseekApiKey = key;
+        this.saveCredentials();
+        console.log('[CredentialsManager] DeepSeek API Key updated');
     }
 
     public setOpenRouterApiKey(key: string): void {

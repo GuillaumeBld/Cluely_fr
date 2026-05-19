@@ -1486,6 +1486,10 @@ const SettingsOverlay: React.FC<SettingsOverlayProps> = ({ isOpen, onClose }) =>
                                                                                     : (hasStoredDeepgramKey ? '••••••••••••' : 'Enter Deepgram API key')
                                                             }
                                                             className="flex-1 bg-bg-input border border-border-subtle rounded-lg px-3 py-2 text-sm text-text-primary placeholder-text-tertiary focus:outline-none focus:border-accent-primary transition-colors"
+                                                            autoComplete="new-password"
+                                                            autoCorrect="off"
+                                                            autoCapitalize="off"
+                                                            spellCheck={false}
                                                         />
                                                         <button
                                                             onClick={() => {

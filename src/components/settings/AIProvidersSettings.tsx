@@ -91,6 +91,8 @@ export const AIProvidersSettings: React.FC = () => {
     const [testStatus, setTestStatus] = useState<Record<string, 'idle' | 'testing' | 'success' | 'error'>>({});
     const [testError, setTestError] = useState<Record<string, string>>({});
 
+    // --- DeepSeek ---
+    const [deepseekApiKey, setDeepseekApiKey] = useState('');
     // --- OpenRouter ---
     const [openrouterApiKey, setOpenrouterApiKey] = useState('');
     const [openrouterModel, setOpenrouterModel] = useState('google/gemini-flash-1.5');
@@ -129,6 +131,7 @@ export const AIProvidersSettings: React.FC = () => {
                         groq: creds.hasGroqKey,
                         openai: creds.hasOpenaiKey,
                         claude: creds.hasClaudeKey,
+                        deepseek: creds.hasDeepseekKey,
                         openrouter: creds.hasOpenRouterKey,
                     });
                     if (creds.openrouterModel) setOpenrouterModel(creds.openrouterModel);
@@ -253,6 +256,7 @@ export const AIProvidersSettings: React.FC = () => {
             // @ts-ignore
             if (provider === 'claude') result = await window.electronAPI.setClaudeApiKey(key);
             // @ts-ignore
+            if (provider === 'deepseek') result = await window.electronAPI.invoke('set-deepseek-api-key', key);
             if (provider === 'openrouter') result = await window.electronAPI.invoke('set-openrouter-api-key', key);
 
             if (result && result.success) {
@@ -281,6 +285,7 @@ export const AIProvidersSettings: React.FC = () => {
             // @ts-ignore
             if (provider === 'claude') result = await window.electronAPI.setClaudeApiKey('');
             // @ts-ignore
+            if (provider === 'deepseek') result = await window.electronAPI.invoke('set-deepseek-api-key', '');
             if (provider === 'openrouter') result = await window.electronAPI.invoke('set-openrouter-api-key', '');
 
             if (result && result.success) {
@@ -321,7 +326,8 @@ export const AIProvidersSettings: React.FC = () => {
             gemini: 'https://aistudio.google.com/app/apikey',
             groq: 'https://console.groq.com/keys',
             openai: 'https://platform.openai.com/api-keys',
-            claude: 'https://console.anthropic.com/settings/keys'
+            claude: 'https://console.anthropic.com/settings/keys',
+            deepseek: 'https://platform.deepseek.com/api_keys'
         };
         // @ts-ignore
         window.electronAPI?.openExternal(urls[provider]);
@@ -420,6 +426,10 @@ export const AIProvidersSettings: React.FC = () => {
                             ...(hasStoredKey.gemini ? [{ id: 'gemini-3-flash-preview', name: 'Gemini 3 Flash' }] : []),
                             ...(hasStoredKey.openai ? [{ id: 'gpt-5.2-chat-latest', name: 'GPT 5.2' }] : []),
                             ...(hasStoredKey.claude ? [{ id: 'claude-sonnet-4-5', name: 'Sonnet 4.5' }] : []),
+                            ...(hasStoredKey.deepseek ? [
+                                { id: 'deepseek-chat', name: 'DeepSeek V3' },
+                                { id: 'deepseek-reasoner', name: 'DeepSeek R1' },
+                            ] : []),
                             ...(hasStoredKey.groq ? [{ id: 'llama-3.3-70b-versatile', name: 'Groq Llama 3.3' }] : []),
                             ...customProviders.map(p => ({ id: p.id, name: p.name })),
                             ...ollamaModels.map(m => ({ id: `ollama-${m}`, name: `${m} (Local)` }))
@@ -480,6 +490,10 @@ export const AIProvidersSettings: React.FC = () => {
                                 onChange={(e) => setApiKey(e.target.value)}
                                 placeholder={hasStoredKey.gemini ? "••••••••••••" : "AIzaSy..."}
                                 className="flex-1 bg-bg-input border border-border-subtle rounded-lg px-4 py-2.5 text-xs text-text-primary focus:outline-none focus:border-accent-primary transition-colors"
+                                autoComplete="new-password"
+                                autoCorrect="off"
+                                autoCapitalize="off"
+                                spellCheck={false}
                             />
                             <button
                                 onClick={() => handleSaveKey('gemini', apiKey, setApiKey)}
@@ -542,6 +556,10 @@ export const AIProvidersSettings: React.FC = () => {
                                 onChange={(e) => setGroqApiKey(e.target.value)}
                                 placeholder={hasStoredKey.groq ? "••••••••••••" : "gsk_..."}
                                 className="flex-1 bg-bg-input border border-border-subtle rounded-lg px-4 py-2.5 text-xs text-text-primary focus:outline-none focus:border-accent-primary transition-colors"
+                                autoComplete="new-password"
+                                autoCorrect="off"
+                                autoCapitalize="off"
+                                spellCheck={false}
                             />
                             <button
                                 onClick={() => handleSaveKey('groq', groqApiKey, setGroqApiKey)}
@@ -604,6 +622,10 @@ export const AIProvidersSettings: React.FC = () => {
                                 onChange={(e) => setOpenaiApiKey(e.target.value)}
                                 placeholder={hasStoredKey.openai ? "••••••••••••" : "sk-..."}
                                 className="flex-1 bg-bg-input border border-border-subtle rounded-lg px-4 py-2.5 text-xs text-text-primary focus:outline-none focus:border-accent-primary transition-colors"
+                                autoComplete="new-password"
+                                autoCorrect="off"
+                                autoCapitalize="off"
+                                spellCheck={false}
                             />
                             <button
                                 onClick={() => handleSaveKey('openai', openaiApiKey, setOpenaiApiKey)}
@@ -666,6 +688,10 @@ export const AIProvidersSettings: React.FC = () => {
                                 onChange={(e) => setClaudeApiKey(e.target.value)}
                                 placeholder={hasStoredKey.claude ? "••••••••••••" : "sk-ant-..."}
                                 className="flex-1 bg-bg-input border border-border-subtle rounded-lg px-4 py-2.5 text-xs text-text-primary focus:outline-none focus:border-accent-primary transition-colors"
+                                autoComplete="new-password"
+                                autoCorrect="off"
+                                autoCapitalize="off"
+                                spellCheck={false}
                             />
                             <button
                                 onClick={() => handleSaveKey('claude', claudeApiKey, setClaudeApiKey)}
@@ -713,6 +739,57 @@ export const AIProvidersSettings: React.FC = () => {
                         {testError.claude && <p className="text-[10px] text-red-400 mt-1.5">{testError.claude}</p>}
                     </div>
 
+                    {/* DeepSeek */}
+                    <div className="bg-bg-item-surface rounded-xl p-5 border border-border-subtle">
+                        <div className="mb-2">
+                            <label className="block text-xs font-medium text-text-primary uppercase tracking-wide">
+                                DeepSeek API Key
+                                {hasStoredKey.deepseek && <span className="ml-2 text-green-500 normal-case">✓ Saved</span>}
+                            </label>
+                            <p className="text-[11px] text-text-tertiary mt-0.5">DeepSeek V3 &amp; R1 — fast, affordable reasoning</p>
+                        </div>
+                        <div className="flex gap-2 mb-2">
+                            <input
+                                type="password"
+                                className="flex-1 bg-bg-input border border-border-subtle rounded-lg px-4 py-2.5 text-xs text-text-primary focus:outline-none focus:border-accent-primary transition-colors"
+                                value={deepseekApiKey}
+                                onChange={(e) => setDeepseekApiKey(e.target.value)}
+                                placeholder={hasStoredKey.deepseek ? "••••••••••••" : "sk-..."}
+                                autoComplete="new-password"
+                                autoCorrect="off"
+                                autoCapitalize="off"
+                                spellCheck={false}
+                            />
+                            {hasStoredKey.deepseek && (
+                                <button onClick={() => handleRemoveKey('deepseek', setDeepseekApiKey)} className="px-3 py-2.5 rounded-lg text-xs font-medium text-red-400 hover:text-red-300 border border-red-500/20 hover:bg-red-500/10 transition-colors">Remove</button>
+                            )}
+                            <button
+                                onClick={() => handleSaveKey('deepseek', deepseekApiKey, setDeepseekApiKey)}
+                                disabled={savingStatus.deepseek || !deepseekApiKey.trim()}
+                                className={`px-5 py-2.5 rounded-lg text-xs font-medium transition-colors ${savedStatus.deepseek ? 'bg-green-500/20 text-green-400' : 'bg-accent-primary text-white hover:bg-accent-primary/80'} disabled:opacity-50`}
+                            >
+                                {savingStatus.deepseek ? 'Saving...' : savedStatus.deepseek ? 'Saved!' : 'Save'}
+                            </button>
+                        </div>
+                        <div className="flex items-center gap-2 mt-2">
+                            <button
+                                onClick={() => handleTestConnection('deepseek', deepseekApiKey)}
+                                disabled={(!deepseekApiKey.trim() && !hasStoredKey.deepseek) || testStatus.deepseek === 'testing'}
+                                className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors border border-border-subtle flex items-center gap-2 ${testStatus.deepseek === 'success' ? 'bg-green-500/10 text-green-500 border-green-500/20' : testStatus.deepseek === 'error' ? 'bg-red-500/10 text-red-500 border-red-500/20' : 'bg-bg-base text-text-secondary hover:text-text-primary'}`}
+                                title={testError.deepseek || "Test Connection"}
+                            >
+                                {testStatus.deepseek === 'testing' ? <><Loader2 size={12} className="animate-spin" /> Testing...</> :
+                                    testStatus.deepseek === 'success' ? <><CheckCircle size={12} /> Connected</> :
+                                        testStatus.deepseek === 'error' ? <><AlertCircle size={12} /> Error</> :
+                                            <>Test Connection</>}
+                            </button>
+                            <button onClick={() => openKeyUrl('deepseek')} className="text-xs text-text-tertiary hover:text-text-primary flex items-center gap-1 transition-colors" title="Get API Key">
+                                <ExternalLink size={12} />
+                            </button>
+                        </div>
+                        {testError.deepseek && <p className="text-[10px] text-red-400 mt-1.5">{testError.deepseek}</p>}
+                    </div>
+
                     {/* OpenRouter */}
                     <div className="bg-bg-item-surface rounded-xl p-5 border border-border-subtle">
                         <div className="mb-2">
@@ -729,6 +806,10 @@ export const AIProvidersSettings: React.FC = () => {
                                 onChange={(e) => setOpenrouterApiKey(e.target.value)}
                                 placeholder={hasStoredKey.openrouter ? "••••••••••••" : "sk-or-v1-..."}
                                 className="flex-1 bg-bg-input border border-border-subtle rounded-lg px-4 py-2.5 text-xs text-text-primary focus:outline-none focus:border-accent-primary transition-colors"
+                                autoComplete="new-password"
+                                autoCorrect="off"
+                                autoCapitalize="off"
+                                spellCheck={false}
                             />
                             <button
                                 onClick={() => handleSaveKey('openrouter', openrouterApiKey, setOpenrouterApiKey)}

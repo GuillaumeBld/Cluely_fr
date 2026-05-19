@@ -148,7 +148,7 @@ export interface ElectronAPI {
   setClaudeApiKey: (apiKey: string) => Promise<{ success: boolean; error?: string }>
   setOpenRouterApiKey: (apiKey: string) => Promise<{ success: boolean; error?: string }>
   setOpenRouterModel: (model: string) => Promise<{ success: boolean; error?: string }>
-  getStoredCredentials: () => Promise<{ hasGeminiKey: boolean; hasGroqKey: boolean; hasOpenaiKey: boolean; hasClaudeKey: boolean; googleServiceAccountPath: string | null; sttProvider: string; groqSttModel: string; hasSttGroqKey: boolean; hasSttOpenaiKey: boolean; hasDeepgramKey: boolean; hasElevenLabsKey: boolean; hasAzureKey: boolean; azureRegion: string; hasIbmWatsonKey: boolean; ibmWatsonRegion: string; hasOpenRouterKey: boolean; openrouterModel: string }>
+  getStoredCredentials: () => Promise<{ hasGeminiKey: boolean; hasGroqKey: boolean; hasOpenaiKey: boolean; hasClaudeKey: boolean; hasDeepseekKey: boolean; googleServiceAccountPath: string | null; sttProvider: string; groqSttModel: string; hasSttGroqKey: boolean; hasSttOpenaiKey: boolean; hasDeepgramKey: boolean; hasElevenLabsKey: boolean; hasAzureKey: boolean; azureRegion: string; hasIbmWatsonKey: boolean; ibmWatsonRegion: string; hasOpenRouterKey: boolean; openrouterModel: string }>
 
   // Export Webhooks
   getExportWebhooks: () => Promise<ExportWebhook[]>
@@ -219,6 +219,11 @@ export interface ElectronAPI {
   macroDismiss: () => Promise<{ success: boolean }>
   macroOverride: (meetingId: string) => Promise<{ meetingId: string; overridden: boolean }>
   macroObserve: (row: { id: string; project_id: string; meeting_type: string; template_id: string; dispatch_target: string }) => Promise<{ success: boolean }>
+
+  // Workspace auto-routing
+  workspaceClassify: (attendees: string[]) => Promise<{ workspaceId: string; confidence: number; matchedKeys: string[] } | null>
+  workspaceConfirm: (attendees: string[], workspaceId: string) => Promise<{ ok: boolean }>
+  workspaceRules: () => Promise<Array<{ key: string; workspace_id: string; weight: number }>>
 
   // Project Context Switcher API
   listProjects: (labelLike?: string) => Promise<Array<{ id: string; kind: string; label: string; metadata: string; created_at: string; updated_at: string }>>
