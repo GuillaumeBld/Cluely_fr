@@ -60,6 +60,8 @@ export class MulticaManager {
     private readyResolve: (() => void) | null = null;
     private readyReject: ((err: Error) => void) | null = null;
     private launcherWindow: BrowserWindow | null = null;
+    private static MAX_RETRIES = 5;
+    private static RETRY_DELAY_MS = 3000;
 
     public static getInstance(): MulticaManager {
         if (!MulticaManager.instance) {
@@ -72,47 +74,92 @@ export class MulticaManager {
 
     public async start(): Promise<void> {
         if (this.state === 'bootstrapping' || this.state === 'ready') return;
-        this.state = 'bootstrapping';
-        console.log('[MulticaManager] Starting...');
 
-        this.config = this.loadConfig();
-        const alreadyUp = await this.waitForHealth(1500);
+        let lastError: Error | undefined;
 
-        if (!alreadyUp) {
-            try {
-                await this.startServer();
-            } catch (err) {
-                console.error('[MulticaManager] Server failed to start:', err);
+        for (let attempt = 1; attempt <= MulticaManager.MAX_RETRIES; attempt++) {
+            this.state = 'idle';
+            // Reset ready promise so new waitUntilReady() callers get a fresh future
+            this.readyPromise = null;
+            this.readyResolve = null;
+            this.readyReject = null;
+
+            this.state = 'bootstrapping';
+            console.log(`[MulticaManager] Starting (attempt ${attempt}/${MulticaManager.MAX_RETRIES})...`);
+
+            this.config = this.loadConfig();
+            const alreadyUp = await this.waitForHealth(1500);
+
+            if (!alreadyUp) {
+                try {
+                    await this.startServer();
+                } catch (err) {
+                    lastError = err as Error;
+                    console.error('[MulticaManager] Server failed to start:', err);
+                    if (attempt < MulticaManager.MAX_RETRIES) {
+                        console.log(`[MulticaManager] Retrying in ${MulticaManager.RETRY_DELAY_MS}ms...`);
+                        await this.delay(MulticaManager.RETRY_DELAY_MS);
+                        continue;
+                    }
+                    this.state = 'failed';
+                    this.readyReject?.(lastError);
+                    this.notifyRenderer('failed', lastError.message);
+                    return;
+                }
+                const healthy = await this.waitForHealth(10000);
+                if (!healthy) {
+                    lastError = new Error('Multica server did not become healthy in time');
+                    console.error('[MulticaManager]', lastError.message);
+                    if (attempt < MulticaManager.MAX_RETRIES) {
+                        console.log(`[MulticaManager] Retrying in ${MulticaManager.RETRY_DELAY_MS}ms...`);
+                        await this.delay(MulticaManager.RETRY_DELAY_MS);
+                        continue;
+                    }
+                    this.state = 'failed';
+                    this.readyReject?.(lastError);
+                    this.notifyRenderer('failed', lastError.message);
+                    return;
+                }
+            }
+
+            const bootstrapOk = await this.bootstrap();
+            if (!bootstrapOk) {
+                lastError = new Error('Multica bootstrap failed');
+                console.error('[MulticaManager]', lastError.message);
+                if (attempt < MulticaManager.MAX_RETRIES) {
+                    console.log(`[MulticaManager] Retrying in ${MulticaManager.RETRY_DELAY_MS}ms...`);
+                    await this.delay(MulticaManager.RETRY_DELAY_MS);
+                    continue;
+                }
                 this.state = 'failed';
-                this.readyReject?.(err as Error);
-                this.notifyRenderer('failed', (err as Error).message);
+                this.readyReject?.(lastError);
+                this.notifyRenderer('failed', lastError.message);
                 return;
             }
-            const healthy = await this.waitForHealth(10000);
-            if (!healthy) {
-                const err = new Error('Multica server did not become healthy in time');
-                console.error('[MulticaManager]', err.message);
-                this.state = 'failed';
-                this.readyReject?.(err);
-                this.notifyRenderer('failed', err.message);
-                return;
-            }
-        }
 
-        const bootstrapOk = await this.bootstrap();
-        if (!bootstrapOk) {
-            const err = new Error('Multica bootstrap failed');
-            console.error('[MulticaManager]', err.message);
-            this.state = 'failed';
-            this.readyReject?.(err);
-            this.notifyRenderer('failed', err.message);
+            // Success
+            this.state = 'ready';
+            this.readyResolve?.();
+            this.notifyRenderer('ready');
+            console.log('[MulticaManager] Ready. Token:', this.config?.token?.slice(0, 16) + '...');
             return;
         }
+    }
 
-        this.state = 'ready';
-        this.readyResolve?.();
-        this.notifyRenderer('ready');
-        console.log('[MulticaManager] Ready. Token:', this.config?.token?.slice(0, 16) + '...');
+    /**
+     * Resets state and re-attempts start(). Useful for a tray "Reconnect" action.
+     */
+    public async restart(): Promise<void> {
+        console.log('[MulticaManager] Restart requested, resetting state...');
+        this.state = 'idle';
+        this.readyPromise = null;
+        this.readyResolve = null;
+        this.readyReject = null;
+        return this.start();
+    }
+
+    private delay(ms: number): Promise<void> {
+        return new Promise((resolve) => setTimeout(resolve, ms));
     }
 
     public stop(): void {
