@@ -40,7 +40,7 @@ export class CalendarManager extends EventEmitter {
     private updateInterval: NodeJS.Timeout | null = null;
     private cachedEvents: CalendarEvent[] | null = null;
     private cacheExpiry: number = 0;
-    private static CACHE_TTL_MS = 60_000; // re-run osascript at most once per minute
+    private static CACHE_TTL_MS = 30_000; // re-run CalReader at most once per 30s
 
     private constructor() {
         super();
@@ -147,9 +147,9 @@ export class CalendarManager extends EventEmitter {
     }
 
     public getConnectionStatus(): { connected: boolean; email?: string, lastSync?: number } {
-        // We don't store email in tokens usually, but we could fetch it.
-        // For now, simpler boolean.
-        return { connected: this.isConnected };
+        // System calendar (macOS native via CalReader) is always available on darwin.
+        // OAuth Google Calendar additionally sets isConnected when tokens are loaded.
+        return { connected: this.isConnected || this.isSystemCalendarAvailable() };
     }
 
     private getAuthUrl(): string {
@@ -494,9 +494,14 @@ export class CalendarManager extends EventEmitter {
         // Use native Swift EventKit binary (assets/CalReader) which has direct
         // Calendar access via EventKit — bypasses Electron's Apple Events sandbox restriction.
         // Output format per line: title|||startISO|||endISO|||calendarName|||location|||attendees
+        // Dev: use ~/bin/CalReader (local disk, has TCC calendar grant).
+        // Packaged: use bundled binary in Resources.
+        // The assets/ copy on SanDisk fails TCC because macOS doesn't grant calendar
+        // access to binaries on external volumes spawned from unsigned Electron.
+        const localDev = path.join(require('os').homedir(), 'bin', 'CalReader');
         const helperPath = app.isPackaged
             ? path.join(process.resourcesPath, 'CalReader')
-            : path.join(app.getAppPath(), 'assets', 'CalReader');
+            : (require('fs').existsSync(localDev) ? localDev : path.join(app.getAppPath(), 'assets', 'CalReader'));
 
         return new Promise((resolve) => {
             execFile(helperPath, [], { timeout: 30000 }, (err, stdout, stderr) => {

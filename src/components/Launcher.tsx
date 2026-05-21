@@ -268,7 +268,12 @@ const Launcher: React.FC<LauncherProps> = ({ onStartMeeting, onOpenSettings }) =
         fetchMeetings();
         fetchEvents();
 
-        const interval = setInterval(fetchEvents, 60000);
+        // Initialize calendar connected state from backend (system calendar is always on on macOS)
+        window.electronAPI?.getCalendarStatus?.().then((status: any) => {
+            if (status?.connected) setIsCalendarConnected(true);
+        }).catch(() => {});
+
+        const interval = setInterval(fetchEvents, 30000);
         const handleKeyDown = (e: KeyboardEvent) => {
             if (isShortcutPressed(e, 'toggleVisibility')) { e.preventDefault(); window.electronAPI.toggleWindow(); }
         };
