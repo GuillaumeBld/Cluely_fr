@@ -293,13 +293,23 @@ const Launcher: React.FC<LauncherProps> = ({ onStartMeeting, onOpenSettings }) =
         return () => window.removeEventListener('click', close);
     }, []);
 
-    // Next meeting = soonest within 2h from now
-    const upcomingSorted = [...upcomingEvents].sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
-    const nextMeeting = upcomingSorted.find(e => {
-        const diff = new Date(e.startTime).getTime() - Date.now();
-        return diff > -5 * 60000 && diff < 120 * 60000;
+    // Next meeting = soonest upcoming, or currently in-progress (started but not yet ended)
+    // When multiple events tie on start time, prefer Zoom links (active Zoom session detection)
+    const upcomingSorted = [...upcomingEvents].sort((a, b) => {
+        const timeDiff = new Date(a.startTime).getTime() - new Date(b.startTime).getTime();
+        if (timeDiff !== 0) return timeDiff;
+        const aZoom = a.link?.includes('zoom.us') ? -1 : 0;
+        const bZoom = b.link?.includes('zoom.us') ? -1 : 0;
+        return aZoom - bZoom;
     });
-    const futureEvents = upcomingSorted.filter(e => new Date(e.startTime).getTime() > Date.now() - 5 * 60000);
+    const nextMeeting = upcomingSorted.find(e => {
+        const now = Date.now();
+        const start = new Date(e.startTime).getTime();
+        const end = new Date(e.endTime).getTime();
+        // Show if: started but not yet ended, or starting in next 2h
+        return (start <= now && end > now) || (start > now && start < now + 120 * 60000);
+    });
+    const futureEvents = upcomingSorted.filter(e => new Date(e.endTime).getTime() > Date.now());
 
     const handleOpenMeeting = async (meeting: Meeting) => {
         setForwardMeeting(null);
