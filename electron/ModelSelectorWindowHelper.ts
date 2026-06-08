@@ -114,6 +114,7 @@ export class ModelSelectorWindowHelper {
             webPreferences: {
                 nodeIntegration: false,
                 contextIsolation: true,
+                sandbox: true,
                 preload: path.join(__dirname, "preload.js"),
                 backgroundThrottling: false
             }

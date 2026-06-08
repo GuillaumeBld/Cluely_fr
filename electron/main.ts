@@ -1,4 +1,4 @@
-import { app, BrowserWindow, Tray, Menu, nativeImage, ipcMain, shell } from "electron"
+import { app, BrowserWindow, Tray, Menu, nativeImage, ipcMain, shell, session } from "electron"
 import path from "path"
 import fs from "fs"
 import { autoUpdater } from "electron-updater"
@@ -1857,6 +1857,33 @@ async function initializeApp() {
 
   // Initialize IPC handlers before window creation
   initializeIpcHandlers(appState)
+
+  // Lock down permission requests from renderer
+  session.defaultSession.setPermissionRequestHandler((_webContents, permission, callback) => {
+    const allowedPermissions = ['clipboard-read', 'clipboard-sanitized-write', 'media'];
+    callback(allowedPermissions.includes(permission));
+  });
+
+  // Prevent navigation to unexpected URLs and handle new window requests
+  app.on('web-contents-created', (_event, contents) => {
+    contents.on('will-navigate', (event, navigationUrl) => {
+      try {
+        const parsedUrl = new URL(navigationUrl);
+        if (parsedUrl.protocol !== 'file:' && !navigationUrl.startsWith('http://localhost')) {
+          event.preventDefault();
+        }
+      } catch {
+        event.preventDefault();
+      }
+    });
+
+    contents.setWindowOpenHandler(({ url }) => {
+      if (url.startsWith('http:') || url.startsWith('https:')) {
+        shell.openExternal(url);
+      }
+      return { action: 'deny' };
+    });
+  });
 
   // Set initial app name — apply disguise name early if configured
   const initialDisguise = appState.getDisguise();
