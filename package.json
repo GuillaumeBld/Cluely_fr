@@ -1,6 +1,6 @@
 {
   "name": "repliq-ai",
-  "version": "1.0.0",
+  "version": "1.2.0",
   "main": "./dist-electron/electron/main.js",
   "description": "Répliq.ai est un assistant IA de réunions et d'entretiens, entièrement en français.",
   "scripts": {
