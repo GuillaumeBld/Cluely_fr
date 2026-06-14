@@ -146,6 +146,7 @@ export class LLMHelper {
   }
 
   public setGroqApiKey(apiKey: string) {
+    this.groqApiKey = apiKey;
     this.groqClient = new Groq({ apiKey, dangerouslyAllowBrowser: true });
     console.log("[LLMHelper] Groq API Key updated.");
   }
@@ -467,18 +468,6 @@ export class LLMHelper {
 
     // Truncation/clamping removed - prompts already handle response length
     // clean = clampResponse(clean, 3, 60);
-
-    // Filter out fallback phrases
-    const fallbackPhrases = [
-      "I'm not sure",
-      "It depends",
-      "I can't answer",
-      "I don't know"
-    ];
-
-    if (fallbackPhrases.some(phrase => clean.toLowerCase().includes(phrase.toLowerCase()))) {
-      throw new Error("Filtered fallback response");
-    }
 
     return clean;
   }
@@ -1126,6 +1115,7 @@ ANSWER DIRECTLY:`;
 
   private async generateWithDeepseek(userMessage: string, systemPrompt?: string): Promise<string> {
     if (!this.deepseekClient) throw new Error("DeepSeek client not initialized");
+    await this.rateLimiters.deepseek.acquire();
     const modelId = this.currentModelId; // e.g. 'deepseek-chat' or 'deepseek-reasoner'
     const messages: any[] = [];
     if (systemPrompt) messages.push({ role: 'system', content: systemPrompt });
@@ -1135,7 +1125,40 @@ ANSWER DIRECTLY:`;
       messages,
       max_tokens: 16000,
     });
+    const inputTokens = response.usage?.prompt_tokens ?? 0;
+    const outputTokens = response.usage?.completion_tokens ?? 0;
+    if (inputTokens + outputTokens) this.tokenTracker?.record(inputTokens + outputTokens);
+    const costCents = estimateCost('deepseek', modelId, inputTokens, outputTokens);
+    this.costRecorder?.record({ meetingId: this.activeMeetingId || null, provider: 'deepseek', model: modelId, inputTokens, outputTokens, costCents });
     return response.choices[0]?.message?.content || '';
+  }
+
+  private async * streamWithDeepseek(userMessage: string, systemPrompt?: string): AsyncGenerator<string, void, unknown> {
+    if (!this.deepseekClient) throw new Error("DeepSeek client not initialized");
+    await this.rateLimiters.deepseek.acquire();
+    const modelId = this.currentModelId;
+    const messages: any[] = [];
+    if (systemPrompt) messages.push({ role: 'system', content: systemPrompt });
+    messages.push({ role: 'user', content: userMessage });
+    const stream = await this.deepseekClient.chat.completions.create({
+      model: modelId,
+      messages,
+      max_tokens: 16000,
+      stream: true,
+    });
+    let inputTokens = 0;
+    let outputTokens = 0;
+    for await (const chunk of stream) {
+      const token = chunk.choices[0]?.delta?.content || '';
+      if (token) yield token;
+      if (chunk.usage) {
+        inputTokens = chunk.usage.prompt_tokens ?? 0;
+        outputTokens = chunk.usage.completion_tokens ?? 0;
+      }
+    }
+    if (inputTokens + outputTokens) this.tokenTracker?.record(inputTokens + outputTokens);
+    const costCents = estimateCost('deepseek', modelId, inputTokens, outputTokens);
+    this.costRecorder?.record({ meetingId: this.activeMeetingId || null, provider: 'deepseek', model: modelId, inputTokens, outputTokens, costCents });
   }
 
   /**
@@ -1468,6 +1491,16 @@ ANSWER DIRECTLY:`;
     systemPromptOverride?: string // Optional override (defaults to HARD_SYSTEM_PROMPT)
   ): AsyncGenerator<string, void, unknown> {
 
+    if (this.isDailyBudgetExceeded()) {
+      IpcEventBus.emitTyped("cost:budget-exceeded", {
+        meeting_id: this.activeMeetingId || null,
+        daily_cents: this.costRecorder!.getDailySpend().totalCents,
+        budget_cents: this.dailyBudgetCents!,
+        timestamp: Date.now(),
+      });
+      throw new Error('Daily LLM budget exceeded');
+    }
+
     // Preparation
     const isMultimodal = !!imagePath;
 
@@ -1524,6 +1557,13 @@ ANSWER DIRECTLY:`;
     if (this.currentModelId.startsWith('openrouter-') && this.openrouterClient) {
       const orSystem = this.withLang(systemPromptOverride || OPENAI_SYSTEM_PROMPT());
       yield* this.streamWithOpenai(userContent, orSystem);
+      return;
+    }
+
+    // DeepSeek (text-only)
+    if (this.currentModelId.startsWith('deepseek-') && this.deepseekClient && !isMultimodal) {
+      const dsSystem = this.withLang(finalSystemPrompt);
+      yield* this.streamWithDeepseek(userContent, dsSystem);
       return;
     }
 

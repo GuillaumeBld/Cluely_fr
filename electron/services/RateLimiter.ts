@@ -83,5 +83,6 @@ export function createProviderRateLimiters() {
         gemini: new RateLimiter(120, 2.0),    // 120 req/min
         openai: new RateLimiter(120, 2.0),    // 120 req/min
         claude: new RateLimiter(120, 2.0),    // 120 req/min
+        deepseek: new RateLimiter(60, 1.0),   // 60 req/min (paid tier default)
     };
 }

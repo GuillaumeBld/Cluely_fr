@@ -92,7 +92,8 @@ export class RAGManager {
             return { chunkCount: 0 };
         }
 
-        // 3. Save chunks to database
+        // 3. Delete any existing chunks for idempotency, then save fresh ones
+        this.vectorStore.deleteChunksForMeeting(meetingId);
         this.vectorStore.saveChunks(chunks);
 
         // 4. Save summary if provided

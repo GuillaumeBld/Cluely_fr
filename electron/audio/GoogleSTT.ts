@@ -12,10 +12,16 @@ import { ENGLISH_VARIANTS } from '../config/languages';
  * - Manages authentication via GOOGLE_APPLICATION_CREDENTIALS.
  * - Parses intermediate and final results.
  */
+// Google Cloud streamingRecognize hard-limits each stream to ~5 minutes.
+// We proactively restart every 4.5 minutes to avoid the mid-sentence cutoff.
+const STREAM_RESTART_MS = 4.5 * 60 * 1000;
+
 export class GoogleSTT extends EventEmitter {
     private client: SpeechClient;
     private stream: any = null; // Stream type is complex in google-cloud libs
     private isStreaming = false;
+    private restartTimer: ReturnType<typeof setTimeout> | null = null;
+    private reconnectBackoffMs = 1000;
 
     // Config
     private encoding = 'LINEAR16' as const;
@@ -120,11 +126,30 @@ export class GoogleSTT extends EventEmitter {
 
         console.log('[GoogleSTT] Stopping stream...');
         this.isStreaming = false;
+        if (this.restartTimer) {
+            clearTimeout(this.restartTimer);
+            this.restartTimer = null;
+        }
         if (this.stream) {
             this.stream.end();
             this.stream.destroy();
             this.stream = null;
         }
+    }
+
+    private scheduleReconnect(delayMs: number): void {
+        if (!this.isStreaming) return;
+        console.log(`[GoogleSTT] Scheduling reconnect in ${delayMs}ms...`);
+        setTimeout(() => {
+            if (!this.isStreaming) return;
+            console.log('[GoogleSTT] Reconnecting stream...');
+            if (this.stream) {
+                this.stream.destroy();
+                this.stream = null;
+            }
+            this.isConnecting = false;
+            this.startStream();
+        }, delayMs);
     }
 
     private buffer: Buffer[] = [];
@@ -203,6 +228,19 @@ export class GoogleSTT extends EventEmitter {
                 console.error('[GoogleSTT] Stream error:', err);
                 this.emit('error', err);
                 this.isConnecting = false;
+                // Reconnect with backoff rather than leaving the stream dead
+                if (this.isStreaming) {
+                    const delay = this.reconnectBackoffMs;
+                    this.reconnectBackoffMs = Math.min(this.reconnectBackoffMs * 2, 30_000);
+                    this.scheduleReconnect(delay);
+                }
+            })
+            .on('end', () => {
+                // Stream closed by server (e.g. 5-min limit hit before our timer fires)
+                if (this.isStreaming) {
+                    console.log('[GoogleSTT] Stream ended by server, reconnecting...');
+                    this.scheduleReconnect(200);
+                }
             })
             .on('data', (data: any) => {
                 // ... (existing data handler)
@@ -222,11 +260,18 @@ export class GoogleSTT extends EventEmitter {
                 }
             });
 
-        // Initialize writeable check or wait for 'open'? 
-        // gRPC streams are usually writeable immediately.
-        // We can flush immediately after creation.
         this.isConnecting = false;
+        this.reconnectBackoffMs = 1000; // reset backoff on successful start
         this.flushBuffer();
+
+        // Proactively restart before Google's 5-min hard limit
+        if (this.restartTimer) clearTimeout(this.restartTimer);
+        this.restartTimer = setTimeout(() => {
+            if (this.isStreaming) {
+                console.log('[GoogleSTT] Proactive 4.5-min restart to avoid stream limit...');
+                this.scheduleReconnect(0);
+            }
+        }, STREAM_RESTART_MS);
 
         console.log('[GoogleSTT] Stream created. Waiting for events...');
     }

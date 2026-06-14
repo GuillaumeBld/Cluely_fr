@@ -10,6 +10,8 @@ export const PROVIDER_PRICING: Record<string, { inputCentsPerMToken: number; out
   'groq:llama-3.3-70b-versatile': { inputCentsPerMToken: 59, outputCentsPerMToken: 79 },
   'openai:gpt-5.2-chat-latest': { inputCentsPerMToken: 250, outputCentsPerMToken: 1000 },
   'claude:claude-sonnet-4-5': { inputCentsPerMToken: 300, outputCentsPerMToken: 1500 },
+  'deepseek:deepseek-chat': { inputCentsPerMToken: 27, outputCentsPerMToken: 110 },
+  'deepseek:deepseek-reasoner': { inputCentsPerMToken: 55, outputCentsPerMToken: 219 },
 };
 
 export function estimateCost(provider: string, model: string, inputTokens: number, outputTokens: number): number {

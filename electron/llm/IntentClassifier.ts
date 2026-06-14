@@ -41,37 +41,38 @@ function detectIntentByPattern(lastInterviewerTurn: string): IntentResult | null
     const text = lastInterviewerTurn.toLowerCase().trim();
 
     // Clarification patterns
-    if (/(can you explain|what do you mean|clarify|could you elaborate on that specific)/i.test(text)) {
+    // Clarification (EN + FR)
+    if (/(can you explain|what do you mean|clarify|could you elaborate on that specific|pouvez.vous expliquer|qu.est.ce que vous voulez dire|pouvez.vous clarifier|pourriez.vous élaborer|expliquez.moi)/i.test(text)) {
         return { intent: 'clarification', confidence: 0.9, answerShape: INTENT_ANSWER_SHAPES.clarification };
     }
 
-    // Follow-up patterns  
-    if (/(what happened|then what|and after that|what.s next|how did that go)/i.test(text)) {
+    // Follow-up (EN + FR)
+    if (/(what happened|then what|and after that|what.s next|how did that go|qu.est.ce qui s.est passé|ensuite|et après|qu.est.ce qui suit|comment ça s.est passé)/i.test(text)) {
         return { intent: 'follow_up', confidence: 0.85, answerShape: INTENT_ANSWER_SHAPES.follow_up };
     }
 
-    // Deep dive patterns
-    if (/(tell me more|dive deeper|explain further|walk me through|how does that work)/i.test(text)) {
+    // Deep dive (EN + FR)
+    if (/(tell me more|dive deeper|explain further|walk me through|how does that work|dites.m.en plus|expliquez davantage|comment ça fonctionne|décrivez.moi|parlez.moi de)/i.test(text)) {
         return { intent: 'deep_dive', confidence: 0.85, answerShape: INTENT_ANSWER_SHAPES.deep_dive };
     }
 
-    // Behavioral patterns
-    if (/(give me an example|tell me about a time|describe a situation|when have you|share an experience)/i.test(text)) {
+    // Behavioral (EN + FR)
+    if (/(give me an example|tell me about a time|describe a situation|when have you|share an experience|donnez.moi un exemple|parlez.moi d.une fois|décrivez une situation|quand avez.vous|racontez.moi)/i.test(text)) {
         return { intent: 'behavioral', confidence: 0.9, answerShape: INTENT_ANSWER_SHAPES.behavioral };
     }
 
-    // Example request patterns
-    if (/(for example|concrete example|specific instance|like what|such as)/i.test(text)) {
+    // Example request (EN + FR)
+    if (/(for example|concrete example|specific instance|like what|such as|par exemple|exemple concret|instance spécifique|comme quoi|tel que)/i.test(text)) {
         return { intent: 'example_request', confidence: 0.85, answerShape: INTENT_ANSWER_SHAPES.example_request };
     }
 
-    // Summary probe patterns
-    if (/(so to summarize|in summary|so basically|so you.re saying|let me make sure)/i.test(text)) {
+    // Summary probe (EN + FR)
+    if (/(so to summarize|in summary|so basically|so you.re saying|let me make sure|donc pour résumer|en résumé|donc en gros|donc vous dites|permettez.moi de vérifier)/i.test(text)) {
         return { intent: 'summary_probe', confidence: 0.85, answerShape: INTENT_ANSWER_SHAPES.summary_probe };
     }
 
-    // Coding patterns (Broad detection for programming/implementation)
-    if (/(write code|program|implement|function for|algorithm|how to code|setup a .* project|using .* library|debug this|snippet|boilerplate|example of .* in .*|optimize|refactor|best practice for .* code|utility method|component for|logic for)/i.test(text)) {
+    // Coding (EN + FR)
+    if (/(write code|program|implement|function for|algorithm|how to code|setup a .* project|using .* library|debug this|snippet|boilerplate|example of .* in .*|optimize|refactor|best practice for .* code|utility method|component for|logic for|écrire du code|implémenter|algorithme|comment coder|débogu|optimiser|refactoriser|bonne pratique)/i.test(text)) {
         return { intent: 'coding', confidence: 0.9, answerShape: INTENT_ANSWER_SHAPES.coding };
     }
 

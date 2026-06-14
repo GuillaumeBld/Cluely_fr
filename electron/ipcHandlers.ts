@@ -1780,7 +1780,7 @@ export function initializeIpcHandlers(appState: AppState): void {
     }
 
     const abortController = new AbortController();
-    const queryKey = `meeting-${meetingId}`;
+    const queryKey = `meeting-${meetingId}-${Date.now()}`;
     activeRAGQueries.set(queryKey, abortController);
 
     try {
@@ -1847,16 +1847,14 @@ export function initializeIpcHandlers(appState: AppState): void {
 
   // Cancel active RAG query
   safeHandle("rag:cancel-query", async (_, { meetingId, global }: { meetingId?: string; global?: boolean }) => {
-    const queryKey = global ? 'global' : `meeting-${meetingId}`;
-
-    // Cancel any matching key
+    // Use exact-prefix matching to avoid meeting-"m" cancelling meeting-"m2"
+    const prefix = global ? 'global-' : `meeting-${meetingId}-`;
     for (const [key, controller] of activeRAGQueries) {
-      if (key.startsWith(queryKey) || (global && key.startsWith('global'))) {
+      if (key.startsWith(prefix)) {
         controller.abort();
         activeRAGQueries.delete(key);
       }
     }
-
     return { success: true };
   });
 
