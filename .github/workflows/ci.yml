@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  ci:
+    name: Typecheck & Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        # Skip postinstall: it runs electron-rebuild (needs a display + Electron binary).
+        # We rebuild better-sqlite3 for host Node separately below.
+        run: npm install --ignore-scripts --no-audit --no-fund
+
+      - name: Rebuild better-sqlite3 for host Node
+        run: npm rebuild better-sqlite3
+
+      - name: Typecheck (renderer)
+        run: npx tsc --noEmit
+
+      - name: Typecheck (electron)
+        run: npx tsc -p electron/tsconfig.json --noEmit
+
+      - name: Tests
+        run: npx vitest run
