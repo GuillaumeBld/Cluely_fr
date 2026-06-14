@@ -81,7 +81,7 @@ import { RestSTT } from "./audio/RestSTT"
 import { DeepgramStreamingSTT } from "./audio/DeepgramStreamingSTT"
 import { ThemeManager } from "./ThemeManager"
 import { RAGManager } from "./rag/RAGManager"
-import { DatabaseManager } from "./db/DatabaseManager"
+import { DatabaseManager, normalizeActionItem } from "./db/DatabaseManager"
 import { CredentialsManager } from "./services/CredentialsManager"
 import { ReleaseNotesManager } from "./update/ReleaseNotesManager"
 import { MemoryManager } from "./memory"
@@ -1123,7 +1123,7 @@ export class AppState {
       if (meeting.detailedSummary) {
         summary = [
           ...(meeting.detailedSummary.keyPoints || []),
-          ...(meeting.detailedSummary.actionItems || []).map(a => `Action: ${a}`)
+          ...(meeting.detailedSummary.actionItems || []).map(a => `Action: ${normalizeActionItem(a).text}`)
         ].join('. ');
       }
 
@@ -1988,7 +1988,16 @@ async function initializeApp() {
           const { LedgerQueryService } = require('./services/LedgerQueryService');
           const ledgerSvc = LedgerQueryService.getInstance(db);
           const commitmentSource: CommitmentQuerySource = {
-            queryOpenCommitments: () => ledgerSvc.queryOpenCommitments(),
+            // LedgerQueryService returns Decision rows (snake_case, ISO timestamps).
+            // CommitmentStalenessChecker expects OpenCommitment (camelCase, ms numbers).
+            queryOpenCommitments: () => ledgerSvc.queryOpenCommitments().map((d: any) => ({
+              id: String(d.id),
+              meetingId: d.meeting_id,
+              text: d.text,
+              speaker: d.speaker,
+              timestamp: new Date(d.timestamp).getTime(),
+              dispatchedJobId: d.dispatched_job_id ?? null,
+            })),
           };
           const stalenessChecker = new CommitmentStalenessChecker(commitmentSource);
 

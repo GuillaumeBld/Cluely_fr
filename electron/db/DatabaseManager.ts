@@ -205,6 +205,14 @@ export class DatabaseManager {
             this.db.exec("CREATE INDEX IF NOT EXISTS idx_chunks_meeting ON chunks(meeting_id)");
         } catch (e) { /* Index may exist */ }
 
+        // Indexes for transcript and interaction hot-path queries by meeting_id
+        try {
+            this.db.exec("CREATE INDEX IF NOT EXISTS idx_transcripts_meeting ON transcripts(meeting_id)");
+        } catch (e) { /* Index may exist */ }
+        try {
+            this.db.exec("CREATE INDEX IF NOT EXISTS idx_ai_interactions_meeting ON ai_interactions(meeting_id)");
+        } catch (e) { /* Index may exist */ }
+
         // Corpus RAG: Local project corpus chunks (git + docs + code)
         const createCorpusChunksTable = `
             CREATE TABLE IF NOT EXISTS corpus_chunks (

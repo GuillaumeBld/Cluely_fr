@@ -76,7 +76,7 @@ export class VectorStore {
             ORDER BY chunk_index ASC
         `).all(meetingId) as any[];
 
-        return rows.map(this.rowToChunk);
+        return rows.map(r => this.rowToChunk(r));
     }
 
     /**
@@ -84,12 +84,12 @@ export class VectorStore {
      */
     getChunksForMeeting(meetingId: string): StoredChunk[] {
         const rows = this.db.prepare(`
-            SELECT * FROM chunks 
+            SELECT * FROM chunks
             WHERE meeting_id = ?
             ORDER BY chunk_index ASC
         `).all(meetingId) as any[];
 
-        return rows.map(this.rowToChunk);
+        return rows.map(r => this.rowToChunk(r));
     }
 
     /**

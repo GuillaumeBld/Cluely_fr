@@ -1549,20 +1549,21 @@ ANSWER DIRECTLY:`;
 
     // 4. Gemini Routing & Fallback
     if (this.client) {
+      const geminiSystem = this.withLang(finalSystemPrompt);
       // Direct model use if specified
       if (this.currentModelId === GEMINI_PRO_MODEL) {
-        const fullMsg = `${finalSystemPrompt}\n\n${userContent}`;
+        const fullMsg = `${geminiSystem}\n\n${userContent}`;
         yield* this.streamWithGeminiModel(fullMsg, GEMINI_PRO_MODEL);
         return;
       }
       if (this.currentModelId === GEMINI_FLASH_MODEL) {
-        const fullMsg = `${finalSystemPrompt}\n\n${userContent}`;
+        const fullMsg = `${geminiSystem}\n\n${userContent}`;
         yield* this.streamWithGeminiModel(fullMsg, GEMINI_FLASH_MODEL);
         return;
       }
 
       // Race strategy (default)
-      const raceMsg = `${finalSystemPrompt}\n\n${userContent}`;
+      const raceMsg = `${geminiSystem}\n\n${userContent}`;
       yield* this.streamWithGeminiParallelRace(raceMsg);
     } else {
       throw new Error("No LLM provider available");

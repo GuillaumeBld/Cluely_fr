@@ -3,6 +3,7 @@
 // Coordinates preprocessing, chunking, embedding, and retrieval
 
 import Database from 'better-sqlite3';
+import { normalizeActionItem } from '../db/DatabaseManager';
 import { LLMHelper } from '../LLMHelper';
 import { preprocessTranscript, RawSegment } from './TranscriptPreprocessor';
 import { chunkTranscript } from './SemanticChunker';
@@ -263,7 +264,7 @@ export class RAGManager {
             summary = [
                 ...(meeting.detailedSummary.overview ? [meeting.detailedSummary.overview] : []),
                 ...(meeting.detailedSummary.keyPoints || []),
-                ...(meeting.detailedSummary.actionItems || []).map((a: any) => `Action: ${a}`)
+                ...(meeting.detailedSummary.actionItems || []).map((a: any) => `Action: ${normalizeActionItem(a).text}`)
             ].join('. ');
         } else if (meeting.summary) {
             summary = meeting.summary;

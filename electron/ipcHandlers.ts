@@ -317,6 +317,9 @@ export function initializeIpcHandlers(appState: AppState): void {
 
   safeHandle("gemini-chat", async (event, message: string, imagePath?: string, context?: string, options?: { skipSystemPrompt?: boolean }) => {
     try {
+      if (imagePath !== undefined && !validateFilePath(imagePath)) {
+        return { error: 'Invalid file path' };
+      }
       const result = await appState.processingHelper.getLLMHelper().chatWithGemini(message, imagePath, context, options?.skipSystemPrompt);
 
       console.log(`[IPC] gemini - chat response: `, result ? result.substring(0, 50) : "(empty)");
@@ -358,6 +361,10 @@ export function initializeIpcHandlers(appState: AppState): void {
   // Streaming IPC Handler
   safeHandle("gemini-chat-stream", async (event, message: string, imagePath?: string, context?: string, options?: { skipSystemPrompt?: boolean }) => {
     try {
+      if (imagePath !== undefined && !validateFilePath(imagePath)) {
+        event.sender.send("gemini-stream-error", "Invalid file path");
+        return null;
+      }
       console.log("[IPC] gemini-chat-stream started using LLMHelper.streamChat");
       const llmHelper = appState.processingHelper.getLLMHelper();
 

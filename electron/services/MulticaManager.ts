@@ -77,13 +77,16 @@ export class MulticaManager {
 
         let lastError: Error | undefined;
 
-        for (let attempt = 1; attempt <= MulticaManager.MAX_RETRIES; attempt++) {
-            this.state = 'idle';
-            // Reset ready promise so new waitUntilReady() callers get a fresh future
-            this.readyPromise = null;
-            this.readyResolve = null;
-            this.readyReject = null;
+        // Allocate the ready promise once for the whole retry sequence so that
+        // callers who call waitUntilReady() mid-retry don't get orphaned promises.
+        if (!this.readyPromise) {
+            this.readyPromise = new Promise<void>((resolve, reject) => {
+                this.readyResolve = resolve;
+                this.readyReject = reject;
+            });
+        }
 
+        for (let attempt = 1; attempt <= MulticaManager.MAX_RETRIES; attempt++) {
             this.state = 'bootstrapping';
             console.log(`[MulticaManager] Starting (attempt ${attempt}/${MulticaManager.MAX_RETRIES})...`);
 
