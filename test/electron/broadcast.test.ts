@@ -1,21 +1,15 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-vi.mock('electron', () => {
-  const mockWindows: any[] = [];
-  return {
-    app: { getPath: () => '/tmp', on: () => {}, whenReady: () => Promise.resolve() },
-    BrowserWindow: {
-      getAllWindows: vi.fn(() => mockWindows),
-      _mockWindows: mockWindows,
-    },
-    ipcMain: { handle: () => {}, on: () => {} },
-    shell: {},
-    nativeImage: { createFromPath: () => ({ resize: () => ({}) }) },
-    Menu: { buildFromTemplate: () => ({}) },
-    Tray: class {},
-    desktopCapturer: { getSources: async () => [] },
-  };
-});
+vi.mock('electron', () => ({
+  app: { getPath: () => '/tmp', on: () => {}, whenReady: () => Promise.resolve() },
+  BrowserWindow: { getAllWindows: vi.fn(() => []) },
+  ipcMain: { handle: () => {}, on: () => {} },
+  shell: {},
+  nativeImage: { createFromPath: () => ({ resize: () => ({}) }) },
+  Menu: { buildFromTemplate: () => ({}) },
+  Tray: class {},
+  desktopCapturer: { getSources: async () => [] },
+}));
 
 import { BrowserWindow } from 'electron';
 import { broadcastToWindows } from '../../electron/main';
