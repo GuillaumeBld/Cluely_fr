@@ -18,6 +18,7 @@ vi.mock('electron', () => {
 });
 
 import { BrowserWindow } from 'electron';
+import { broadcastToWindows } from '../../electron/main';
 
 function makeMockWin(opts: { destroyed?: boolean; throws?: boolean; id?: number } = {}) {
   const send = opts.throws
@@ -30,20 +31,7 @@ function makeMockWin(opts: { destroyed?: boolean; throws?: boolean; id?: number 
   };
 }
 
-// Extract the broadcast logic to test in isolation
-function broadcast(channel: string, ...args: any[]): void {
-  (BrowserWindow.getAllWindows() as any[]).forEach((win: any) => {
-    try {
-      if (!win.isDestroyed() && win.webContents) {
-        win.webContents.send(channel, ...args);
-      }
-    } catch (e) {
-      console.error(`[broadcast] failed to send '${channel}' to window ${win.id}:`, e);
-    }
-  });
-}
-
-describe('broadcast()', () => {
+describe('broadcastToWindows()', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -53,7 +41,7 @@ describe('broadcast()', () => {
     const win2 = makeMockWin({ id: 2 });
     (BrowserWindow.getAllWindows as any).mockReturnValue([win1, win2]);
 
-    broadcast('test:event', { data: 42 });
+    broadcastToWindows('test:event', { data: 42 });
 
     expect(win1.webContents.send).toHaveBeenCalledWith('test:event', { data: 42 });
     expect(win2.webContents.send).toHaveBeenCalledWith('test:event', { data: 42 });
@@ -64,7 +52,7 @@ describe('broadcast()', () => {
     const alive = makeMockWin({ id: 2 });
     (BrowserWindow.getAllWindows as any).mockReturnValue([destroyed, alive]);
 
-    broadcast('test:event');
+    broadcastToWindows('test:event');
 
     expect(destroyed.webContents.send).not.toHaveBeenCalled();
     expect(alive.webContents.send).toHaveBeenCalledWith('test:event');
@@ -77,7 +65,7 @@ describe('broadcast()', () => {
 
     const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
-    expect(() => broadcast('approval:draft')).not.toThrow();
+    expect(() => broadcastToWindows('approval:draft')).not.toThrow();
     expect(good.webContents.send).toHaveBeenCalledWith('approval:draft');
     expect(errSpy).toHaveBeenCalledWith(
       expect.stringContaining('[broadcast]'),
@@ -85,5 +73,10 @@ describe('broadcast()', () => {
     );
 
     errSpy.mockRestore();
+  });
+
+  it('does nothing when no windows are open', () => {
+    (BrowserWindow.getAllWindows as any).mockReturnValue([]);
+    expect(() => broadcastToWindows('test:event')).not.toThrow();
   });
 });
