@@ -22,6 +22,7 @@ export type LLMFn = (systemPrompt: string, userText: string) => Promise<string>;
 
 // Derived from NODE_KINDS — add new node types in schema.ts, this updates automatically.
 const KIND_LIST = NODE_KINDS.map(k => `"${k}"`).join(', ');
+const VALID_KINDS = new Set<string>(NODE_KINDS);
 
 const EXTRACTION_SYSTEM_PROMPT = `You are a relation extractor for a personal knowledge graph.
 Given a transcript snippet, extract structured triples (subject → predicate → object).
@@ -72,16 +73,18 @@ export async function extractRelations(
   for (const p of proposals) {
     if (!p.sourceLabel || !p.targetLabel || !p.predicate) continue;
     if (typeof p.confidence !== 'number' || p.confidence < 0 || p.confidence > 1) continue;
+    if (!VALID_KINDS.has(p.sourceKind)) {
+      console.warn(`[RelationExtractor] unknown sourceKind '${p.sourceKind}' — skipping`);
+      continue;
+    }
+    if (!VALID_KINDS.has(p.targetKind)) {
+      console.warn(`[RelationExtractor] unknown targetKind '${p.targetKind}' — skipping`);
+      continue;
+    }
 
     // Ensure nodes exist
-    const source = memoryManager.upsertNode(
-      p.sourceKind || 'topic',
-      p.sourceLabel,
-    );
-    const target = memoryManager.upsertNode(
-      p.targetKind || 'topic',
-      p.targetLabel,
-    );
+    const source = memoryManager.upsertNode(p.sourceKind, p.sourceLabel);
+    const target = memoryManager.upsertNode(p.targetKind, p.targetLabel);
 
     // Confidence-gated: goes to edges or pending_review
     memoryManager.proposeEdge(
