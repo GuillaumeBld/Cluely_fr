@@ -112,4 +112,40 @@ describe('extractRelations', () => {
     const result = await extractRelations('test', null, llm, mm);
     expect(result.length).toBe(0);
   });
+
+  it('skips proposals with an unrecognized sourceKind', async () => {
+    const llm = stubLLM([
+      {
+        sourceKind: 'Person' as any,  // wrong case — not in NODE_KINDS
+        sourceLabel: 'Alice',
+        targetKind: 'person',
+        targetLabel: 'Bob',
+        predicate: 'knows',
+        confidence: 0.9,
+        context: 'test',
+      },
+    ]);
+
+    const result = await extractRelations('test', null, llm, mm);
+    expect(result.length).toBe(0);
+    expect(mm.findNodes('person').length).toBe(0);
+  });
+
+  it('skips proposals with an unrecognized targetKind', async () => {
+    const llm = stubLLM([
+      {
+        sourceKind: 'person',
+        sourceLabel: 'Alice',
+        targetKind: 'task' as any,  // invented kind not in NODE_KINDS
+        targetLabel: 'Fix bug',
+        predicate: 'works_on',
+        confidence: 0.8,
+        context: 'test',
+      },
+    ]);
+
+    const result = await extractRelations('test', null, llm, mm);
+    expect(result.length).toBe(0);
+    expect(mm.findNodes('person').length).toBe(0);
+  });
 });
