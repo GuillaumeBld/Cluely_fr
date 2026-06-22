@@ -302,8 +302,12 @@ export class AppState {
 
   private broadcast(channel: string, ...args: any[]): void {
     BrowserWindow.getAllWindows().forEach(win => {
-      if (!win.isDestroyed()) {
-        win.webContents.send(channel, ...args);
+      try {
+        if (!win.isDestroyed() && win.webContents) {
+          win.webContents.send(channel, ...args);
+        }
+      } catch (e) {
+        console.error(`[broadcast] failed to send '${channel}' to window ${win.id}:`, e);
       }
     });
   }
