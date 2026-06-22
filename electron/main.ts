@@ -114,6 +114,18 @@ import { getAgentConfig, setAgentIntervalMs } from "./config/agentConfig"
 
 function mt(fr: string, en: string): string { return getUiLang() === 'fr' ? fr : en; }
 
+export function broadcastToWindows(channel: string, ...args: any[]): void {
+  BrowserWindow.getAllWindows().forEach(win => {
+    try {
+      if (!win.isDestroyed()) {
+        win.webContents.send(channel, ...args);
+      }
+    } catch (err) {
+      console.error(`[broadcast] failed to send '${channel}' to window ${win.id}:`, err);
+    }
+  });
+}
+
 export class AppState {
   private static instance: AppState | null = null
 
@@ -301,11 +313,7 @@ export class AppState {
   }
 
   private broadcast(channel: string, ...args: any[]): void {
-    BrowserWindow.getAllWindows().forEach(win => {
-      if (!win.isDestroyed()) {
-        win.webContents.send(channel, ...args);
-      }
-    });
+    broadcastToWindows(channel, ...args);
   }
 
   private initializeRAGManager(): void {
